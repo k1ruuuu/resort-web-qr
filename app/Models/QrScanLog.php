@@ -9,8 +9,8 @@ class QrScanLog extends Model
 {
     protected $fillable = [
         'qr_code',
-        'qr_token',
-        'daily_voucher_id',
+        'secure_token',
+        'guest_voucher_id',
         'outlet_id',
         'user_id',
         'scan_result',
@@ -19,9 +19,9 @@ class QrScanLog extends Model
         'user_agent',
     ];
 
-    public function dailyVoucher(): BelongsTo
+    public function guestVoucher(): BelongsTo
     {
-        return $this->belongsTo(DailyVoucher::class);
+        return $this->belongsTo(GuestVoucher::class);
     }
 
     public function outlet(): BelongsTo

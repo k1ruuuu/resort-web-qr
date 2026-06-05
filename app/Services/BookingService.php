@@ -61,9 +61,20 @@ class BookingService
             'checked_in_at' => now(),
         ]);
 
+        app(VoucherService::class)->generateForBooking($booking);
+
+        $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
+        $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
+
+        if ($autoEnabled) {
+            app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
+        } elseif ($schedEnabled) {
+            app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
+        }
+
         $this->audit->log('booking.checked_in', $booking, $old, $booking->only(['status', 'checked_in_at']));
 
-        return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType']);
+        return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType', 'guestVoucher']);
     }
 
     public function checkOut(Booking $booking): Booking

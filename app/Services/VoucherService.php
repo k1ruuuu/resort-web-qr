@@ -6,17 +6,14 @@ use App\Enums\BookingStatus;
 use App\Enums\VoucherStatus;
 use App\Exceptions\VoucherException;
 use App\Models\Booking;
-use App\Models\BookingFacility;
-use App\Models\DailyVoucher;
+use App\Models\GuestVoucher;
 use App\Models\Outlet;
 use App\Models\QrScanLog;
+use App\Models\RedemptionLog;
 use App\Models\User;
-use App\Models\VoucherUsageLog;
-use App\Support\QrCodePayload;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Ramsey\Uuid\Uuid;
+use Illuminate\Support\Str;
 
 class VoucherService
 {
@@ -26,16 +23,13 @@ class VoucherService
         private readonly StayQuotaService $quota,
     ) {}
 
-    /**
-     * @return Collection<int, DailyVoucher>
-     */
-    public function generateForBooking(Booking $booking, ?Carbon $forDate = null): Collection
+    public function generateForBooking(Booking $booking): GuestVoucher
     {
         if ($booking->status !== BookingStatus::CheckedIn) {
             throw VoucherException::bookingNotCheckedIn();
         }
 
-        $booking->loadMissing(['property', 'room.roomType', 'bookingFacilities.facilityTemplate']);
+        $booking->loadMissing(['property', 'room.roomType', 'bookingFacilities.facilityTemplate', 'guest']);
 
         if ($booking->bookingFacilities->isEmpty()) {
             $this->bookings->syncDefaultFacilities($booking);
@@ -46,162 +40,129 @@ class VoucherService
             throw VoucherException::noFacilities();
         }
 
-        $timezone = $booking->property->timezone ?? 'UTC';
-        $forDate ??= Carbon::today($timezone);
-        $created = collect();
+        $guestName = $booking->guest->full_name;
+        $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'ROOM';
+        $roomName = $booking->room?->label ?? $booking->room?->roomType?->name ?? 'Room';
+        $date = $booking->check_in->format('Y-m-d');
 
-        DB::transaction(function () use ($booking, $forDate, &$created) {
-            foreach ($booking->bookingFacilities as $facility) {
-                if (! $this->dateWithinFacility($forDate, $facility, $booking->property->timezone ?? 'UTC')) {
-                    continue;
-                }
+        $guestNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $guestName);
+        $roomCodeClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomCode);
+        $roomNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomName);
 
-                $facility->loadMissing('facilityTemplate');
-                $qrCode = QrCodePayload::build($booking, $facility->facilityTemplate, $forDate);
-                $quotaTotal = $facility->quota_total ?: $this->quota->quotaForBooking($booking);
+        $baseQrCode = "{$guestNameClean}+{$roomCodeClean}+{$roomNameClean}+{$date}";
 
-                $voucher = DailyVoucher::query()->firstOrCreate(
-                    [
-                        'booking_facility_id' => $facility->id,
-                        'valid_date' => $forDate->toDateString(),
-                    ],
-                    [
-                        'qr_code' => $qrCode,
-                        'qr_token' => (string) Uuid::uuid4(),
-                        'public_token' => (string) Uuid::uuid4(),
-                        'booking_id' => $booking->id,
-                        'facility_template_id' => $facility->facility_template_id,
-                        'quota_total' => $quotaTotal,
-                        'quota_remaining' => $quotaTotal,
-                        'status' => VoucherStatus::Active,
-                        'generated_at' => now(),
-                    ]
-                );
-
-                if ($voucher->qr_code !== $qrCode) {
-                    $voucher->update([
-                        'qr_code' => $qrCode,
-                        'public_token' => $voucher->public_token ?? (string) Uuid::uuid4(),
-                    ]);
-                }
-
-                $created->push($voucher);
-                $this->audit->log('voucher.generated', $voucher, null, $voucher->toArray());
-            }
-        });
-
-        if ($created->isEmpty()) {
-            throw VoucherException::noEligibleFacilitiesForDate($forDate->toDateString());
+        $qrCode = $baseQrCode;
+        $counter = 1;
+        while (GuestVoucher::query()->where('qr_code', $qrCode)->exists()) {
+            $qrCode = "{$baseQrCode}-{$counter}";
+            $counter++;
         }
 
-        return $created;
+        $secureToken = (string) Str::random(32);
+
+        return DB::transaction(function () use ($booking, $qrCode, $secureToken) {
+            $voucher = GuestVoucher::query()->where('booking_id', $booking->id)->first();
+
+            if (!$voucher) {
+                $voucher = GuestVoucher::query()->create([
+                    'booking_id' => $booking->id,
+                    'guest_id' => $booking->guest_id,
+                    'qr_code' => $qrCode,
+                    'secure_token' => $secureToken,
+                    'status' => VoucherStatus::Active,
+                    'generated_at' => now(),
+                ]);
+
+                $this->audit->log('voucher.generated', $voucher, null, $voucher->toArray());
+            }
+
+            return $voucher;
+        });
     }
 
     public function redeem(
         string $qrCode,
         Outlet $outlet,
         User $user,
-        int $paxUsed = 1,
-    ): DailyVoucher {
-        return DB::transaction(function () use ($qrCode, $outlet, $user, $paxUsed) {
-            $voucher = DailyVoucher::query()
-                ->where('qr_code', $qrCode)
-                ->orWhere('qr_token', $qrCode)
+        int $facilityTemplateId,
+        int $paxUsed = 1
+    ): RedemptionLog {
+        return DB::transaction(function () use ($qrCode, $outlet, $user, $facilityTemplateId, $paxUsed) {
+            $voucher = GuestVoucher::query()
+                ->where('secure_token', $qrCode)
+                ->orWhere('qr_code', $qrCode)
                 ->lockForUpdate()
                 ->first();
 
-            if (! $voucher) {
+            if (!$voucher) {
                 $this->logScan($qrCode, null, $outlet, $user, 'not_found');
-
                 throw VoucherException::notFound();
             }
 
-            if ($outlet->facility_template_id !== $voucher->facility_template_id) {
-                $this->logScan($qrCode, $voucher, $outlet, $user, 'invalid_outlet');
-
-                throw VoucherException::invalidOutlet();
+            if ($voucher->booking->status !== BookingStatus::CheckedIn) {
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
+                throw new VoucherException('Booking is not currently checked in.', 422);
             }
 
-            $today = Carbon::today($voucher->booking->property->timezone);
+            if ($outlet->property_id !== $voucher->booking->property_id) {
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'invalid_outlet');
+                throw new VoucherException('This outlet belongs to a different property.', 403);
+            }
 
-            if (! $voucher->valid_date->isSameDay($today)) {
+            $today = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
+            $statuses = $voucher->getFacilityStatuses($today);
+            $facilityStatus = $statuses->firstWhere('facility_template_id', $facilityTemplateId);
+
+            if (!$facilityStatus) {
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'facility_not_linked');
+                throw new VoucherException('Facility is not linked to this booking.', 422);
+            }
+
+            if (!$facilityStatus->is_available) {
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'invalid_date');
-
                 throw VoucherException::expired();
             }
 
-            if ($voucher->status === VoucherStatus::Redeemed) {
-                $this->logScan($qrCode, $voucher, $outlet, $user, 'already_redeemed');
-
-                throw VoucherException::alreadyRedeemed();
-            }
-
-            if ($paxUsed > $voucher->quota_remaining) {
+            if ($paxUsed > $facilityStatus->quota_remaining) {
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
-
                 throw VoucherException::quotaExceeded();
             }
 
             $now = now();
-            $old = $voucher->only(['status', 'quota_remaining', 'redeemed_at']);
+            $remainingQuota = $facilityStatus->quota_remaining - $paxUsed;
 
-            $voucher->quota_remaining -= $paxUsed;
-            $fullyRedeemed = $voucher->quota_remaining <= 0;
-
-            $voucher->fill([
-                'status' => $fullyRedeemed ? VoucherStatus::Redeemed : VoucherStatus::Active,
-                'redeemed_at' => $fullyRedeemed ? $now : $voucher->redeemed_at,
-                'redeemed_by_user_id' => $fullyRedeemed ? $user->id : $voucher->redeemed_by_user_id,
-                'redeemed_at_outlet_id' => $fullyRedeemed ? $outlet->id : $voucher->redeemed_at_outlet_id,
-            ])->save();
-
-            VoucherUsageLog::query()->create([
-                'daily_voucher_id' => $voucher->id,
+            $log = RedemptionLog::query()->create([
+                'guest_voucher_id' => $voucher->id,
+                'guest_id' => $voucher->guest_id,
+                'booking_id' => $voucher->booking_id,
+                'facility_template_id' => $facilityTemplateId,
                 'outlet_id' => $outlet->id,
                 'user_id' => $user->id,
-                'action' => $fullyRedeemed ? 'redeemed' : 'partial_redeem',
                 'pax_used' => $paxUsed,
-                'used_at' => $now,
-                'metadata' => [
-                    'quota_remaining' => $voucher->quota_remaining,
-                    'recorded_at' => $now->toIso8601String(),
-                ],
+                'remaining_quota' => $remainingQuota,
+                'date' => $today->toDateString(),
+                'time' => $now->toTimeString(),
+                'ip_address' => request()->ip(),
             ]);
 
             $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
-            $this->audit->log('voucher.redeemed', $voucher, $old, $voucher->fresh()->toArray());
+            $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
 
-            return $voucher->fresh(['booking.guest', 'facilityTemplate']);
+            return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
         });
-    }
-
-    private function dateWithinFacility(Carbon $date, BookingFacility $facility, string $timezone): bool
-    {
-        $day = $date->copy()->timezone($timezone)->toDateString();
-        $start = $facility->start_date->format('Y-m-d');
-        $end = $facility->end_date->format('Y-m-d');
-
-        return $day >= $start && $day <= $end;
     }
 
     private function logScan(
         string $qrCode,
-        ?DailyVoucher $voucher,
+        ?GuestVoucher $voucher,
         Outlet $outlet,
         User $user,
         string $result,
     ): void {
-        $qrToken = null;
-        if ($voucher) {
-            $qrToken = $voucher->qr_token;
-        } elseif (Uuid::isValid($qrCode)) {
-            $qrToken = $qrCode;
-        }
-
         QrScanLog::query()->create([
             'qr_code' => $qrCode,
-            'qr_token' => $qrToken,
-            'daily_voucher_id' => $voucher?->id,
+            'secure_token' => $voucher?->secure_token,
+            'guest_voucher_id' => $voucher?->id,
             'outlet_id' => $outlet->id,
             'user_id' => $user->id,
             'scan_result' => $result,

@@ -8,6 +8,23 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+    <style>
+        .nav-sidebar .nav-treeview {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .nav-sidebar .has-treeview > a .right {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .nav-sidebar .has-treeview.menu-open > a .right {
+            transform: rotate(-90deg);
+        }
+        
+        .nav-treeview > .nav-item > .nav-link {
+            padding-left: 3rem;
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -104,14 +121,30 @@
                     @endcan
                     @can('reports.view')
                     <li class="nav-item">
-                        <a href="{{ route('reports.index') }}" class="nav-link @if(request()->routeIs('reports.*')) active @endif">
+                        <a href="{{ route('reports.index') }}" class="nav-link @if(request()->routeIs('reports.index')) active @endif">
                             <i class="nav-icon fas fa-chart-bar"></i>
                             <p>Reports</p>
                         </a>
                     </li>
                     @endcan
+                    @can('delivery_logs.view')
+                    <li class="nav-item">
+                        <a href="{{ route('reports.delivery-logs') }}" class="nav-link @if(request()->routeIs('reports.delivery-logs')) active @endif">
+                            <i class="nav-icon fas fa-paper-plane"></i>
+                            <p>Delivery Logs</p>
+                        </a>
+                    </li>
+                    @endcan
+                    @can('delivery_settings.manage')
+                    <li class="nav-item">
+                        <a href="{{ route('settings.delivery') }}" class="nav-link @if(request()->routeIs('settings.delivery')) active @endif">
+                            <i class="nav-icon fas fa-cog"></i>
+                            <p>Delivery Settings</p>
+                        </a>
+                    </li>
+                    @endcan
                     @if(auth()->user()?->can('users.manage') || auth()->user()?->can('roles.manage'))
-                    <li class="nav-item @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) menu-open @endif">
+                    <li class="nav-item has-treeview @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) menu-is-opening menu-open @endif">
                         <a href="#" class="nav-link @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) active @endif">
                             <i class="nav-icon fas fa-user-cog"></i>
                             <p>
@@ -119,7 +152,7 @@
                                 <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="display: @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) block @else none @endif;">
                             @can('users.manage')
                             <li class="nav-item">
                                 <a href="{{ route('users.index') }}" class="nav-link @if(request()->routeIs('users.*')) active @endif">
@@ -166,6 +199,31 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('[data-widget="treeview"]').Treeview('init');
+    
+    $('.nav-sidebar .has-treeview > a').on('click', function(e) {
+        e.preventDefault();
+        
+        var $parent = $(this).parent();
+        var $treeview = $parent.find('> .nav-treeview');
+        
+        $('.nav-sidebar .has-treeview').not($parent).removeClass('menu-is-opening menu-open');
+        $('.nav-sidebar .nav-treeview').not($treeview).slideUp(300);
+        
+        if ($parent.hasClass('menu-open')) {
+            $parent.removeClass('menu-is-opening menu-open');
+            $treeview.slideUp(300);
+        } else {
+            $parent.addClass('menu-is-opening menu-open');
+            $treeview.slideDown(300, function() {
+                $parent.removeClass('menu-is-opening');
+            });
+        }
+    });
+});
+</script>
 @stack('scripts')
 </body>
 </html>

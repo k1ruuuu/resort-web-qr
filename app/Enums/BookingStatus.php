@@ -8,7 +8,5 @@ enum BookingStatus: string
     case CheckedIn = 'checked_in';
     case CheckedOut = 'checked_out';
     case Cancelled = 'cancelled';
-
-    /** @deprecated Use ConfirmedReservation */
     case Pending = 'pending';
 }

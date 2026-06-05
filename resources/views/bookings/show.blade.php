@@ -28,7 +28,7 @@
                 <p><strong>Status:</strong> {{ $booking->status->value }}</p>
                 @if($booking->booking_code)<p><strong>PMS Code:</strong> {{ $booking->booking_code }}</p>@endif
                 @if($booking->room_label)<p><strong>Room:</strong> {{ $booking->room_label }}</p>@endif
-                <p><strong>Quota basis:</strong> room capacity + {{ $booking->extra_beds }} extra bed(s)</p>
+                <p><strong>Quota basis:</strong> total pax ({{ $booking->total_pax }}) + {{ $booking->extra_beds }} extra bed(s) = {{ $booking->total_pax + $booking->extra_beds }} quota</p>
             </div>
         </div>
         <div class="card">
@@ -36,7 +36,7 @@
             <ul class="list-group list-group-flush">
                 @forelse($booking->bookingFacilities as $bf)
                     <li class="list-group-item">
-                        {{ $bf->facilityTemplate->name }} (quota {{ $bf->quota_total }})
+                        {{ $bf->facilityTemplate->name }}
                         <span class="text-muted small">— {{ $bf->start_date->format('Y-m-d') }} to {{ $bf->end_date->format('Y-m-d') }}</span>
                     </li>
                 @empty
@@ -57,33 +57,48 @@
         @endif
         @endcan
         @can('vouchers.generate')
-        @if($booking->status->value === 'checked_in')
+        @if($booking->status->value === 'checked_in' && !$booking->guestVoucher)
         <form method="POST" action="{{ route('vouchers.generate') }}">
             @csrf
             <input type="hidden" name="booking_id" value="{{ $booking->id }}">
-            <button class="btn btn-primary w-100">Generate Today Vouchers</button>
+            <button class="btn btn-primary w-100">Generate Guest Pass</button>
+        </form>
+        @endif
+        @endcan
+        @can('vouchers.resend')
+        @if($booking->status->value === 'checked_in' && $booking->guestVoucher)
+        <form method="POST" action="{{ route('bookings.resend', $booking) }}" class="mt-2">
+            @csrf
+            <button class="btn btn-warning w-100">
+                <i class="fab fa-whatsapp"></i> Resend Voucher
+            </button>
         </form>
         @endif
         @endcan
     </div>
 </div>
-@if($booking->dailyVouchers->isNotEmpty())
+@if($booking->guestVoucher)
 <div class="card mt-3">
-    <div class="card-header">Vouchers</div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
-            <thead><tr><th>Date</th><th>Facility</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-            @foreach($booking->dailyVouchers as $voucher)
-                <tr>
-                    <td>{{ $voucher->valid_date->format('Y-m-d') }}</td>
-                    <td>{{ $voucher->facilityTemplate->name }}</td>
-                    <td>{{ $voucher->status->value }}</td>
-                    <td><a href="{{ route('vouchers.show', $voucher) }}">QR</a></td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
+    <div class="card-header font-weight-bold bg-primary text-white">Active Guest Stay Pass</div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center">
+                <x-qr-code :url="route('vouchers.qr', $booking->guestVoucher)" :size="150" class="rounded border bg-white p-1" />
+            </div>
+            <div class="col-md-8">
+                <p class="mb-1"><strong>QR Code Text:</strong> <code class="text-dark">{{ $booking->guestVoucher->qr_code }}</code></p>
+                <p class="mb-1"><strong>Secure Token:</strong> <code class="text-muted">{{ $booking->guestVoucher->secure_token }}</code></p>
+                <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">{{ $booking->guestVoucher->status->value }}</span></p>
+                <p class="mb-0 mt-2">
+                    <a href="{{ route('vouchers.show', $booking->guestVoucher) }}" class="btn btn-sm btn-outline-primary me-2">
+                        <i class="fas fa-eye"></i> View Card Details
+                    </a>
+                    <a href="{{ route('vouchers.public', $booking->guestVoucher->secure_token) }}" target="_blank" class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-external-link-alt"></i> Open Public Link
+                    </a>
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 @endif

@@ -8,7 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Forget cached permissions to avoid issues
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissions = [

@@ -65,8 +65,8 @@ class Booking extends Model
         return $this->hasMany(BookingFacility::class);
     }
 
-    public function dailyVouchers(): HasMany
+    public function guestVoucher(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasMany(DailyVoucher::class);
+        return $this->hasOne(GuestVoucher::class);
     }
 }

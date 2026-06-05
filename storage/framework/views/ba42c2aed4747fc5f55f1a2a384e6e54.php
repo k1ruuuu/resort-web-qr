@@ -8,6 +8,25 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+    <style>
+        /* Smooth transitions for sidebar dropdown */
+        .nav-sidebar .nav-treeview {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .nav-sidebar .has-treeview > a .right {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .nav-sidebar .has-treeview.menu-open > a .right {
+            transform: rotate(-90deg);
+        }
+        
+        /* Better spacing for treeview items */
+        .nav-treeview > .nav-item > .nav-link {
+            padding-left: 3rem;
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -104,14 +123,30 @@
                     <?php endif; ?>
                     <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('reports.view')): ?>
                     <li class="nav-item">
-                        <a href="<?php echo e(route('reports.index')); ?>" class="nav-link <?php if(request()->routeIs('reports.*')): ?> active <?php endif; ?>">
+                        <a href="<?php echo e(route('reports.index')); ?>" class="nav-link <?php if(request()->routeIs('reports.index')): ?> active <?php endif; ?>">
                             <i class="nav-icon fas fa-chart-bar"></i>
                             <p>Reports</p>
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('delivery_logs.view')): ?>
+                    <li class="nav-item">
+                        <a href="<?php echo e(route('reports.delivery-logs')); ?>" class="nav-link <?php if(request()->routeIs('reports.delivery-logs')): ?> active <?php endif; ?>">
+                            <i class="nav-icon fas fa-paper-plane"></i>
+                            <p>Delivery Logs</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('delivery_settings.manage')): ?>
+                    <li class="nav-item">
+                        <a href="<?php echo e(route('settings.delivery')); ?>" class="nav-link <?php if(request()->routeIs('settings.delivery')): ?> active <?php endif; ?>">
+                            <i class="nav-icon fas fa-cog"></i>
+                            <p>Delivery Settings</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <?php if(auth()->user()?->can('users.manage') || auth()->user()?->can('roles.manage')): ?>
-                    <li class="nav-item <?php if(request()->routeIs('users.*') || request()->routeIs('roles.*')): ?> menu-open <?php endif; ?>">
+                    <li class="nav-item has-treeview <?php if(request()->routeIs('users.*') || request()->routeIs('roles.*')): ?> menu-is-opening menu-open <?php endif; ?>">
                         <a href="#" class="nav-link <?php if(request()->routeIs('users.*') || request()->routeIs('roles.*')): ?> active <?php endif; ?>">
                             <i class="nav-icon fas fa-user-cog"></i>
                             <p>
@@ -119,7 +154,7 @@
                                 <i class="right fas fa-angle-left"></i>
                             </p>
                         </a>
-                        <ul class="nav nav-treeview">
+                        <ul class="nav nav-treeview" style="display: <?php if(request()->routeIs('users.*') || request()->routeIs('roles.*')): ?> block <?php else: ?> none <?php endif; ?>;">
                             <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('users.manage')): ?>
                             <li class="nav-item">
                                 <a href="<?php echo e(route('users.index')); ?>" class="nav-link <?php if(request()->routeIs('users.*')): ?> active <?php endif; ?>">
@@ -166,6 +201,36 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+// Initialize AdminLTE Treeview for sidebar menu
+$(document).ready(function() {
+    // Initialize all treeview menus
+    $('[data-widget="treeview"]').Treeview('init');
+    
+    // Manual toggle for User Management menu if AdminLTE doesn't auto-initialize
+    $('.nav-sidebar .has-treeview > a').on('click', function(e) {
+        e.preventDefault();
+        
+        var $parent = $(this).parent();
+        var $treeview = $parent.find('> .nav-treeview');
+        
+        // Close other open menus
+        $('.nav-sidebar .has-treeview').not($parent).removeClass('menu-is-opening menu-open');
+        $('.nav-sidebar .nav-treeview').not($treeview).slideUp(300);
+        
+        // Toggle current menu
+        if ($parent.hasClass('menu-open')) {
+            $parent.removeClass('menu-is-opening menu-open');
+            $treeview.slideUp(300);
+        } else {
+            $parent.addClass('menu-is-opening menu-open');
+            $treeview.slideDown(300, function() {
+                $parent.removeClass('menu-is-opening');
+            });
+        }
+    });
+});
+</script>
 <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>

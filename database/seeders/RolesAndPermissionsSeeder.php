@@ -26,31 +26,47 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.manage',
             'roles.manage',
             'facilities.manage',
+            'delivery_settings.manage',
+            'voucher_settings.manage',
+            'vouchers.resend',
+            'delivery_logs.view',
         ];
 
         foreach ($permissions as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
 
+        $superAdmin = Role::findOrCreate('super-admin', 'web');
+        $superAdmin->syncPermissions($permissions);
+
         $admin = Role::findOrCreate('admin', 'web');
-        $admin->syncPermissions($permissions);
+        $adminPermissions = array_filter($permissions, function ($p) {
+            return $p !== 'voucher_settings.manage';
+        });
+        $admin->syncPermissions($adminPermissions);
 
-        $frontDesk = Role::findOrCreate('front-desk', 'web');
-        $frontDesk->syncPermissions([
-            'bookings.view',
-            'bookings.create',
-            'bookings.checkin',
-            'vouchers.view',
-            'vouchers.generate',
-            'guests.manage',
-            'reports.view',
-        ]);
-
-        $outlet = Role::findOrCreate('outlet-staff', 'web');
-        $outlet->syncPermissions([
+        $staffPermissions = [
             'vouchers.view',
             'vouchers.redeem',
-        ]);
+        ];
+
+        $afternoonTea = Role::findOrCreate('afternoon-tea-staff', 'web');
+        $afternoonTea->syncPermissions($staffPermissions);
+
+        $breakfast = Role::findOrCreate('breakfast-staff', 'web');
+        $breakfast->syncPermissions($staffPermissions);
+
+        $dinner = Role::findOrCreate('dinner-staff', 'web');
+        $dinner->syncPermissions($staffPermissions);
+
+        $dreamJournaling = Role::findOrCreate('dream-journaling-staff', 'web');
+        $dreamJournaling->syncPermissions($staffPermissions);
+
+        $animalFeeding = Role::findOrCreate('animal-feeding-staff', 'web');
+        $animalFeeding->syncPermissions($staffPermissions);
+
+        $welcomeSnack = Role::findOrCreate('welcome-snack-staff', 'web');
+        $welcomeSnack->syncPermissions($staffPermissions);
 
         $user = User::query()->firstOrCreate(
             ['email' => 'admin@resort.local'],
@@ -61,6 +77,6 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
 
-        $user->assignRole('admin');
+        $user->assignRole('super-admin');
     }
 }

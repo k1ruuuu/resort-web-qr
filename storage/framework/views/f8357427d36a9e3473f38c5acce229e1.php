@@ -1,16 +1,16 @@
-<?php $__env->startSection('title', 'Vouchers'); ?>
-<?php $__env->startSection('page_title', 'Vouchers'); ?>
+<?php $__env->startSection('title', 'Guest Vouchers'); ?>
+<?php $__env->startSection('page_title', 'Guest Vouchers'); ?>
 <?php $__env->startSection('content'); ?>
 <div class="card">
     <div class="card-body p-0">
         <table class="table table-striped mb-0">
             <thead>
                 <tr>
-                    <th>Date</th>
                     <th>Guest</th>
-                    <th>Facility</th>
-                    <th>Quota</th>
-                    <th>QR Code</th>
+                    <th>Room</th>
+                    <th>Stay Dates</th>
+                    <th>QR Code Text</th>
+                    <th>Secure Token</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -18,13 +18,22 @@
             <tbody>
             <?php $__currentLoopData = $vouchers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $voucher): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td><?php echo e($voucher->valid_date->format('Y-m-d')); ?></td>
-                    <td><?php echo e($voucher->booking->guest->full_name); ?></td>
-                    <td><?php echo e($voucher->facilityTemplate->name); ?></td>
-                    <td><?php echo e($voucher->quota_remaining); ?>/<?php echo e($voucher->quota_total); ?></td>
-                    <td><small><?php echo e($voucher->qr_code); ?></small></td>
-                    <td><?php echo e($voucher->status->value); ?></td>
-                    <td><a href="<?php echo e(route('vouchers.show', $voucher)); ?>" class="btn btn-sm btn-outline-primary">View QR</a></td>
+                    <td><strong><?php echo e($voucher->booking->guest->full_name); ?></strong></td>
+                    <td><?php echo e($voucher->booking->room_label ?? $voucher->booking->room?->label ?? 'N/A'); ?></td>
+                    <td><?php echo e($voucher->booking->check_in->format('Y-m-d')); ?> – <?php echo e($voucher->booking->check_out->format('Y-m-d')); ?></td>
+                    <td><small class="text-mono"><?php echo e($voucher->qr_code); ?></small></td>
+                    <td><small class="text-mono text-muted"><?php echo e(substr($voucher->secure_token, 0, 8)); ?>...</small></td>
+                    <td>
+                        <span class="badge bg-<?php echo e($voucher->status->value === 'active' ? 'success' : 'secondary'); ?>">
+                            <?php echo e($voucher->status->value); ?>
+
+                        </span>
+                    </td>
+                    <td>
+                        <a href="<?php echo e(route('vouchers.show', $voucher)); ?>" class="btn btn-xs btn-outline-primary">
+                            <i class="fas fa-qrcode"></i> View QR Card
+                        </a>
+                    </td>
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </tbody>

@@ -83,8 +83,6 @@ function loadRoomTypes() {
     })
     .then(r => r.json())
     .then(data => {
-        // This would require an API endpoint to get room types for a property
-        // For now, a simpler approach: reload page or use AJAX
     });
 }
 </script>

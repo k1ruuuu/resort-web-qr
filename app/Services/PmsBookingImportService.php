@@ -10,9 +10,6 @@ use App\Models\Room;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
-/**
- * Maps rows from Data_System.xls (PMS export) into bookings.
- */
 class PmsBookingImportService
 {
     public function __construct(

@@ -131,9 +131,9 @@ class DemoDataSeeder extends Seeder
                 'Jumlah' => "1 Malam\n2 Pax",
                 'Source' => 'RSV by Phone',
                 'Status Booking' => 'Check In',
-                'Expected Arrival' => '31-05-2026',
-                'Check In' => '31-05-2026 16:41:51',
-                'Expected Departure' => '01-06-2026',
+                'Expected Arrival' => \Carbon\Carbon::today()->format('d-m-Y'),
+                'Check In' => \Carbon\Carbon::today()->format('d-m-Y').' 11:41:51',
+                'Expected Departure' => \Carbon\Carbon::tomorrow()->format('d-m-Y'),
             ],
         ];
 
@@ -153,6 +153,46 @@ class DemoDataSeeder extends Seeder
                         ],
                         ['end_date' => $booking->check_out, 'quota_total' => $q]
                     );
+                }
+
+                $voucher = app(\App\Services\VoucherService::class)->generateForBooking($booking);
+
+                $breakfast = FacilityTemplate::where('code', 'BREAKFAST')->first();
+                $tea = FacilityTemplate::where('code', 'TEA')->first();
+                $outletBreakfast = Outlet::where('facility_template_id', $breakfast->id)->first();
+                $outletTea = Outlet::where('facility_template_id', $tea->id)->first();
+                $adminUser = \App\Models\User::first();
+
+                if ($breakfast && $outletBreakfast && $adminUser) {
+                    \App\Models\RedemptionLog::create([
+                        'guest_voucher_id' => $voucher->id,
+                        'guest_id' => $booking->guest_id,
+                        'booking_id' => $booking->id,
+                        'facility_template_id' => $breakfast->id,
+                        'outlet_id' => $outletBreakfast->id,
+                        'user_id' => $adminUser->id,
+                        'pax_used' => 2,
+                        'remaining_quota' => $q - 2,
+                        'date' => \Carbon\Carbon::today()->toDateString(),
+                        'time' => '08:30:00',
+                        'ip_address' => '127.0.0.1',
+                    ]);
+                }
+
+                if ($tea && $outletTea && $adminUser) {
+                    \App\Models\RedemptionLog::create([
+                        'guest_voucher_id' => $voucher->id,
+                        'guest_id' => $booking->guest_id,
+                        'booking_id' => $booking->id,
+                        'facility_template_id' => $tea->id,
+                        'outlet_id' => $outletTea->id,
+                        'user_id' => $adminUser->id,
+                        'pax_used' => 1,
+                        'remaining_quota' => $q - 1,
+                        'date' => \Carbon\Carbon::today()->toDateString(),
+                        'time' => '15:15:00',
+                        'ip_address' => '127.0.0.1',
+                    ]);
                 }
             }
         }

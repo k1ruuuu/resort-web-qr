@@ -9,7 +9,6 @@ use App\Http\Requests\RedeemVoucherRequest;
 use App\Models\Booking;
 use App\Models\Outlet;
 use App\Services\VoucherService;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
 class VoucherApiController extends Controller
@@ -19,10 +18,9 @@ class VoucherApiController extends Controller
     public function generate(GenerateVoucherRequest $request): JsonResponse
     {
         $booking = Booking::query()->findOrFail($request->validated('booking_id'));
-        $date = $request->filled('valid_date') ? Carbon::parse($request->validated('valid_date')) : null;
 
         try {
-            $created = $this->vouchers->generateForBooking($booking, $date);
+            $created = $this->vouchers->generateForBooking($booking);
         } catch (VoucherException $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
         }
@@ -35,16 +33,17 @@ class VoucherApiController extends Controller
         $outlet = Outlet::query()->findOrFail($request->validated('outlet_id'));
 
         try {
-            $voucher = $this->vouchers->redeem(
+            $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
                 $outlet,
                 $request->user(),
+                (int) $request->validated('facility_template_id'),
                 (int) ($request->validated('pax_used') ?? 1),
             );
         } catch (VoucherException $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
         }
 
-        return response()->json(['data' => $voucher]);
+        return response()->json(['data' => $log]);
     }
 }

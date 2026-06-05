@@ -61,7 +61,7 @@ class BookingController extends Controller
     {
         $this->authorizePermission('bookings.view');
 
-        $booking->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate', 'dailyVouchers']);
+        $booking->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate', 'guestVoucher']);
 
         return view('bookings.show', compact('booking'));
     }

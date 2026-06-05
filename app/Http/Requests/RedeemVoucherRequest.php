@@ -23,6 +23,7 @@ class RedeemVoucherRequest extends FormRequest
         return [
             'qr_code' => ['required', 'string', 'max:255'],
             'outlet_id' => ['required', 'exists:outlets,id'],
+            'facility_template_id' => ['required', 'exists:facility_templates,id'],
             'pax_used' => ['nullable', 'integer', 'min:1', 'max:50'],
         ];
     }

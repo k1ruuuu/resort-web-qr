@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\DailyVoucher;
+use App\Models\GuestVoucher;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 use Illuminate\Http\Response;
@@ -43,23 +43,22 @@ class QrCodeService
         ]);
     }
 
-    /** QR image encodes client payload: Room+Facility+Date */
-    public function payloadForVoucher(DailyVoucher $voucher): string
+    public function payloadForVoucher(GuestVoucher $voucher): string
     {
-        return $voucher->qr_code ?? $voucher->qr_token ?? '';
+        return $voucher->secure_token;
     }
 
-    public function publicPageUrl(DailyVoucher $voucher): string
+    public function publicPageUrl(GuestVoucher $voucher): string
     {
-        return route('vouchers.public', ['token' => $voucher->public_token]);
+        return route('vouchers.public', ['token' => $voucher->secure_token]);
     }
 
-    public function imageUrl(DailyVoucher $voucher): string
+    public function imageUrl(GuestVoucher $voucher): string
     {
-        return route('vouchers.public.qr', ['token' => $voucher->public_token]);
+        return route('vouchers.public.qr', ['token' => $voucher->secure_token]);
     }
 
-    public function adminImageUrl(DailyVoucher $voucher): string
+    public function adminImageUrl(GuestVoucher $voucher): string
     {
         return route('vouchers.qr', $voucher);
     }
