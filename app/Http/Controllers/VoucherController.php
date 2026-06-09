@@ -150,14 +150,24 @@ class VoucherController extends Controller
 
     public function processScannedCode(RedeemVoucherRequest $request): JsonResponse
     {
-        $outlet = Outlet::query()->findOrFail($request->validated('outlet_id'));
+        $outlet = Outlet::query()->with('facilityTemplate')->findOrFail($request->validated('outlet_id'));
+
+        // Use facility from request if provided, otherwise use outlet's facility
+        $facilityTemplateId = $request->validated('facility_template_id') ?? $outlet->facility_template_id;
+
+        if (!$facilityTemplateId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This outlet is not configured with a facility. Please contact administrator.',
+            ], 422);
+        }
 
         try {
             $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
                 $outlet,
                 $request->user(),
-                (int) $request->validated('facility_template_id'),
+                (int) $facilityTemplateId,
                 (int) ($request->validated('pax_used') ?? 1),
             );
         } catch (VoucherException $e) {
@@ -183,14 +193,27 @@ class VoucherController extends Controller
 
     public function redeem(RedeemVoucherRequest $request): RedirectResponse|JsonResponse
     {
-        $outlet = Outlet::query()->findOrFail($request->validated('outlet_id'));
+        $outlet = Outlet::query()->with('facilityTemplate')->findOrFail($request->validated('outlet_id'));
+
+        // Use facility from request if provided, otherwise use outlet's facility
+        $facilityTemplateId = $request->validated('facility_template_id') ?? $outlet->facility_template_id;
+
+        if (!$facilityTemplateId) {
+            $errorMessage = 'This outlet is not configured with a facility. Please contact administrator.';
+            
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $errorMessage], 422);
+            }
+
+            return back()->with('error', $errorMessage)->withInput();
+        }
 
         try {
             $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
                 $outlet,
                 $request->user(),
-                (int) $request->validated('facility_template_id'),
+                (int) $facilityTemplateId,
                 (int) ($request->validated('pax_used') ?? 1),
             );
         } catch (VoucherException $e) {
