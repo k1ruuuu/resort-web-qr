@@ -13,7 +13,21 @@ class GuestController extends Controller
     {
         abort_unless(auth()->user()?->can('guests.manage'), 403);
 
-        $guests = Guest::query()->orderBy('last_name')->paginate(20);
+        $query = Guest::query()->orderBy('last_name');
+
+        // Search filter
+        if (request()->filled('search')) {
+            $search = request('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('document_id', 'like', "%{$search}%");
+            });
+        }
+
+        $guests = $query->paginate(20)->withQueryString();
 
         return view('guests.index', compact('guests'));
     }

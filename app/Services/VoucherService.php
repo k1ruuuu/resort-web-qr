@@ -99,6 +99,9 @@ class VoucherService
                     throw VoucherException::notFound();
                 }
 
+                // Auto-expire if passed checkout time
+                $this->checkAndExpireIfNeeded($voucher);
+
                 if ($voucher->status !== VoucherStatus::Active) {
                     throw new VoucherException('Voucher is no longer active.', 422);
                 }
@@ -108,13 +111,27 @@ class VoucherService
                 }
 
                 $timezone = $voucher->booking->property->timezone ?? 'UTC';
-                $currentDate = Carbon::today($timezone);
+                $currentDateTime = Carbon::now($timezone);
                 $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
                 $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
+                
+                // Voucher expires at 9 PM (21:00) WIB on checkout date
+                $expirationDateTime = $checkOutDate->copy()->setTime(21, 0, 0);
 
-                // Voucher is valid from check-in date up to and including checkout date
-                if ($currentDate->lt($checkInDate) || $currentDate->gt($checkOutDate)) {
-                    throw new VoucherException('QR code is only valid during the check-in period.', 422);
+                // Check if before check-in
+                if ($currentDateTime->lt($checkInDate)) {
+                    throw new VoucherException(
+                        'QR code is not yet valid. Valid from: ' . $checkInDate->format('Y-m-d H:i') . ' (' . $timezone . ')',
+                        422
+                    );
+                }
+
+                // Check if after expiration (9 PM on checkout date)
+                if ($currentDateTime->gte($expirationDateTime)) {
+                    throw new VoucherException(
+                        'QR code has expired. It was valid until ' . $expirationDateTime->format('Y-m-d H:i') . ' (' . $timezone . ')',
+                        422
+                    );
                 }
 
                 if ($outlet->property_id !== $voucher->booking->property_id) {
@@ -192,15 +209,18 @@ class VoucherService
             return 'not_found';
         }
 
-        return match ($e->getMessage()) {
-            'Voucher not found.' => 'not_found',
-            'Voucher is no longer active.' => 'voucher_not_active',
-            'Booking is not currently checked in.' => 'booking_not_checked_in',
-            'QR code is only valid during the check-in period.' => 'outside_stay_period',
-            'This outlet belongs to a different property.' => 'invalid_outlet',
-            'Facility is not linked to this booking.' => 'facility_not_linked',
-            'Voucher is expired or not valid today.' => 'invalid_date',
-            'Voucher quota exceeded.' => 'quota_exceeded',
+        $message = $e->getMessage();
+
+        return match (true) {
+            str_contains($message, 'not found') => 'not_found',
+            str_contains($message, 'no longer active') => 'voucher_not_active',
+            str_contains($message, 'not currently checked in') => 'booking_not_checked_in',
+            str_contains($message, 'not yet valid') => 'not_yet_valid',
+            str_contains($message, 'has expired') => 'expired',
+            str_contains($message, 'different property') => 'invalid_outlet',
+            str_contains($message, 'not linked') => 'facility_not_linked',
+            str_contains($message, 'not valid today') => 'invalid_date',
+            str_contains($message, 'quota exceeded') => 'quota_exceeded',
             default => 'validation_error',
         };
     }
@@ -220,6 +240,33 @@ class VoucherService
             $voucher->update(['status' => VoucherStatus::Redeemed]);
             $this->audit->log('voucher.status_changed', $voucher, ['status' => VoucherStatus::Active->value], ['status' => VoucherStatus::Redeemed->value]);
         }
+    }
+
+    public function checkAndExpireIfNeeded(GuestVoucher $voucher): bool
+    {
+        if ($voucher->status !== VoucherStatus::Active) {
+            return false;
+        }
+
+        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $currentDateTime = Carbon::now($timezone);
+        $checkOutDate = Carbon::parse($voucher->booking->check_out)
+            ->setTimezone($timezone)
+            ->startOfDay()
+            ->setTime(21, 0, 0); // 9 PM on checkout date
+
+        if ($currentDateTime->gte($checkOutDate)) {
+            $voucher->update(['status' => VoucherStatus::Expired]);
+            $this->audit->log(
+                'voucher.auto_expired',
+                $voucher,
+                ['status' => VoucherStatus::Active->value],
+                ['status' => VoucherStatus::Expired->value]
+            );
+            return true;
+        }
+
+        return false;
     }
 
     private function logScan(

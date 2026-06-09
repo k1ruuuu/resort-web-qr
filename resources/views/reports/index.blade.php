@@ -6,6 +6,14 @@
     <div class="col-auto"><input type="date" name="from" value="{{ $from->toDateString() }}" class="form-control"></div>
     <div class="col-auto"><input type="date" name="to" value="{{ $to->toDateString() }}" class="form-control"></div>
     <div class="col-auto"><button class="btn btn-secondary">Filter</button></div>
+    @can('reports.export')
+    <div class="col-auto ms-auto">
+        <x-export-button 
+            route="reports.redemptions.export" 
+            :filters="['from' => $from->toDateString(), 'to' => $to->toDateString()]"
+            text="Export Redemptions" />
+    </div>
+    @endcan
 </form>
 <div class="row">
     <div class="col-md-7">

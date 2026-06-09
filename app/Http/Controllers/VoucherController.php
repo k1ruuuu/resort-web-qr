@@ -110,8 +110,50 @@ class VoucherController extends Controller
             return response()->json(['success' => false, 'message' => 'Voucher not found.'], 404);
         }
 
-        $voucher->load(['booking.guest', 'booking.room']);
-        $today = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
+        $voucher->load(['booking.guest', 'booking.room', 'booking.property']);
+
+        // Auto-expire if passed checkout time
+        $voucherService = app(\App\Services\VoucherService::class);
+        $voucherService->checkAndExpireIfNeeded($voucher);
+
+        // Validate voucher status
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher is no longer active.'
+            ], 422);
+        }
+
+        // Validate booking status
+        if ($voucher->booking->status !== \App\Enums\BookingStatus::CheckedIn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking is not currently checked in.'
+            ], 422);
+        }
+
+        // Validate expiration time (9 PM on checkout date)
+        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $currentDateTime = Carbon::now($timezone);
+        $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
+        $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
+        $expirationDateTime = $checkOutDate->copy()->setTime(21, 0, 0);
+
+        if ($currentDateTime->lt($checkInDate)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher is not yet valid. Valid from: ' . $checkInDate->format('Y-m-d H:i')
+            ], 422);
+        }
+
+        if ($currentDateTime->gte($expirationDateTime)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This voucher has expired. It was valid until ' . $expirationDateTime->format('Y-m-d H:i') . ' (' . $timezone . ')'
+            ], 422);
+        }
+
+        $today = Carbon::today($timezone);
         $facilityStatuses = $voucher->getFacilityStatuses($today);
 
         $history = RedemptionLog::query()

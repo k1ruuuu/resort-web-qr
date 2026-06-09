@@ -22,6 +22,11 @@ class VoucherDeliveryService
 
     public function sendImmediate(Booking $booking): DeliveryLog
     {
+        // Check if WhatsApp delivery is enabled
+        if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
+            throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
+        }
+
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
@@ -71,6 +76,11 @@ class VoucherDeliveryService
 
     public function schedule(Booking $booking): DeliveryLog
     {
+        // Check if WhatsApp delivery is enabled
+        if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
+            throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
+        }
+
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
@@ -117,6 +127,11 @@ class VoucherDeliveryService
 
     public function sendManual(Booking $booking): DeliveryLog
     {
+        // Check if WhatsApp delivery is enabled
+        if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
+            throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
+        }
+
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
@@ -166,6 +181,12 @@ class VoucherDeliveryService
 
     public function sendPendingLogs(): void
     {
+        // Check if WhatsApp delivery is enabled
+        if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
+            Log::info('WhatsApp delivery is disabled. Skipping pending logs.');
+            return;
+        }
+
         $pendingLogs = DeliveryLog::query()
             ->where('delivery_status', 'pending')
             ->where('scheduled_at', '<=', now())

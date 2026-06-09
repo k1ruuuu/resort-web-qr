@@ -73,6 +73,18 @@
                     @endif
                 </form>
 
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Total Records:</strong> {{ $logs->total() }}
+                    </div>
+                    @can('reports.export')
+                    <x-export-button 
+                        route="reports.scan-history.export" 
+                        :filters="request()->only(['search', 'scan_result', 'outlet_id', 'date_from', 'date_to'])"
+                        text="Export Scan History" />
+                    @endcan
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover table-striped">
                         <thead>

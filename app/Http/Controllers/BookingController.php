@@ -19,12 +19,52 @@ class BookingController extends Controller
     {
         $this->authorizePermission('bookings.view');
 
-        $bookings = Booking::query()
+        $query = Booking::query()
             ->with(['guest', 'property', 'room'])
-            ->latest()
-            ->paginate(20);
+            ->latest();
 
-        return view('bookings.index', compact('bookings'));
+        // Search filter
+        if (request()->filled('search')) {
+            $search = request('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                    ->orWhere('reference', 'like', "%{$search}%")
+                    ->orWhereHas('guest', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('room', function ($q) use ($search) {
+                        $q->where('number', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Status filter
+        if (request()->filled('status')) {
+            $query->where('status', request('status'));
+        }
+
+        // Property filter
+        if (request()->filled('property_id')) {
+            $query->where('property_id', request('property_id'));
+        }
+
+        // Date range filter
+        if (request()->filled('date_from')) {
+            $query->whereDate('check_in', '>=', request('date_from'));
+        }
+
+        if (request()->filled('date_to')) {
+            $query->whereDate('check_out', '<=', request('date_to'));
+        }
+
+        $bookings = $query->paginate(20)->withQueryString();
+        $properties = Property::query()->orderBy('name')->get();
+
+        return view('bookings.index', compact('bookings', 'properties'));
     }
 
     public function create(): View

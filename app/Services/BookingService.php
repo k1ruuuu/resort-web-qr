@@ -66,10 +66,27 @@ class BookingService
         $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
         $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
 
+        // Both can be enabled simultaneously
         if ($autoEnabled) {
-            app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
-        } elseif ($schedEnabled) {
-            app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
+            try {
+                app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
+            } catch (\Throwable $e) {
+                \Log::error('Automatic delivery failed on check-in', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        if ($schedEnabled) {
+            try {
+                app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
+            } catch (\Throwable $e) {
+                \Log::error('Scheduled delivery failed on check-in', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $this->audit->log('booking.checked_in', $booking, $old, $booking->only(['status', 'checked_in_at']));

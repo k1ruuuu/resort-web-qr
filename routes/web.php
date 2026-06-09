@@ -62,11 +62,14 @@ Route::middleware('auth')->group(function () {
     Route::get('vouchers/{voucher}/qr.svg', [VoucherController::class, 'qrImage'])->name('vouchers.qr');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/redemptions/export', [ReportController::class, 'exportRedemptions'])->name('reports.redemptions.export');
     Route::get('reports/delivery-logs', [DeliveryLogController::class, 'index'])->name('reports.delivery-logs');
     Route::get('reports/scan-history', [\App\Http\Controllers\QrScanLogController::class, 'index'])->name('reports.scan-history');
+    Route::get('reports/scan-history/export', [\App\Http\Controllers\QrScanLogController::class, 'export'])->name('reports.scan-history.export');
 
     Route::get('settings/delivery', [DeliverySettingsController::class, 'index'])->name('settings.delivery');
     Route::post('settings/delivery', [DeliverySettingsController::class, 'update'])->name('settings.delivery.update');
+    Route::post('settings/delivery/toggle-whatsapp', [DeliverySettingsController::class, 'toggleWhatsApp'])->name('settings.delivery.toggle-whatsapp');
 
     Route::post('bookings/{booking}/resend', [VoucherController::class, 'resend'])->name('bookings.resend');
 

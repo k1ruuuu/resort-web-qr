@@ -66,19 +66,43 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('total_used', 'facility_template_id');
 
-        return $booking->bookingFacilities->map(function ($bf) use ($dateString, $totalQuota, $redemptions, $timezone) {
+        // Get redemption dates for one-time facilities (to track if already used)
+        $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED']; // Welcome Snack, Dream Journaling, Animal Feeding
+        $oneTimeRedemptions = RedemptionLog::query()
+            ->where('guest_voucher_id', $this->id)
+            ->whereHas('facilityTemplate', function ($q) use ($oneTimeFacilityCodes) {
+                $q->whereIn('code', $oneTimeFacilityCodes);
+            })
+            ->selectRaw('facility_template_id, MIN(date) as first_redeemed_date')
+            ->groupBy('facility_template_id')
+            ->pluck('first_redeemed_date', 'facility_template_id');
+
+        return $booking->bookingFacilities->map(function ($bf) use ($dateString, $totalQuota, $redemptions, $oneTimeRedemptions, $timezone) {
             $start = $bf->start_date->format('Y-m-d');
             $end = $bf->end_date->format('Y-m-d');
-            $isAvailable = ($dateString >= $start && $dateString <= $end);
-
-            $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
-            $remaining = $isAvailable ? max(0, $totalQuota - $used) : 0;
+            $facilityCode = $bf->facilityTemplate->code;
+            
+            // Check if this is a one-time facility
+            $isOneTimeFacility = in_array($facilityCode, ['SNACK', 'JOURNAL', 'FEED']);
+            
+            if ($isOneTimeFacility) {
+                // One-time facilities: only available on first day (check-in date) and only if not redeemed
+                $isAvailable = ($dateString === $start) && !isset($oneTimeRedemptions[$bf->facility_template_id]);
+                $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
+                $remaining = $isAvailable ? max(0, $totalQuota - $used) : 0;
+            } else {
+                // Daily facilities: available every day within the date range, quota resets daily
+                $isAvailable = ($dateString >= $start && $dateString <= $end);
+                $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
+                $remaining = $isAvailable ? max(0, $totalQuota - $used) : 0;
+            }
 
             return (object) [
                 'facility_template_id' => $bf->facility_template_id,
                 'name' => $bf->facilityTemplate->name,
-                'code' => $bf->facilityTemplate->code,
+                'code' => $facilityCode,
                 'is_available' => $isAvailable,
+                'is_one_time' => $isOneTimeFacility,
                 'quota_total' => $isAvailable ? $totalQuota : 0,
                 'quota_used' => $used,
                 'quota_remaining' => $remaining,
