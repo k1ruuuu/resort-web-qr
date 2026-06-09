@@ -162,8 +162,28 @@ class VoucherService
             $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
             $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
 
+            // Check if all facilities are fully redeemed
+            $this->updateVoucherStatusIfFullyRedeemed($voucher);
+
             return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
         });
+    }
+
+    private function updateVoucherStatusIfFullyRedeemed(GuestVoucher $voucher): void
+    {
+        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $today = Carbon::today($timezone);
+        $statuses = $voucher->getFacilityStatuses($today);
+
+        // Check if all available facilities for today are fully redeemed
+        $allFullyRedeemed = $statuses
+            ->filter(fn($status) => $status->is_available)
+            ->every(fn($status) => $status->quota_remaining === 0);
+
+        if ($allFullyRedeemed && $statuses->where('is_available', true)->isNotEmpty()) {
+            $voucher->update(['status' => VoucherStatus::Redeemed]);
+            $this->audit->log('voucher.status_changed', $voucher, ['status' => VoucherStatus::Active->value], ['status' => VoucherStatus::Redeemed->value]);
+        }
     }
 
     private function logScan(
