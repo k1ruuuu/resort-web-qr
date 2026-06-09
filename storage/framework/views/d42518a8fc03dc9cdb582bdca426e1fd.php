@@ -134,7 +134,7 @@
 
         <div class="card mt-3">
             <div class="card-body text-muted small">
-                <h6 class="text-dark mb-2">📱 Camera Access Help:</h6>
+                <h6 class="text-dark mb-2"><i class="fas fa-mobile-alt"></i> Camera Access Help:</h6>
                 <ul class="mb-0">
                     <li><strong>Mobile:</strong> Click "Start Camera" to use your front camera. Click "Switch Camera" to use the rear camera.</li>
                     <li><strong>QR Format:</strong> Encodes the secure internal token. The system verifies this token against the database before proceeding.</li>
@@ -188,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const verificationSection = document.getElementById('verification-section');
     const resultSection = document.getElementById('result-section');
     
-    // Verification values
     const verifyGuestName = document.getElementById('verify-guest-name');
     const verifyStayDetails = document.getElementById('verify-stay-details');
     const verifyRoomLabel = document.getElementById('verify-room-label');
@@ -199,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const historyTableBody = document.querySelector('#history-table tbody');
     const cancelVerifyBtn = document.getElementById('cancel-verify-btn');
     
-    // Result values
     const resultIcon = document.getElementById('result-icon');
     const resultTitle = document.getElementById('result-title');
     const resultMessage = document.getElementById('result-message');
@@ -212,7 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let facingMode = 'user'; 
     let cameraLoading = document.getElementById('camera-loading');
     
-    // Flow variables
     let currentVoucherCode = null;
     let selectedFacilityId = null;
     let selectedFacilityRemaining = 0;
@@ -225,7 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
     scanAgainBtn.addEventListener('click', resetScanFlow);
     cancelVerifyBtn.addEventListener('click', resetScanFlow);
 
-    // Disable camera buttons if not supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         startCameraBtn.disabled = true;
         startCameraBtn.title = 'Camera API not supported';
@@ -316,7 +312,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 qrCodeInput.value = detectedQrCode;
                 detectedQrDiv.classList.remove('d-none');
                 
-                // Beep or feedback
                 stopCamera();
                 verifyCode(detectedQrCode);
             }
@@ -344,7 +339,6 @@ document.addEventListener('DOMContentLoaded', function() {
         currentVoucherCode = code;
         selectedFacilityId = null;
         
-        // Show spinner / disable inputs
         verifyManualBtn.disabled = true;
         verifyManualBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
@@ -384,9 +378,8 @@ document.addEventListener('DOMContentLoaded', function() {
         verifyBookingCode.textContent = data.booking_code;
         verifyTotalPax.textContent = `${data.total_pax} Pax (based on Pax + Extra Bed)`;
 
-        // Load facilities
         facilityList.innerHTML = '';
-        redemptionInputBlock.classList.add('d-none'); // Hide input block until a facility is clicked
+        redemptionInputBlock.classList.add('d-none');
 
         data.facilities.forEach(facility => {
             const card = document.createElement('div');
@@ -412,7 +405,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!isDisabled) {
                 card.addEventListener('click', function() {
-                    // Deselect previous
                     document.querySelectorAll('.facility-card').forEach(c => c.classList.remove('active'));
                     card.classList.add('active');
 
@@ -428,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
             facilityList.appendChild(card);
         });
 
-        // Load history
         historyTableBody.innerHTML = '';
         if (data.history.length === 0) {
             historyTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No redemptions logged yet.</td></tr>';

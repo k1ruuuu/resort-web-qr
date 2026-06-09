@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('bookings', BookingController::class)->except(['destroy']);
     Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
     Route::post('bookings/{booking}/check-in', [BookingController::class, 'checkIn'])->name('bookings.check-in');
+    Route::post('bookings/{booking}/check-out', [BookingController::class, 'checkOut'])->name('bookings.check-out');
 
     Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('vouchers/redeem', [VoucherController::class, 'redeemForm'])->name('vouchers.redeem.form');
@@ -62,6 +63,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/delivery-logs', [DeliveryLogController::class, 'index'])->name('reports.delivery-logs');
+    Route::get('reports/scan-history', [\App\Http\Controllers\QrScanLogController::class, 'index'])->name('reports.scan-history');
 
     Route::get('settings/delivery', [DeliverySettingsController::class, 'index'])->name('settings.delivery');
     Route::post('settings/delivery', [DeliverySettingsController::class, 'update'])->name('settings.delivery.update');

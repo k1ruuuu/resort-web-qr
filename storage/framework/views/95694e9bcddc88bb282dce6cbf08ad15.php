@@ -141,7 +141,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const verificationSection = document.getElementById('verification-section');
     const resultSection = document.getElementById('result-section');
     
-    // Verification values
     const verifyGuestName = document.getElementById('verify-guest-name');
     const verifyStayDetails = document.getElementById('verify-stay-details');
     const verifyRoomLabel = document.getElementById('verify-room-label');
@@ -152,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const historyTableBody = document.querySelector('#history-table tbody');
     const cancelVerifyBtn = document.getElementById('cancel-verify-btn');
     
-    // Result values
     const resultIcon = document.getElementById('result-icon');
     const resultTitle = document.getElementById('result-title');
     const resultMessage = document.getElementById('result-message');

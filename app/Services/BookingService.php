@@ -79,12 +79,20 @@ class BookingService
 
     public function checkOut(Booking $booking): Booking
     {
+        $old = $booking->only(['status', 'checked_out_at']);
+
         $booking->update([
             'status' => BookingStatus::CheckedOut,
             'checked_out_at' => now(),
         ]);
 
-        $this->audit->log('booking.checked_out', $booking);
+        if ($booking->guestVoucher) {
+            $booking->guestVoucher->update([
+                'status' => \App\Enums\VoucherStatus::Expired,
+            ]);
+        }
+
+        $this->audit->log('booking.checked_out', $booking, $old, $booking->only(['status', 'checked_out_at']));
 
         return $booking->fresh();
     }

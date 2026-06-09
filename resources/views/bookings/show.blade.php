@@ -25,7 +25,25 @@
                 <p><strong>Property:</strong> {{ $booking->property->name }}</p>
                 <p><strong>Stay:</strong> {{ $booking->check_in->format('Y-m-d') }} – {{ $booking->check_out->format('Y-m-d') }}</p>
                 <p><strong>Pax:</strong> {{ $booking->total_pax }}</p>
-                <p><strong>Status:</strong> {{ $booking->status->value }}</p>
+                <p><strong>Status:</strong> 
+                    @php
+                        $statusBadge = match($booking->status->value) {
+                            'checked_in' => 'success',
+                            'checked_out' => 'secondary',
+                            'confirmed_reservation' => 'info',
+                            'cancelled' => 'danger',
+                            'pending' => 'warning',
+                            default => 'secondary',
+                        };
+                    @endphp
+                    <span class="badge badge-{{ $statusBadge }}">{{ ucwords(str_replace('_', ' ', $booking->status->value)) }}</span>
+                </p>
+                @if($booking->checked_in_at)
+                    <p><strong>Checked In At:</strong> {{ $booking->checked_in_at->format('Y-m-d H:i:s') }}</p>
+                @endif
+                @if($booking->checked_out_at)
+                    <p><strong>Checked Out At:</strong> {{ $booking->checked_out_at->format('Y-m-d H:i:s') }}</p>
+                @endif
                 @if($booking->booking_code)<p><strong>PMS Code:</strong> {{ $booking->booking_code }}</p>@endif
                 @if($booking->room_label)<p><strong>Room:</strong> {{ $booking->room_label }}</p>@endif
                 <p><strong>Quota basis:</strong> total pax ({{ $booking->total_pax }}) + {{ $booking->extra_beds }} extra bed(s) = {{ $booking->total_pax + $booking->extra_beds }} quota</p>
@@ -49,13 +67,27 @@
     </div>
     <div class="col-md-4">
         @can('bookings.checkin')
-        @if($booking->status->value !== 'checked_in')
+        @if($booking->status->value !== 'checked_in' && $booking->status->value !== 'checked_out')
         <form method="POST" action="{{ route('bookings.check-in', $booking) }}" class="mb-2">
             @csrf
-            <button class="btn btn-success w-100">Check In</button>
+            <button class="btn btn-success w-100">
+                <i class="fas fa-sign-in-alt"></i> Check In
+            </button>
         </form>
         @endif
         @endcan
+        
+        @can('bookings.checkout')
+        @if($booking->status->value === 'checked_in')
+        <form method="POST" action="{{ route('bookings.check-out', $booking) }}" class="mb-2" onsubmit="return confirm('Check out this guest? The QR voucher will no longer be usable.');">
+            @csrf
+            <button class="btn btn-danger w-100">
+                <i class="fas fa-sign-out-alt"></i> Check Out
+            </button>
+        </form>
+        @endif
+        @endcan
+        
         @can('vouchers.generate')
         @if($booking->status->value === 'checked_in' && !$booking->guestVoucher)
         <form method="POST" action="{{ route('vouchers.generate') }}">
@@ -79,7 +111,19 @@
 </div>
 @if($booking->guestVoucher)
 <div class="card mt-3">
-    <div class="card-header font-weight-bold bg-primary text-white">Active Guest Stay Pass</div>
+    <div class="card-header font-weight-bold {{ $booking->guestVoucher->status->value === 'active' ? 'bg-primary text-white' : 'bg-secondary text-white' }}">
+        Guest Stay Pass 
+        @php
+            $voucherBadge = match($booking->guestVoucher->status->value) {
+                'active' => 'success',
+                'expired' => 'secondary',
+                'cancelled' => 'danger',
+                'redeemed' => 'info',
+                default => 'secondary',
+            };
+        @endphp
+        <span class="badge badge-{{ $voucherBadge }} float-right">{{ ucfirst($booking->guestVoucher->status->value) }}</span>
+    </div>
     <div class="card-body">
         <div class="row align-items-center">
             <div class="col-md-4 text-center">
@@ -88,7 +132,13 @@
             <div class="col-md-8">
                 <p class="mb-1"><strong>QR Code Text:</strong> <code class="text-dark">{{ $booking->guestVoucher->qr_code }}</code></p>
                 <p class="mb-1"><strong>Secure Token:</strong> <code class="text-muted">{{ $booking->guestVoucher->secure_token }}</code></p>
-                <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">{{ $booking->guestVoucher->status->value }}</span></p>
+                <p class="mb-1"><strong>Status:</strong> <span class="badge badge-{{ $voucherBadge }}">{{ ucfirst($booking->guestVoucher->status->value) }}</span></p>
+                <p class="mb-1"><strong>Generated At:</strong> {{ $booking->guestVoucher->generated_at?->format('Y-m-d H:i:s') }}</p>
+                @if($booking->guestVoucher->status->value !== 'active')
+                    <div class="alert alert-warning mt-2 mb-2">
+                        <i class="fas fa-exclamation-triangle"></i> This voucher is no longer active and cannot be used for redemption.
+                    </div>
+                @endif
                 <p class="mb-0 mt-2">
                     <a href="{{ route('vouchers.show', $booking->guestVoucher) }}" class="btn btn-sm btn-outline-primary me-2">
                         <i class="fas fa-eye"></i> View Card Details

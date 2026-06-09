@@ -99,9 +99,23 @@ class VoucherService
                 throw VoucherException::notFound();
             }
 
+            if ($voucher->status !== VoucherStatus::Active) {
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'voucher_not_active');
+                throw new VoucherException('Voucher is no longer active.', 422);
+            }
+
             if ($voucher->booking->status !== BookingStatus::CheckedIn) {
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
                 throw new VoucherException('Booking is not currently checked in.', 422);
+            }
+
+            $currentDate = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
+            $checkInDate = $voucher->booking->check_in;
+            $checkOutDate = $voucher->booking->check_out;
+
+            if ($currentDate->lt($checkInDate) || $currentDate->gte($checkOutDate)) {
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
+                throw new VoucherException('QR code is only valid during the check-in period.', 422);
             }
 
             if ($outlet->property_id !== $voucher->booking->property_id) {

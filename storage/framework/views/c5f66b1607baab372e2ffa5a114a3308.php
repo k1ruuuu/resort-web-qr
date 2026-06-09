@@ -2,7 +2,6 @@
 <?php $__env->startSection('page_title', 'User Management'); ?>
 <?php $__env->startSection('content'); ?>
 
-<!-- Page Header with Actions -->
 <div class="row mb-3">
     <div class="col-md-6">
         <div class="input-group">
@@ -19,7 +18,6 @@
     </div>
 </div>
 
-<!-- Statistics Cards -->
 <div class="row mb-3">
     <div class="col-lg-3 col-6">
         <div class="small-box bg-info">
@@ -67,7 +65,6 @@
     </div>
 </div>
 
-<!-- Users Table Card -->
 <div class="card shadow-sm">
     <div class="card-header bg-white border-bottom">
         <h3 class="card-title mb-0">
@@ -216,7 +213,6 @@
 
 <?php $__env->startPush('scripts'); ?>
 <script>
-// Search functionality
 document.getElementById('searchInput').addEventListener('keyup', function() {
     const searchValue = this.value.toLowerCase();
     const tableRows = document.querySelectorAll('#usersTable tbody tr');
@@ -233,14 +229,12 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
     });
 });
 
-// Delete confirmation
 function confirmDelete(userId, userName) {
     if (confirm(`Are you sure you want to delete user "${userName}"?\n\nThis action cannot be undone.`)) {
         document.getElementById('delete-form-' + userId).submit();
     }
 }
 
-// Initialize Bootstrap tooltips
 document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function(tooltipTriggerEl) {

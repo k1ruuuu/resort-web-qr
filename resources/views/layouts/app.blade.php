@@ -135,6 +135,14 @@
                         </a>
                     </li>
                     @endcan
+                    @can('reports.view')
+                    <li class="nav-item">
+                        <a href="{{ route('reports.scan-history') }}" class="nav-link @if(request()->routeIs('reports.scan-history')) active @endif">
+                            <i class="nav-icon fas fa-history"></i>
+                            <p>Scan History</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('delivery_settings.manage')
                     <li class="nav-item">
                         <a href="{{ route('settings.delivery') }}" class="nav-link @if(request()->routeIs('settings.delivery')) active @endif">

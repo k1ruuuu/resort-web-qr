@@ -19,6 +19,13 @@ class QrScanLog extends Model
         'user_agent',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'scanned_at' => 'datetime',
+        ];
+    }
+
     public function guestVoucher(): BelongsTo
     {
         return $this->belongsTo(GuestVoucher::class);

@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
     <style>
-        /* Smooth transitions for sidebar dropdown */
         .nav-sidebar .nav-treeview {
             transition: all 0.3s ease-in-out;
         }
@@ -22,7 +21,6 @@
             transform: rotate(-90deg);
         }
         
-        /* Better spacing for treeview items */
         .nav-treeview > .nav-item > .nav-link {
             padding-left: 3rem;
         }
@@ -137,6 +135,14 @@
                         </a>
                     </li>
                     <?php endif; ?>
+                    <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('reports.view')): ?>
+                    <li class="nav-item">
+                        <a href="<?php echo e(route('reports.scan-history')); ?>" class="nav-link <?php if(request()->routeIs('reports.scan-history')): ?> active <?php endif; ?>">
+                            <i class="nav-icon fas fa-history"></i>
+                            <p>Scan History</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('delivery_settings.manage')): ?>
                     <li class="nav-item">
                         <a href="<?php echo e(route('settings.delivery')); ?>" class="nav-link <?php if(request()->routeIs('settings.delivery')): ?> active <?php endif; ?>">
@@ -202,23 +208,18 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script>
-// Initialize AdminLTE Treeview for sidebar menu
 $(document).ready(function() {
-    // Initialize all treeview menus
     $('[data-widget="treeview"]').Treeview('init');
     
-    // Manual toggle for User Management menu if AdminLTE doesn't auto-initialize
     $('.nav-sidebar .has-treeview > a').on('click', function(e) {
         e.preventDefault();
         
         var $parent = $(this).parent();
         var $treeview = $parent.find('> .nav-treeview');
         
-        // Close other open menus
         $('.nav-sidebar .has-treeview').not($parent).removeClass('menu-is-opening menu-open');
         $('.nav-sidebar .nav-treeview').not($treeview).slideUp(300);
         
-        // Toggle current menu
         if ($parent.hasClass('menu-open')) {
             $parent.removeClass('menu-is-opening menu-open');
             $treeview.slideUp(300);

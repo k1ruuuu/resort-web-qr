@@ -75,6 +75,15 @@ class BookingController extends Controller
         return back()->with('success', 'Guest checked in.');
     }
 
+    public function checkOut(Booking $booking): RedirectResponse
+    {
+        $this->authorizePermission('bookings.checkout');
+
+        $this->bookings->checkOut($booking);
+
+        return back()->with('success', 'Guest checked out.');
+    }
+
     public function edit(Booking $booking): View
     {
         $this->authorizePermission('bookings.create');

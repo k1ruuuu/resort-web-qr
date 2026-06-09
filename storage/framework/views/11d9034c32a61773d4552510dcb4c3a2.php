@@ -13,7 +13,6 @@
                 <form method="POST" action="<?php echo e(route('settings.delivery.update')); ?>">
                     <?php echo csrf_field(); ?>
                     
-                    <!-- Delivery Method Section -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2 mb-3">
                             <i class="fas fa-qrcode text-info"></i> Voucher Delivery Method
@@ -30,10 +29,10 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>" required>
                                     <option value="qr_image" <?php echo e(old('delivery_method', $settings['delivery_method']) === 'qr_image' ? 'selected' : ''); ?>>
-                                        QR Code Image Attachment
+                                        <i class="fas fa-image"></i> QR Code Image Attachment
                                     </option>
                                     <option value="public_link" <?php echo e(old('delivery_method', $settings['delivery_method']) === 'public_link' ? 'selected' : ''); ?>>
-                                        Public Guest Card Link
+                                        <i class="fas fa-link"></i> Public Guest Card Link
                                     </option>
                                 </select>
                                 <?php $__errorArgs = ['delivery_method'];
@@ -47,7 +46,6 @@ unset($__errorArgs, $__bag); ?>
                             </div>
                         </div>
                         
-                        <!-- Method Descriptions -->
                         <div class="alert alert-info mt-3" id="qrImageInfo" style="display: none;">
                             <i class="fas fa-info-circle"></i>
                             <strong>QR Code Image:</strong> The QR code will be sent as an image attachment in WhatsApp. 
@@ -61,7 +59,6 @@ unset($__errorArgs, $__bag); ?>
                         </div>
                     </div>
 
-                    <!-- Delivery Timing Section -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2 mb-3">
                             <i class="fas fa-clock text-warning"></i> Delivery Timing
@@ -163,10 +160,9 @@ unset($__errorArgs, $__bag); ?>
                         </div>
                     </div>
 
-                    <!-- WhatsApp API Configuration Section -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2 mb-3">
-                            <i class="fas fa-brands fa-whatsapp text-success"></i> WhatsApp API Configuration
+                            <i class="fab fa-whatsapp text-success"></i> WhatsApp API Configuration
                         </h5>
                         <div class="row">
                             <div class="col-md-6">
@@ -214,7 +210,6 @@ unset($__errorArgs, $__bag); ?>
                         </div>
                     </div>
 
-                    <!-- Message Template Section -->
                     <div class="mb-4">
                         <h5 class="border-bottom pb-2 mb-3">
                             <i class="fas fa-comment-dots text-primary"></i> Message Template
@@ -283,7 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
             voucherLinkBadge.style.display = 'inline-block';
             voucherLinkNote.style.display = 'block';
             
-            // Check if {voucher_link} is in the template
             if (!messageTemplate.value.includes('{voucher_link}')) {
                 const shouldAdd = confirm('The message template does not contain {voucher_link}. Would you like to add it at the end?');
                 if (shouldAdd) {
@@ -293,10 +287,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initial load
     updateMethodInfo();
     
-    // On change
     deliveryMethod.addEventListener('change', updateMethodInfo);
 });
 </script>
