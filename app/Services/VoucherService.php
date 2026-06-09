@@ -109,11 +109,13 @@ class VoucherService
                 throw new VoucherException('Booking is not currently checked in.', 422);
             }
 
-            $currentDate = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
-            $checkInDate = $voucher->booking->check_in;
-            $checkOutDate = $voucher->booking->check_out;
+            $timezone = $voucher->booking->property->timezone ?? 'UTC';
+            $currentDate = Carbon::today($timezone);
+            $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
+            $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
 
-            if ($currentDate->lt($checkInDate) || $currentDate->gte($checkOutDate)) {
+            // Voucher is valid from check-in date up to and including checkout date
+            if ($currentDate->lt($checkInDate) || $currentDate->gt($checkOutDate)) {
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
                 throw new VoucherException('QR code is only valid during the check-in period.', 422);
             }
