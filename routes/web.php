@@ -18,8 +18,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => redirect()->route('login'));
 
 Route::get('v/{token}', [VoucherController::class, 'publicShow'])
+    ->middleware('throttle:30,1')
     ->name('vouchers.public');
 Route::get('v/{token}/qr.svg', [VoucherController::class, 'qrImagePublic'])
+    ->middleware('throttle:30,1')
     ->name('vouchers.public.qr');
 
 Route::middleware('guest')->group(function () {
@@ -40,11 +42,17 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('guests', GuestController::class)->except(['destroy']);
     Route::delete('guests/{guest}', [GuestController::class, 'destroy'])->name('guests.destroy');
+    Route::get('guests-import', [GuestController::class, 'import'])->name('guests.import');
+    Route::post('guests-import/process', [GuestController::class, 'processImport'])->name('guests.process-import')->middleware(['validate.upload', 'throttle:10,1']);
+    Route::get('guests-import/template', [GuestController::class, 'downloadTemplate'])->name('guests.download-template');
 
     Route::resource('bookings', BookingController::class)->except(['destroy']);
     Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy');
     Route::post('bookings/{booking}/check-in', [BookingController::class, 'checkIn'])->name('bookings.check-in');
     Route::post('bookings/{booking}/check-out', [BookingController::class, 'checkOut'])->name('bookings.check-out');
+    Route::get('bookings-import', [BookingController::class, 'import'])->name('bookings.import');
+    Route::post('bookings-import/process', [BookingController::class, 'processImport'])->name('bookings.process-import')->middleware(['validate.upload', 'throttle:10,1']);
+    Route::get('bookings-import/template', [BookingController::class, 'downloadTemplate'])->name('bookings.download-template');
 
     Route::get('vouchers', [VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('vouchers/redeem', [VoucherController::class, 'redeemForm'])->name('vouchers.redeem.form');
@@ -62,10 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::get('vouchers/{voucher}/qr.svg', [VoucherController::class, 'qrImage'])->name('vouchers.qr');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('reports/redemptions/export', [ReportController::class, 'exportRedemptions'])->name('reports.redemptions.export');
+    Route::get('reports/redemptions/export', [ReportController::class, 'exportRedemptions'])->name('reports.redemptions.export')->middleware('throttle:20,1');
     Route::get('reports/delivery-logs', [DeliveryLogController::class, 'index'])->name('reports.delivery-logs');
     Route::get('reports/scan-history', [\App\Http\Controllers\QrScanLogController::class, 'index'])->name('reports.scan-history');
-    Route::get('reports/scan-history/export', [\App\Http\Controllers\QrScanLogController::class, 'export'])->name('reports.scan-history.export');
+    Route::get('reports/scan-history/export', [\App\Http\Controllers\QrScanLogController::class, 'export'])->name('reports.scan-history.export')->middleware('throttle:20,1');
 
     Route::get('settings/delivery', [DeliverySettingsController::class, 'index'])->name('settings.delivery');
     Route::post('settings/delivery', [DeliverySettingsController::class, 'update'])->name('settings.delivery.update');

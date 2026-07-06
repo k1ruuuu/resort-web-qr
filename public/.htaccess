@@ -5,11 +5,273 @@
 
     RewriteEngine On
 
+    # Block Malicious User Agents (Scanners, Bots, Attack Tools)
+
+    RewriteCond %{HTTP_USER_AGENT} (sqlmap|nikto|nmap|masscan|acunetix) [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} (burpsuite|netsparker|appscan|nessus|openvas) [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} (gobuster|dirbuster|wfuzz|hydra|metasploit) [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} (havij|beef|w3af|webscarab|paros) [NC,OR]
+    RewriteCond %{HTTP_USER_AGENT} (ZmEu|libwww-perl|python-requests|curl|wget) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # SQL Injection Protection
+ 
+    # Block UNION-based SQL injection
+    RewriteCond %{QUERY_STRING} (\bUNION\b.*\bSELECT\b) [NC,OR]
+    # Block SELECT FROM WHERE patterns
+    RewriteCond %{QUERY_STRING} (\bSELECT\b.*\bFROM\b.*\bWHERE\b) [NC,OR]
+    # Block OR/AND injection attempts
+    RewriteCond %{QUERY_STRING} ('[^']*'|\"[^\"]*\")\s*(OR|AND)\s*('[^']*'|\"[^\"]*\"|\d+)\s*(=|<|>) [NC,OR]
+    # Block time-based blind SQL injection
+    RewriteCond %{QUERY_STRING} (SLEEP\s*\(|BENCHMARK\s*\(|WAITFOR\s+DELAY) [NC,OR]
+    # Block information_schema queries
+    RewriteCond %{QUERY_STRING} (INFORMATION_SCHEMA|SCHEMATA|TABLES|COLUMNS) [NC,OR]
+    # Block SQL comments
+    RewriteCond %{QUERY_STRING} (\/\*!?.*?\*\/|--[^\n]*|#[^\n]*) [NC,OR]
+    # Block EXEC/EXECUTE commands
+    RewriteCond %{QUERY_STRING} (EXEC\s*\(|EXECUTE\s*\(|sp_executesql) [NC,OR]
+    # Block dangerous SQL commands
+    RewriteCond %{QUERY_STRING} (DROP\s+TABLE|ALTER\s+TABLE|TRUNCATE\s+TABLE) [NC,OR]
+    RewriteCond %{QUERY_STRING} (INSERT\s+INTO|DELETE\s+FROM|UPDATE.*SET) [NC,OR]
+    # Block SQL hex/char encoding
+    RewriteCond %{QUERY_STRING} (0x[0-9A-F]{2,}|CHAR\s*\(\s*\d+) [NC,OR]
+    # Block concatenation operators
+    RewriteCond %{QUERY_STRING} (\|\||CONCAT\s*\(|GROUP_CONCAT) [NC,OR]
+    # Block SQL functions
+    RewriteCond %{QUERY_STRING} (LOAD_FILE|INTO\s+OUTFILE|INTO\s+DUMPFILE) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # XSS (Cross-Site Scripting) Protection
+
+    # Block <script> tags
+    RewriteCond %{QUERY_STRING} (<script[^>]*>.*?<\/script>) [NC,OR]
+    RewriteCond %{REQUEST_URI} (<script[^>]*>.*?<\/script>) [NC,OR]
+    # Block javascript: protocol
+    RewriteCond %{QUERY_STRING} (javascript\s*:) [NC,OR]
+    RewriteCond %{REQUEST_URI} (javascript\s*:) [NC,OR]
+    # Block event handlers (onclick, onerror, onload, etc.)
+    RewriteCond %{QUERY_STRING} (on\w+\s*=\s*['"]) [NC,OR]
+    RewriteCond %{REQUEST_URI} (on\w+\s*=\s*['"]) [NC,OR]
+    # Block iframe injections
+    RewriteCond %{QUERY_STRING} (<iframe[^>]*src\s*=) [NC,OR]
+    # Block document.cookie access
+    RewriteCond %{QUERY_STRING} (document\.cookie|document\.write) [NC,OR]
+    # Block eval() function
+    RewriteCond %{QUERY_STRING} (eval\s*\(.*\)) [NC,OR]
+    # Block <img> with onerror
+    RewriteCond %{QUERY_STRING} (<img[^>]+onerror\s*=) [NC,OR]
+    # Block <svg> with onload
+    RewriteCond %{QUERY_STRING} (<svg[^>]+onload\s*=) [NC,OR]
+    # Block <object> and <embed> tags
+    RewriteCond %{QUERY_STRING} (<object|<embed|<applet) [NC,OR]
+    # Block vbscript: protocol
+    RewriteCond %{QUERY_STRING} (vbscript\s*:) [NC,OR]
+    # Block data: protocol with base64
+    RewriteCond %{QUERY_STRING} (data:text/html|data:application) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # Path Traversal Protection
+    
+    # Block ../ and ..\
+    RewriteCond %{QUERY_STRING} (\.\.\/) [NC,OR]
+    RewriteCond %{QUERY_STRING} (\.\.\\) [NC,OR]
+    RewriteCond %{REQUEST_URI} (\.\.\/) [NC,OR]
+    RewriteCond %{REQUEST_URI} (\.\.\\) [NC,OR]
+    # Block URL encoded path traversal
+    RewriteCond %{QUERY_STRING} (%2e%2e%2f|%2e%2e\/|%2e%2e%5c) [NC,OR]
+    RewriteCond %{REQUEST_URI} (%2e%2e%2f|%2e%2e\/|%2e%2e%5c) [NC,OR]
+    # Block access to sensitive Linux files
+    RewriteCond %{QUERY_STRING} (\/etc\/passwd|\/proc\/|\/dev\/|\/sys\/) [NC,OR]
+    RewriteCond %{REQUEST_URI} (\/etc\/passwd|\/proc\/|\/dev\/|\/sys\/) [NC,OR]
+    # Block access to Windows system files
+    RewriteCond %{QUERY_STRING} (c:\\windows|c:\\winnt|c:\\boot\.ini) [NC,OR]
+    RewriteCond %{REQUEST_URI} (c:\\windows|c:\\winnt|c:\\boot\.ini) [NC,OR]
+    # Block access to .git directory
+    RewriteCond %{REQUEST_URI} (\/\.git\/) [NC,OR]
+    # Block access to .env file
+    RewriteCond %{REQUEST_URI} (\/\.env|\.env$) [NC,OR]
+    # Block null byte injection
+    RewriteCond %{QUERY_STRING} (%00|\\0|NULL) [NC,OR]
+    RewriteCond %{REQUEST_URI} (%00|\\0) [NC,OR]
+    # Block access to backup files
+    RewriteCond %{REQUEST_URI} (\.bak|\.backup|\.old|\.tmp|~$) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # Remote Code Execution (RCE) Protection
+
+    # Block PHP code injection attempts
+    RewriteCond %{QUERY_STRING} (php://|file://|glob://|phar://) [NC,OR]
+    RewriteCond %{QUERY_STRING} (base64_decode|eval\(|assert\(|system\() [NC,OR]
+    RewriteCond %{QUERY_STRING} (passthru|shell_exec|exec\(|proc_open) [NC,OR]
+    RewriteCond %{QUERY_STRING} (`.*`|cmd\.exe|powershell) [NC,OR]
+    # Block dangerous PHP functions
+    RewriteCond %{QUERY_STRING} (phpinfo|show_source|highlight_file) [NC,OR]
+    # Block file upload exploits
+    RewriteCond %{QUERY_STRING} (move_uploaded_file|copy\(|file_put_contents) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # LDAP/XML Injection Protection
+
+    RewriteCond %{QUERY_STRING} (ldap://|ldaps://) [NC,OR]
+    RewriteCond %{QUERY_STRING} (<!DOCTYPE|<!ENTITY|SYSTEM|PUBLIC) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+    # Block Sensitive File Access
+
+    # Block access to .htaccess, .htpasswd
+    <FilesMatch "^\.ht">
+        Require all denied
+    </FilesMatch>
+
+    # Block access to composer files
+    <FilesMatch "(composer\.json|composer\.lock|package\.json|package-lock\.json)$">
+        Require all denied
+    </FilesMatch>
+
+    # Block access to Laravel config/environment files
+    <FilesMatch "(\.env|\.env\..*|config\.php|database\.php)$">
+        Require all denied
+    </FilesMatch>
+
+    # Block access to log files
+    <FilesMatch "\.log$">
+        Require all denied
+    </FilesMatch>
+
+    # Block access to SQL/database files
+    <FilesMatch "\.(sql|sqlite|db)$">
+        Require all denied
+    </FilesMatch>
+
+
+    # HTTP Method Filtering
+
+    # Only allow GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD
+    RewriteCond %{REQUEST_METHOD} !^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)$
+    RewriteRule ^.*$ - [F,L]
+
+
+    # Block Common Attack Patterns
+
+    # Block shell commands
+    RewriteCond %{QUERY_STRING} (;|\||&&|\$\(|\`|<\(|>\() [NC,OR]
+    # Block HTTP response splitting
+    RewriteCond %{QUERY_STRING} (%0d%0a|\\r\\n|\\n|\\r) [NC,OR]
+    # Block PHP opening tags
+    RewriteCond %{QUERY_STRING} (<%3f|<\?|<%00) [NC,OR]
+    # Block bash/sh commands
+    RewriteCond %{QUERY_STRING} (bash|sh\s|/bin/) [NC]
+    RewriteRule ^.*$ - [F,L]
+
+
+    # MIME Type Protection
+
+    <IfModule mod_headers.c>
+        # Prevent MIME type sniffing
+        Header always set X-Content-Type-Options "nosniff"
+        
+        # XSS Protection (legacy browsers)
+        Header always set X-XSS-Protection "1; mode=block"
+        
+        # Clickjacking protection
+        Header always set X-Frame-Options "DENY"
+        
+        # Referrer Policy
+        Header always set Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # Permissions Policy
+        Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        
+        # Content Security Policy (CSP)
+        Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-ancestors 'none'"
+        
+        # HSTS (only enable if using HTTPS)
+        # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+        
+        # Remove server information
+        Header unset X-Powered-By
+        Header unset Server
+    </IfModule>
+
+
+    # Disable Directory Listing
+
+    Options -Indexes
+
+
+    # Disable Server Signature
+
+    ServerSignature Off
+
+
+    # Handle Authorization Header
+
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+
+    # Redirect Trailing Slashes If Not A Folder
+
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Send Requests To Front Controller
+
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+
+
+    # File Upload Size Limit (adjust as needed)
+
+    php_value upload_max_filesize 5M
+    php_value post_max_size 6M
+
+    
+    # PHP Security Settings
+
+    <IfModule mod_php.c>
+        php_flag display_errors Off
+        php_flag expose_php Off
+        php_flag log_errors On
+        php_value error_log /var/log/php_errors.log
+    </IfModule>
+
+
+    # Enable GZIP Compression
+
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+        AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+        AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+        AddOutputFilterByType DEFLATE application/json
+    </IfModule>
+
+    # Browser Caching
+
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresByType image/jpg "access plus 1 year"
+        ExpiresByType image/jpeg "access plus 1 year"
+        ExpiresByType image/gif "access plus 1 year"
+        ExpiresByType image/png "access plus 1 year"
+        ExpiresByType image/svg+xml "access plus 1 year"
+        ExpiresByType text/css "access plus 1 month"
+        ExpiresByType application/javascript "access plus 1 month"
+        ExpiresByType application/x-javascript "access plus 1 month"
+        ExpiresByType text/javascript "access plus 1 month"
+        ExpiresByType application/pdf "access plus 1 month"
+        ExpiresByType text/x-javascript "access plus 1 month"
+        ExpiresByType application/x-shockwave-flash "access plus 1 month"
+        ExpiresByType image/x-icon "access plus 1 year"
+        ExpiresByType font/woff "access plus 1 year"
+        ExpiresByType font/woff2 "access plus 1 year"
+        ExpiresDefault "access plus 2 days"
+    </IfModule>
 </IfModule>

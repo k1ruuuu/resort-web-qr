@@ -1,3 +1,6 @@
+# ================================
+# Laravel Core
+# ================================
 /.phpunit.cache
 /node_modules
 /public/build
@@ -7,19 +10,128 @@
 /storage/pail
 /vendor
 /composer.phar
-!.env.example
-.env
-.env.backup
-.env.production
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+
+# ================================
+# Environment & Credentials
+# ================================
+.env
+.env.*
+!.env.example
 /auth.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+*.ppk
+secrets/
+credentials/
+.ssh/
+.aws/
+.gcloud/
+
+# ================================
+# Logs & Debugging
+# ================================
+*.log
+/storage/logs/*
+!storage/logs/.gitkeep
+laravel.log
+php_errors.log
+error_log
+debug.log
+
+# ================================
+# Backups & Temporary Files
+# ================================
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.backup
+*_BACKUP
+*.old
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ================================
+# Documentation (EXCEPT README.md)
+# ================================
+*.md
+!README.md
+!.github/SECURITY.md
+SECURITY_*.md
+REDIS_*.md
+ATTACK_*.md
+DEPLOYMENT_*.md
+CACHE_*.md
+ADD_EXPORT_*.md
+
+# ================================
+# Development & Deployment Scripts
+# ================================
+deploy*.sh
+deploy*.bat
+test-security.php
+*.local.*
+.htaccess.backup
+
+# ================================
+# IDE & Editor Files
+# ================================
 /.fleet
 /.idea
 /.nova
 /.vscode
 /.zed
+*.sublime-project
+*.sublime-workspace
+.project
+.buildpath
+.settings/
+
+# ================================
+# OS Files
+# ================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ================================
+# Cache & Session Files
+# ================================
+*.cache
+.sass-cache/
+.npm/
+.yarn/
+.pnpm-store/
+
+# ================================
+# Compiled & Build Files
+# ================================
+*.compiled
+/public/css/
+/public/js/
+/public/mix-manifest.json
+
+composer.lock
+package-lock.json
+yarn.lock

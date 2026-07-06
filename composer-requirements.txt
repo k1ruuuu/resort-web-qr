@@ -1,0 +1,81 @@
+# Redis Integration - Required Packages
+
+## Already Installed (from composer.json)
+The project already has these packages that support Redis:
+- laravel/framework ^12.0 (includes Redis support)
+
+## PHP Extensions Required
+
+### Option 1: PhpRedis Extension (Recommended - Best Performance)
+This is a native C extension for PHP that provides the fastest Redis integration.
+
+**Installation:**
+
+Windows:
+1. Download the appropriate DLL from: https://pecl.php.net/package/redis
+   - Choose version matching your PHP version (8.2+)
+   - Download the thread-safe (TS) version if using Apache, or non-thread-safe (NTS) for CLI/FastCGI
+2. Extract and copy php_redis.dll to your PHP ext directory (e.g., C:\php\ext\)
+3. Edit php.ini and add:
+   extension=redis
+4. Restart your web server
+5. Verify: php -m | grep redis
+
+Linux/Ubuntu:
+```bash
+sudo apt update
+sudo apt install php8.2-redis
+sudo systemctl restart php8.2-fpm  # or apache2/nginx
+```
+
+Verify installation:
+```bash
+php -m | grep redis
+php -i | grep redis
+```
+
+### Option 2: Predis (Pure PHP - No Extension Needed)
+If you cannot install the PhpRedis extension, use Predis instead.
+
+**Installation:**
+```bash
+composer require predis/predis
+```
+
+Then update .env:
+```env
+REDIS_CLIENT=predis
+```
+
+## Composer Update
+After choosing your Redis client, run:
+```bash
+composer update
+composer dump-autoload
+```
+
+## Configuration Check
+Test your Redis configuration:
+```bash
+php artisan tinker
+>>> use Illuminate\Support\Facades\Redis;
+>>> Redis::connection()->ping();
+# Should return: "+PONG"
+>>> Redis::set('test', 'hello');
+>>> Redis::get('test');
+# Should return: "hello"
+>>> exit
+```
+
+## Performance Comparison
+- PhpRedis: ~15,000 requests/second
+- Predis: ~5,000 requests/second
+
+For production environments with high concurrency (multiple devices scanning simultaneously), PhpRedis is strongly recommended.
+
+## Note
+The Laravel framework already includes all necessary code to work with Redis. You only need to:
+1. Install Redis server
+2. Install either PhpRedis extension OR Predis package
+3. Configure .env file
+4. Clear and cache config

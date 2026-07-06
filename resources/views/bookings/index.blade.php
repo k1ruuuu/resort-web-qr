@@ -4,9 +4,14 @@
 @section('content')
 <div class="mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
     @can('bookings.create')
-    <a href="{{ route('bookings.create') }}" class="btn btn-primary btn-responsive">
-        <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">New</span> Booking
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('bookings.create') }}" class="btn btn-primary btn-responsive">
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">New</span> Booking
+        </a>
+        <a href="{{ route('bookings.import') }}" class="btn btn-outline-primary btn-responsive">
+            <i class="fas fa-upload"></i> Import
+        </a>
+    </div>
     @else
     <div></div>
     @endcan

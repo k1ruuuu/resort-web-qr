@@ -16,6 +16,8 @@ class BookingService
     public function __construct(
         private readonly AuditService $audit,
         private readonly StayQuotaService $quota,
+        private readonly RedisLockService $locks,
+        private readonly RedisCacheService $cache,
     ) {}
 
     public function create(array $data, array $facilities = []): Booking
@@ -52,46 +54,60 @@ class BookingService
             return $booking;
         }
 
-        $this->syncDefaultFacilities($booking);
-
-        $old = $booking->only(['status', 'checked_in_at']);
-
-        $booking->update([
-            'status' => BookingStatus::CheckedIn,
-            'checked_in_at' => now(),
-        ]);
-
-        app(VoucherService::class)->generateForBooking($booking);
-
-        $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
-        $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
-
-        // Both can be enabled simultaneously
-        if ($autoEnabled) {
-            try {
-                app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
-            } catch (\Throwable $e) {
-                \Log::error('Automatic delivery failed on check-in', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        // Use distributed lock to prevent double check-in
+        $lock = $this->locks->lockBookingCheckIn($booking->id, 15);
         
-        if ($schedEnabled) {
-            try {
-                app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
-            } catch (\Throwable $e) {
-                \Log::error('Scheduled delivery failed on check-in', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+        if (!$lock) {
+            throw new \RuntimeException('Another check-in is in progress for this booking. Please wait.');
         }
 
-        $this->audit->log('booking.checked_in', $booking, $old, $booking->only(['status', 'checked_in_at']));
+        try {
+            $this->syncDefaultFacilities($booking);
 
-        return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType', 'guestVoucher']);
+            $old = $booking->only(['status', 'checked_in_at']);
+
+            $booking->update([
+                'status' => BookingStatus::CheckedIn,
+                'checked_in_at' => now(),
+            ]);
+
+            app(VoucherService::class)->generateForBooking($booking);
+
+            $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
+            $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
+
+            // Both can be enabled simultaneously
+            if ($autoEnabled) {
+                try {
+                    app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
+                } catch (\Throwable $e) {
+                    \Log::error('Automatic delivery failed on check-in', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            
+            if ($schedEnabled) {
+                try {
+                    app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
+                } catch (\Throwable $e) {
+                    \Log::error('Scheduled delivery failed on check-in', [
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $this->audit->log('booking.checked_in', $booking, $old, $booking->only(['status', 'checked_in_at']));
+
+            // Cache the booking data
+            $this->cache->cacheBooking($booking);
+
+            return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType', 'guestVoucher']);
+        } finally {
+            $lock->release();
+        }
     }
 
     public function checkOut(Booking $booking): Booking
@@ -107,9 +123,15 @@ class BookingService
             $booking->guestVoucher->update([
                 'status' => \App\Enums\VoucherStatus::Expired,
             ]);
+            
+            // Invalidate voucher cache
+            $this->cache->invalidateVoucher($booking->guestVoucher);
         }
 
         $this->audit->log('booking.checked_out', $booking, $old, $booking->only(['status', 'checked_out_at']));
+
+        // Invalidate booking cache
+        $this->cache->invalidateBooking($booking);
 
         return $booking->fresh();
     }

@@ -3,9 +3,14 @@
 @section('page_title', 'Guests')
 @section('content')
 <div class="mb-3 d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-    <a href="{{ route('guests.create') }}" class="btn btn-primary btn-responsive">
-        <i class="fas fa-plus"></i> Add Guest
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ route('guests.create') }}" class="btn btn-primary btn-responsive">
+            <i class="fas fa-plus"></i> Add Guest
+        </a>
+        <a href="{{ route('guests.import') }}" class="btn btn-outline-primary btn-responsive">
+            <i class="fas fa-upload"></i> Import
+        </a>
+    </div>
     
     <form method="GET" action="{{ route('guests.index') }}" class="d-flex gap-2 w-100" style="max-width: 400px;">
         <input type="text" 

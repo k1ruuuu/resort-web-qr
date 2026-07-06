@@ -21,6 +21,8 @@ class VoucherService
         private readonly AuditService $audit,
         private readonly BookingService $bookings,
         private readonly StayQuotaService $quota,
+        private readonly RedisLockService $locks,
+        private readonly RedisCacheService $cache,
     ) {}
 
     public function generateForBooking(Booking $booking): GuestVoucher
@@ -29,55 +31,73 @@ class VoucherService
             throw VoucherException::bookingNotCheckedIn();
         }
 
-        $booking->loadMissing(['property', 'room.roomType', 'bookingFacilities.facilityTemplate', 'guest']);
-
-        if ($booking->bookingFacilities->isEmpty()) {
-            $this->bookings->syncDefaultFacilities($booking);
-            $booking->load('bookingFacilities.facilityTemplate');
+        // Use distributed lock to prevent duplicate voucher generation
+        $lock = $this->locks->lockVoucherGeneration($booking->id, 15);
+        
+        if (!$lock) {
+            throw new VoucherException('Another voucher generation is in progress for this booking. Please wait.', 409);
         }
 
-        if ($booking->bookingFacilities->isEmpty()) {
-            throw VoucherException::noFacilities();
-        }
+        try {
+            $booking->loadMissing(['property', 'room.roomType', 'bookingFacilities.facilityTemplate', 'guest']);
 
-        $guestName = $booking->guest->full_name;
-        $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'ROOM';
-        $roomName = $booking->room?->label ?? $booking->room?->roomType?->name ?? 'Room';
-        $date = $booking->check_in->format('Y-m-d');
-
-        $guestNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $guestName);
-        $roomCodeClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomCode);
-        $roomNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomName);
-
-        $baseQrCode = "{$guestNameClean}+{$roomCodeClean}+{$roomNameClean}+{$date}";
-
-        $qrCode = $baseQrCode;
-        $counter = 1;
-        while (GuestVoucher::query()->where('qr_code', $qrCode)->exists()) {
-            $qrCode = "{$baseQrCode}-{$counter}";
-            $counter++;
-        }
-
-        $secureToken = (string) Str::random(32);
-
-        return DB::transaction(function () use ($booking, $qrCode, $secureToken) {
-            $voucher = GuestVoucher::query()->where('booking_id', $booking->id)->first();
-
-            if (!$voucher) {
-                $voucher = GuestVoucher::query()->create([
-                    'booking_id' => $booking->id,
-                    'guest_id' => $booking->guest_id,
-                    'qr_code' => $qrCode,
-                    'secure_token' => $secureToken,
-                    'status' => VoucherStatus::Active,
-                    'generated_at' => now(),
-                ]);
-
-                $this->audit->log('voucher.generated', $voucher, null, $voucher->toArray());
+            if ($booking->bookingFacilities->isEmpty()) {
+                $this->bookings->syncDefaultFacilities($booking);
+                $booking->load('bookingFacilities.facilityTemplate');
             }
 
+            if ($booking->bookingFacilities->isEmpty()) {
+                throw VoucherException::noFacilities();
+            }
+
+            $guestName = $booking->guest->full_name;
+            $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'ROOM';
+            $roomName = $booking->room?->label ?? $booking->room?->roomType?->name ?? 'Room';
+            $date = $booking->check_in->format('Y-m-d');
+
+            $guestNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $guestName);
+            $roomCodeClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomCode);
+            $roomNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomName);
+
+            $baseQrCode = "{$guestNameClean}+{$roomCodeClean}+{$roomNameClean}+{$date}";
+
+            $qrCode = $baseQrCode;
+            $counter = 1;
+            
+            // Use Redis lock for QR code uniqueness check
+            while (GuestVoucher::query()->where('qr_code', $qrCode)->exists()) {
+                $qrCode = "{$baseQrCode}-{$counter}";
+                $counter++;
+            }
+
+            $secureToken = (string) Str::random(32);
+
+            $voucher = DB::transaction(function () use ($booking, $qrCode, $secureToken) {
+                $voucher = GuestVoucher::query()->where('booking_id', $booking->id)->first();
+
+                if (!$voucher) {
+                    $voucher = GuestVoucher::query()->create([
+                        'booking_id' => $booking->id,
+                        'guest_id' => $booking->guest_id,
+                        'qr_code' => $qrCode,
+                        'secure_token' => $secureToken,
+                        'status' => VoucherStatus::Active,
+                        'generated_at' => now(),
+                    ]);
+
+                    $this->audit->log('voucher.generated', $voucher, null, $voucher->toArray());
+                }
+
+                return $voucher;
+            });
+
+            // Cache the voucher for fast retrieval
+            $this->cache->cacheVoucher($voucher);
+
             return $voucher;
-        });
+        } finally {
+            $lock->release();
+        }
     }
 
     public function redeem(
@@ -87,17 +107,44 @@ class VoucherService
         int $facilityTemplateId,
         int $paxUsed = 1
     ): RedemptionLog {
+        // Rate limiting per IP
+        if (!$this->cache->trackScan($qrCode, request()->ip())) {
+            throw new VoucherException('Too many scan attempts. Please wait a moment.', 429);
+        }
+
+        // Try to get voucher from cache first
+        $voucher = $this->cache->getVoucherByToken($qrCode);
+        
+        if (!$voucher) {
+            // Fallback to database
+            $voucher = GuestVoucher::query()
+                ->where('secure_token', $qrCode)
+                ->orWhere('qr_code', $qrCode)
+                ->first();
+
+            if (!$voucher) {
+                $this->logScan($qrCode, null, $outlet, $user, 'not_found');
+                throw VoucherException::notFound();
+            }
+
+            // Cache for next time
+            $this->cache->cacheVoucher($voucher);
+        }
+
+        // Use distributed lock to prevent double redemption
+        $lock = $this->locks->lockVoucherRedemption($voucher->id, 15);
+        
+        if (!$lock) {
+            throw new VoucherException('Another redemption is in progress. Please wait.', 409);
+        }
+
         try {
-            return DB::transaction(function () use ($qrCode, $outlet, $user, $facilityTemplateId, $paxUsed) {
+            return DB::transaction(function () use ($qrCode, $voucher, $outlet, $user, $facilityTemplateId, $paxUsed) {
+                // Reload with lock to get fresh data
                 $voucher = GuestVoucher::query()
-                    ->where('secure_token', $qrCode)
-                    ->orWhere('qr_code', $qrCode)
+                    ->where('id', $voucher->id)
                     ->lockForUpdate()
                     ->first();
-
-                if (!$voucher) {
-                    throw VoucherException::notFound();
-                }
 
                 // Auto-expire if passed checkout time
                 $this->checkAndExpireIfNeeded($voucher);
@@ -139,7 +186,16 @@ class VoucherService
                 }
 
                 $today = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
-                $statuses = $voucher->getFacilityStatuses($today);
+                $todayString = $today->toDateString();
+                
+                // Check cache first for facility statuses
+                $statuses = $this->cache->getFacilityStatuses($voucher->id, $todayString);
+                
+                if (!$statuses) {
+                    $statuses = $voucher->getFacilityStatuses($today);
+                    $this->cache->cacheFacilityStatuses($voucher->id, $todayString, $statuses);
+                }
+                
                 $facilityStatus = $statuses->firstWhere('facility_template_id', $facilityTemplateId);
 
                 if (!$facilityStatus) {
@@ -174,6 +230,12 @@ class VoucherService
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
                 $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
 
+                // Increment analytics counter
+                $this->cache->incrementRedemptionCount($facilityTemplateId, $todayString);
+
+                // Invalidate cache for this voucher
+                $this->cache->invalidateVoucher($voucher);
+
                 // Check if all facilities are fully redeemed
                 $this->updateVoucherStatusIfFullyRedeemed($voucher);
 
@@ -181,25 +243,17 @@ class VoucherService
             });
         } catch (VoucherException $e) {
             // Log the failed scan attempt outside the transaction
-            $voucher = GuestVoucher::query()
-                ->where('secure_token', $qrCode)
-                ->orWhere('qr_code', $qrCode)
-                ->first();
-
             $result = $this->mapExceptionToScanResult($e, $voucher);
             $this->logScan($qrCode, $voucher, $outlet, $user, $result);
 
             throw $e;
         } catch (\Exception $e) {
             // Log unexpected errors
-            $voucher = GuestVoucher::query()
-                ->where('secure_token', $qrCode)
-                ->orWhere('qr_code', $qrCode)
-                ->first();
-
             $this->logScan($qrCode, $voucher, $outlet, $user, 'system_error');
 
             throw $e;
+        } finally {
+            $lock->release();
         }
     }
 

@@ -70,6 +70,54 @@ class GuestController extends Controller
         return view('guests.edit', compact('guest'));
     }
 
+    public function import(): View
+    {
+        abort_unless(auth()->user()?->can('guests.manage'), 403);
+
+        return view('guests.import');
+    }
+
+    public function processImport(Request $request): RedirectResponse
+    {
+        abort_unless(auth()->user()?->can('guests.manage'), 403);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,xls,xlsx', 'max:10240'],
+        ]);
+
+        try {
+            $import = new \App\Imports\GuestsImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+            $message = "Import completed. {$import->getImported()} guests imported";
+            
+            if ($import->getSkipped() > 0) {
+                $message .= ", {$import->getSkipped()} skipped (duplicates)";
+            }
+
+            if (count($import->getFailures()) > 0) {
+                $message .= ", " . count($import->getFailures()) . " failed";
+                session()->flash('import_failures', $import->getFailures());
+            }
+
+            if (count($import->getErrors()) > 0) {
+                session()->flash('import_errors', $import->getErrors());
+            }
+
+            return redirect()->route('guests.index')->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        abort_unless(auth()->user()?->can('guests.manage'), 403);
+
+        $export = new \App\Exports\GuestsTemplateExport();
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'guests-import-template.xlsx');
+    }
+
     public function update(Request $request, Guest $guest): RedirectResponse
     {
         abort_unless(auth()->user()?->can('guests.manage'), 403);

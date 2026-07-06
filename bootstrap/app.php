@@ -21,11 +21,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trustProxies(at: '*');
 
+        // Security middleware
+        $middleware->append(\App\Http\Middleware\AttackDetectionMiddleware::class);
+        $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
+        $middleware->append(\App\Http\Middleware\ForceHttpsMiddleware::class);
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'audit' => AuditRequest::class,
+            'ip.whitelist' => \App\Http\Middleware\IpWhitelistMiddleware::class,
+            'validate.upload' => \App\Http\Middleware\ValidateFileUpload::class,
+            'attack.detection' => \App\Http\Middleware\AttackDetectionMiddleware::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));

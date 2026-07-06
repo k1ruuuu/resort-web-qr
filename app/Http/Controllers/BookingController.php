@@ -124,6 +124,54 @@ class BookingController extends Controller
         return back()->with('success', 'Guest checked out.');
     }
 
+    public function import(): View
+    {
+        $this->authorizePermission('bookings.create');
+
+        return view('bookings.import');
+    }
+
+    public function processImport(\Illuminate\Http\Request $request): RedirectResponse
+    {
+        $this->authorizePermission('bookings.create');
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,xls,xlsx', 'max:10240'],
+        ]);
+
+        try {
+            $import = new \App\Imports\BookingsImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+            $message = "Import completed. {$import->getImported()} bookings imported";
+            
+            if ($import->getSkipped() > 0) {
+                $message .= ", {$import->getSkipped()} skipped (duplicates or errors)";
+            }
+
+            if (count($import->getFailures()) > 0) {
+                $message .= ", " . count($import->getFailures()) . " failed";
+                session()->flash('import_failures', $import->getFailures());
+            }
+
+            if (count($import->getErrors()) > 0) {
+                session()->flash('import_errors', $import->getErrors());
+            }
+
+            return redirect()->route('bookings.index')->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $this->authorizePermission('bookings.create');
+
+        $export = new \App\Exports\BookingsTemplateExport();
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'bookings-import-template.xlsx');
+    }
+
     public function edit(Booking $booking): View
     {
         $this->authorizePermission('bookings.create');

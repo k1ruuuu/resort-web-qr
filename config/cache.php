@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', 'redis'),
     'stores' => [
         'array' => [
             'driver' => 'array',
@@ -18,6 +18,11 @@ return [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),
             'lock_path' => storage_path('framework/cache/data'),
+        ],
+        'redis' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_CACHE_CONNECTION', 'cache'),
+            'lock_connection' => env('REDIS_LOCK_CONNECTION', 'default'),
         ],
     ],
     'prefix' => env('CACHE_PREFIX', str_replace(' ', '_', strtolower((string) env('APP_NAME', 'laravel'))).'_cache_'),
