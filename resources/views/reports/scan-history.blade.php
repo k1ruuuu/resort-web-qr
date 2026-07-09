@@ -152,7 +152,7 @@
                                                 default => ucfirst(str_replace('_', ' ', $log->scan_result)),
                                             };
                                         @endphp
-                                        <span class="badge badge-{{ $badgeClass }}">{{ $displayText }}</span>
+                                        <span class="badge bg-{{ $badgeClass }} text-white">{{ $displayText }}</span>
                                     </td>
                                     <td><small class="text-muted">{{ $log->ip_address }}</small></td>
                                 </tr>

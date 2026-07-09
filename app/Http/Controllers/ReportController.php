@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\RedemptionReportExport;
-use App\Models\RedemptionLog;
+use App\Exports\ReportsSummaryExport;
+use App\Models\FacilityTemplate;
+use App\Models\Outlet;
+use App\Models\Property;
 use App\Services\ReportService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
@@ -16,66 +18,81 @@ class ReportController extends Controller
     {
         abort_unless(auth()->user()?->can('reports.view'), 403);
 
-        $from = Carbon::parse($request->input('from', now()->subDays(7)->toDateString()));
-        $to = Carbon::parse($request->input('to', now()->toDateString()));
+        $period = $reports->resolvePeriod($request);
+        $from = $period['from'];
+        $to = $period['to'];
+        $filterType = $period['filterType'];
+
+        $propertyId = $request->integer('property_id') ?: null;
+        $facilityId = $request->integer('facility_id') ?: null;
+        $outletId = $request->integer('outlet_id') ?: null;
 
         return view('reports.index', [
             'from' => $from,
             'to' => $to,
-            'redemptions' => $reports->redemptionSummary(
-                $request->integer('property_id') ?: null,
-                $from,
-                $to,
-            ),
-            'voucherStats' => $reports->voucherStatusCounts($request->integer('property_id') ?: null),
+            'filterType' => $filterType,
+            'month' => $period['month'] ?? $request->integer('month') ?: now()->month,
+            'year' => $period['year'] ?? $request->integer('year') ?: now()->year,
+            'periodLabel' => $reports->periodLabel($from, $to, $filterType),
+            'propertyId' => $propertyId,
+            'facilityId' => $facilityId,
+            'outletId' => $outletId,
+            'properties' => Property::query()->where('is_active', true)->orderBy('name')->get(),
+            'facilities' => FacilityTemplate::query()
+                ->when($propertyId, fn ($q) => $q->where('property_id', $propertyId))
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+            'outlets' => Outlet::query()
+                ->when($propertyId, fn ($q) => $q->where('property_id', $propertyId))
+                ->when($facilityId, fn ($q) => $q->where('facility_template_id', $facilityId))
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(),
+            'overview' => $reports->overviewStats($propertyId, $from, $to),
+            'redemptions' => $reports->redemptionSummary($propertyId, $from, $to),
+            'redemptionsByOutlet' => $reports->redemptionByOutlet($propertyId, $from, $to),
+            'dailyTrend' => $reports->dailyRedemptionTrend($propertyId, $from, $to),
+            'recentRedemptions' => $reports->recentRedemptions($propertyId, $from, $to),
+            'voucherStats' => $reports->voucherStatusCounts($propertyId),
         ]);
     }
 
-    public function exportRedemptions(Request $request)
+    public function exportRedemptions(Request $request, ReportService $reports): BinaryFileResponse
     {
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
-        $format = $request->input('format', 'xlsx'); // xlsx, xls, csv
-        
-        $from = Carbon::parse($request->input('from', now()->subDays(7)->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $format = $request->input('format', 'xlsx');
+        $period = $reports->resolvePeriod($request);
+        $from = $period['from'];
+        $to = $period['to'];
 
-        $query = RedemptionLog::query()
-            ->with(['guest', 'booking.room', 'facilityTemplate', 'outlet', 'user'])
-            ->whereBetween('created_at', [$from, $to])
-            ->orderBy('date', 'desc')
-            ->orderBy('time', 'desc');
+        $propertyId = $request->integer('property_id') ?: null;
+        $facilityId = $request->integer('facility_id') ?: null;
+        $outletId = $request->integer('outlet_id') ?: null;
 
-        if ($request->filled('property_id')) {
-            $query->whereHas('booking', function ($q) use ($request) {
-                $q->where('property_id', $request->property_id);
-            });
-        }
-
-        if ($request->filled('facility_id')) {
-            $query->where('facility_template_id', $request->facility_id);
-        }
-
-        if ($request->filled('outlet_id')) {
-            $query->where('outlet_id', $request->outlet_id);
-        }
-
-        $redemptions = $query->get();
-
-        $filters = $request->only(['from', 'to', 'property_id', 'facility_id', 'outlet_id']);
+        $filters = $request->only(['filter_type', 'from', 'to', 'month', 'year', 'property_id', 'facility_id', 'outlet_id']);
 
         $filename = 'redemption-report-' . now()->format('Y-m-d-His');
 
         return Excel::download(
-            new RedemptionReportExport($redemptions, $filters),
+            new ReportsSummaryExport(
+                $reports->overviewStats($propertyId, $from, $to),
+                $reports->redemptionSummary($propertyId, $from, $to),
+                $reports->redemptionByOutlet($propertyId, $from, $to),
+                $reports->dailyRedemptionTrend($propertyId, $from, $to),
+                $reports->redemptionDetails($propertyId, $from, $to, $facilityId, $outletId),
+                $filters,
+                $reports->periodLabel($from, $to, $period['filterType']),
+            ),
             "{$filename}.{$format}",
-            $this->getExcelType($format)
+            $this->getExcelType($format),
         );
     }
 
     private function getExcelType(string $format): string
     {
-        return match($format) {
+        return match ($format) {
             'csv' => \Maatwebsite\Excel\Excel::CSV,
             'xls' => \Maatwebsite\Excel\Excel::XLS,
             'xlsx' => \Maatwebsite\Excel\Excel::XLSX,

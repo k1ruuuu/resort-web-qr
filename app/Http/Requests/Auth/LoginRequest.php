@@ -31,17 +31,40 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            // SECURITY LOG: Failed login attempt
+            \Log::warning('[SECURITY] Failed login attempt', [
+                'email' => $this->input('email'),
+                'ip' => $this->ip(),
+                'user_agent' => $this->userAgent(),
+                'timestamp' => now()->toDateTimeString(),
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
         }
 
         if (! Auth::user()->is_active) {
+            // SECURITY LOG: Inactive account login attempt
+            \Log::warning('[SECURITY] Inactive account login attempt', [
+                'email' => $this->input('email'),
+                'user_id' => Auth::id(),
+                'ip' => $this->ip(),
+            ]);
+
             Auth::logout();
             throw ValidationException::withMessages([
                 'email' => __('Your account is inactive.'),
             ]);
         }
+
+        // SECURITY LOG: Successful login
+        \Log::info('[SECURITY] Successful login', [
+            'user_id' => Auth::id(),
+            'email' => Auth::user()->email,
+            'ip' => $this->ip(),
+            'user_agent' => $this->userAgent(),
+        ]);
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -53,6 +76,14 @@ class LoginRequest extends FormRequest
         }
 
         event(new Lockout($this));
+
+        // SECURITY LOG: Account lockout due to rate limiting
+        \Log::warning('[SECURITY] Account lockout - too many login attempts', [
+            'email' => $this->input('email'),
+            'ip' => $this->ip(),
+            'attempts' => RateLimiter::attempts($this->throttleKey()),
+            'available_in' => RateLimiter::availableIn($this->throttleKey()) . ' seconds',
+        ]);
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 

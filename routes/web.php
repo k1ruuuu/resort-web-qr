@@ -39,6 +39,9 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('rooms', RoomController::class)->except(['destroy']);
     Route::delete('rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+    Route::get('rooms-import', [RoomController::class, 'import'])->name('rooms.import');
+    Route::post('rooms-import/process', [RoomController::class, 'processImport'])->name('rooms.process-import')->middleware(['validate.upload', 'throttle:10,1']);
+    Route::get('rooms-import/template', [RoomController::class, 'downloadTemplate'])->name('rooms.download-template');
 
     Route::resource('guests', GuestController::class)->except(['destroy']);
     Route::delete('guests/{guest}', [GuestController::class, 'destroy'])->name('guests.destroy');
@@ -65,13 +68,16 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:voucher-redeem')
         ->name('vouchers.scan.process');
     Route::post('vouchers/scan-verify', [VoucherController::class, 'verifyScannedCode'])
+        ->middleware('throttle:30,1')  // SECURITY FIX: Added rate limiting (30 req/min)
         ->name('vouchers.scan.verify');
     Route::get('vouchers/{voucher}', [VoucherController::class, 'show'])->name('vouchers.show');
+    Route::post('vouchers/{voucher}/update', [VoucherController::class, 'update'])->name('vouchers.update');
     Route::get('vouchers/{voucher}/qr.svg', [VoucherController::class, 'qrImage'])->name('vouchers.qr');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/redemptions/export', [ReportController::class, 'exportRedemptions'])->name('reports.redemptions.export')->middleware('throttle:20,1');
     Route::get('reports/delivery-logs', [DeliveryLogController::class, 'index'])->name('reports.delivery-logs');
+    Route::get('reports/delivery-logs/export', [DeliveryLogController::class, 'export'])->name('reports.delivery-logs.export')->middleware('throttle:20,1');
     Route::get('reports/scan-history', [\App\Http\Controllers\QrScanLogController::class, 'index'])->name('reports.scan-history');
     Route::get('reports/scan-history/export', [\App\Http\Controllers\QrScanLogController::class, 'export'])->name('reports.scan-history.export')->middleware('throttle:20,1');
 

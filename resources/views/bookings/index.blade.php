@@ -104,6 +104,7 @@
                         <th>Reference</th>
                         <th>Guest</th>
                         <th class="d-none d-md-table-cell">Property</th>
+                        <th>Room</th>
                         <th class="d-none d-lg-table-cell">Stay</th>
                         <th class="d-none d-sm-table-cell">Pax</th>
                         <th>Status</th>
@@ -124,6 +125,11 @@
                                 {{ $booking->property->name }}
                             </div>
                         </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ $booking->room_label ?? $booking->room?->number ?? 'N/A' }}
+                            </span>
+                        </td>
                         <td class="d-none d-lg-table-cell">
                             <small>{{ $booking->check_in->format('M d') }} – {{ $booking->check_out->format('M d') }}</small>
                         </td>
@@ -134,18 +140,18 @@
                                 <span class="d-inline d-sm-none">{{ substr($booking->status->value, 0, 1) }}</span>
                             </span>
                         </td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ route('bookings.show', $booking) }}" class="btn btn-info" title="View">
+                        <td class="text-end">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{{ route('bookings.show', $booking) }}" class="btn btn-sm btn-info" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-warning" title="Edit">
+                                <a href="{{ route('bookings.edit', $booking) }}" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <form method="POST" action="{{ route('bookings.destroy', $booking) }}" class="d-inline" onsubmit="return confirm('Delete this booking?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-danger" title="Delete">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -154,7 +160,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">
+                        <td colspan="8" class="text-center py-4 text-muted">
                             @if(request()->hasAny(['search', 'status', 'property_id', 'date_from', 'date_to']))
                                 No bookings found matching your filters.
                             @else

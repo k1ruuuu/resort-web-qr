@@ -44,31 +44,69 @@ class DemoDataSeeder extends Seeder
         }
 
         $types = [
-            ['code' => 'FAMILY', 'name' => 'Family', 'max' => 4],
-            ['code' => 'COUPLE', 'name' => 'Couple', 'max' => 2],
-            ['code' => 'DELUXE', 'name' => 'Deluxe', 'max' => 3],
-            ['code' => 'SUITE', 'name' => 'Suite', 'max' => 4],
+            ['code' => 'FID', 'name' => 'Forest Camp Indian Deluxe', 'max' => 2],
+            ['code' => 'FIS', 'name' => 'Forest Camp Indian Suite', 'max' => 4],
+            ['code' => 'FMS', 'name' => 'Forest Camp Monggolian Suite', 'max' => 4],
+            ['code' => 'FMF', 'name' => 'Forest Camp Mongolian Family (8 & 9)', 'max' => 9],
+            ['code' => 'THC', 'name' => 'Tree House Couple', 'max' => 2],
+            ['code' => 'THF', 'name' => 'Tree House Family', 'max' => 4],
+            ['code' => 'STH', 'name' => 'Safari Tree House', 'max' => 2],
+            ['code' => 'STHF', 'name' => 'Safari Tree House Family (1 & 2)', 'max' => 4],
+            ['code' => 'FTJ', 'name' => 'Forest Tent Japan', 'max' => 2],
+            ['code' => 'FTF', 'name' => 'Forest Tent Family', 'max' => 4],
+            ['code' => 'FC', 'name' => 'Forest Cabin', 'max' => 2],
         ];
 
         foreach ($types as $typeData) {
-            RoomType::query()->firstOrCreate(
+            RoomType::query()->updateOrCreate(
                 ['property_id' => $property->id, 'code' => $typeData['code']],
                 ['name' => $typeData['name'], 'max_occupancy' => $typeData['max']]
             );
         }
 
         $rooms = [
-            ['code' => 'FID 02', 'label' => 'FID 02 - Forest Camp Indian Deluxe', 'area' => 'CAMP', 'type' => 'DELUXE', 'capacity' => 2],
-            ['code' => 'FMS 02', 'label' => 'FMS 02 - Forest Camp Mongolian Suite', 'area' => 'CAMP', 'type' => 'SUITE', 'capacity' => 2],
-            ['code' => 'J 01', 'label' => 'J 01 - Forest Tent Japan', 'area' => 'TENT', 'type' => 'COUPLE', 'capacity' => 2],
-            ['code' => 'J 02', 'label' => 'J 02 - Forest Tent Japan', 'area' => 'TENT', 'type' => 'COUPLE', 'capacity' => 2],
+            // FID
+            ['code' => 'FID 01', 'label' => 'FID 01 - Forest Camp Indian Deluxe', 'area' => 'CAMP', 'type' => 'FID', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FID 02', 'label' => 'FID 02 - Forest Camp Indian Deluxe', 'area' => 'CAMP', 'type' => 'FID', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FID 03', 'label' => 'FID 03 - Forest Camp Indian Deluxe', 'area' => 'CAMP', 'type' => 'FID', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            // FIS
+            ['code' => 'FIS 01', 'label' => 'FIS 01 - Forest Camp Indian Suite', 'area' => 'CAMP', 'type' => 'FIS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FIS 02', 'label' => 'FIS 02 - Forest Camp Indian Suite', 'area' => 'CAMP', 'type' => 'FIS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            // FMS
+            ['code' => 'FMS 01', 'label' => 'FMS 01 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 02', 'label' => 'FMS 02 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 03', 'label' => 'FMS 03 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 04', 'label' => 'FMS 04 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 05', 'label' => 'FMS 05 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 06', 'label' => 'FMS 06 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'FMS 07', 'label' => 'FMS 07 - Forest Camp Monggolian Suite', 'area' => 'CAMP', 'type' => 'FMS', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            // FMF
+            ['code' => 'FMF 1', 'label' => 'FMF 1 - Forest Camp Mongolian Family (8 & 9)', 'area' => 'CAMP', 'type' => 'FMF', 'capacity' => 9, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            // THC
+            ['code' => 'TH 01', 'label' => 'TH 01 - Tree House Couple', 'area' => 'TREE', 'type' => 'THC', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Pool View', 'loc' => '1'],
+            ['code' => 'TH 02', 'label' => 'TH 02 - Tree House Couple', 'area' => 'TREE', 'type' => 'THC', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Pool View', 'loc' => '1'],
+            // THF
+            ['code' => 'TH 03', 'label' => 'TH 03 - Tree House Family', 'area' => 'TREE', 'type' => 'THF', 'capacity' => 4, 'bed' => 'KS', 'view' => 'Pool View', 'loc' => '1'],
+            // STH
+            ['code' => 'STH 1', 'label' => 'STH 1 - Safari Tree House', 'area' => 'TREE', 'type' => 'STH', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'STH 2', 'label' => 'STH 2 - Safari Tree House', 'area' => 'TREE', 'type' => 'STH', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'STH 3', 'label' => 'STH 3 - Safari Tree House', 'area' => 'TREE', 'type' => 'STH', 'capacity' => 2, 'bed' => 'KS', 'view' => 'Forest View', 'loc' => '1'],
+            // FTJ
+            ['code' => 'J 01', 'label' => 'J 01 - Forest Tent Japan', 'area' => 'TENT', 'type' => 'FTJ', 'capacity' => 2, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'J 02', 'label' => 'J 02 - Forest Tent Japan', 'area' => 'TENT', 'type' => 'FTJ', 'capacity' => 2, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'J 03', 'label' => 'J 03 - Forest Tent Japan', 'area' => 'TENT', 'type' => 'FTJ', 'capacity' => 2, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            // FTF
+            ['code' => 'F 01', 'label' => 'F 01 - Forest Tent Family', 'area' => 'TENT', 'type' => 'FTF', 'capacity' => 4, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            ['code' => 'F 02', 'label' => 'F 02 - Forest Tent Family', 'area' => 'TENT', 'type' => 'FTF', 'capacity' => 4, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
+            // FC
+            ['code' => 'FC 1', 'label' => 'FC 1 - Forest Cabin', 'area' => 'CAMP', 'type' => 'FC', 'capacity' => 2, 'bed' => 'QS', 'view' => 'Forest View', 'loc' => '1'],
         ];
 
         foreach ($rooms as $roomData) {
             $area = Area::query()->where('property_id', $property->id)->where('code', $roomData['area'])->first();
             $type = RoomType::query()->where('property_id', $property->id)->where('code', $roomData['type'])->first();
 
-            Room::query()->firstOrCreate(
+            Room::query()->updateOrCreate(
                 ['property_id' => $property->id, 'code' => $roomData['code']],
                 [
                     'area_id' => $area?->id,
@@ -76,6 +114,9 @@ class DemoDataSeeder extends Seeder
                     'number' => $roomData['code'],
                     'label' => $roomData['label'],
                     'capacity' => $roomData['capacity'],
+                    'bed_type' => $roomData['bed'],
+                    'room_view' => $roomData['view'],
+                    'location' => $roomData['loc'],
                     'status' => 'available',
                 ]
             );
@@ -138,6 +179,10 @@ class DemoDataSeeder extends Seeder
         ];
 
         foreach ($rows as $row) {
+            $existing = Booking::where('booking_code', $row['Kode Booking'])->first();
+            if ($existing) {
+                continue;
+            }
             $booking = $importer->importRow($property, $row);
 
             if ($booking->status === BookingStatus::CheckedIn) {

@@ -17,6 +17,9 @@ class Room extends Model
         'label',
         'capacity',
         'status',
+        'bed_type',
+        'room_view',
+        'location',
     ];
 
     public function property(): BelongsTo

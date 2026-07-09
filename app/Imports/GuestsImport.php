@@ -19,6 +19,17 @@ class GuestsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnEr
     protected $failures = [];
     protected $imported = 0;
     protected $skipped = 0;
+    protected int $headingRow = 1;
+
+    public function __construct(int $headingRow = 1)
+    {
+        $this->headingRow = $headingRow;
+    }
+
+    public function headingRow(): int
+    {
+        return $this->headingRow;
+    }
 
     public function model(array $row)
     {

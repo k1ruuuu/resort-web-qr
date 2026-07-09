@@ -3,10 +3,15 @@
 @section('page_title', 'WhatsApp Delivery Logs')
 @section('content')
 <div class="card shadow-sm">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="card-title font-weight-bold mb-0">
             <i class="fas fa-list text-muted me-2"></i> WhatsApp Message Logs
         </h3>
+        @can('reports.export')
+            <x-export-button
+                route="reports.delivery-logs.export"
+                text="Export Logs" />
+        @endcan
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">

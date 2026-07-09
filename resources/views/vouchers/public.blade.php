@@ -7,8 +7,8 @@
             <span class="badge bg-success px-3 py-2 rounded-pill text-uppercase tracking-wider small">Active Stay Pass</span>
         </div>
         
-        <h1 class="h3 font-weight-bold text-dark mb-1">{{ $voucher->booking->guest->full_name }}</h1>
-        <p class="text-muted small mb-4">Room: <strong>{{ $voucher->booking->room_label ?? $voucher->booking->room?->label ?? 'N/A' }}</strong></p>
+        <h1 class="h3 font-weight-bold text-dark mb-1">{{ $voucher->guest_name ?? ($voucher->booking?->guest?->full_name ?? 'Temporary Guest') }}</h1>
+        <p class="text-muted small mb-4">Room: <strong>{{ $voucher->booking?->room_label ?? $voucher->booking?->room?->label ?? 'Temporary' }}</strong></p>
 
         <div class="p-3 bg-light rounded-4 border mb-4 d-inline-block shadow-inner">
             <x-qr-code :url="$qrImageUrl" :size="220" class="rounded-3" />
@@ -17,11 +17,11 @@
         <div class="row text-left mb-4 bg-light p-3 rounded-3 border g-2">
             <div class="col-6">
                 <span class="text-muted d-block small">Stay Dates</span>
-                <span class="font-weight-bold text-dark small">{{ $voucher->booking->check_in->format('d M') }} – {{ $voucher->booking->check_out->format('d M Y') }}</span>
+                <span class="font-weight-bold text-dark small">{{ $voucher->booking ? $voucher->booking->check_in->format('d M') . ' – ' . $voucher->booking->check_out->format('d M Y') : ($voucher->expires_at ? $voucher->expires_at->format('d M Y H:i') : 'N/A') }}</span>
             </div>
             <div class="col-6">
                 <span class="text-muted d-block small">Total Pax</span>
-                <span class="font-weight-bold text-dark small">{{ $voucher->booking->total_pax + $voucher->booking->extra_beds }} guests</span>
+                <span class="font-weight-bold text-dark small">{{ $voucher->booking ? ($voucher->pax_limit ?? ($voucher->booking->total_pax + $voucher->booking->extra_beds)) : 1 }} guests</span>
             </div>
         </div>
 

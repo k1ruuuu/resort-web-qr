@@ -23,6 +23,7 @@ yarn-error.log
 .env
 .env.*
 !.env.example
+!.env.docker
 /auth.json
 *.pem
 *.key
@@ -53,6 +54,7 @@ debug.log
 # Backups & Temporary Files
 # ================================
 *.sql
+!docker/mysql/init/*.sql
 *.sql.gz
 *.dump
 *.bak
@@ -66,14 +68,15 @@ debug.log
 *~
 .DS_Store
 Thumbs.db
+backups/
 
 # ================================
-# Documentation (EXCEPT README.md)
+# Documentation (EXCEPT README.md & Docker docs)
 # ================================
-*.md
 !README.md
 !.github/SECURITY.md
-SECURITY_*.md
+!DOCKER_*.md
+SECURITY-*-*.md
 REDIS_*.md
 ATTACK_*.md
 DEPLOYMENT_*.md
@@ -83,11 +86,36 @@ ADD_EXPORT_*.md
 # ================================
 # Development & Deployment Scripts
 # ================================
-deploy*.sh
-deploy*.bat
 test-security.php
 *.local.*
 .htaccess.backup
+
+# ================================
+# Docker
+# ================================
+# Docker override for local development
+docker-compose.override.yml
+
+# Docker volumes and data directories
+.docker/
+docker/mysql/data/
+docker/redis/data/
+
+# Docker runtime files
+.initialized
+
+# Docker logs (stored in storage/logs instead)
+docker/nginx/logs/
+docker/mysql/logs/
+
+# SSL certificates (add your own, don't commit)
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.key
+docker/nginx/ssl/*.crt
+!docker/nginx/ssl/.gitkeep
+
+# Docker backup files
+docker-backup-*.tar.gz
 
 # ================================
 # IDE & Editor Files

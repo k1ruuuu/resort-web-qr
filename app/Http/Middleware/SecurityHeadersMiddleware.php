@@ -40,8 +40,8 @@ class SecurityHeadersMiddleware
         // Permissions Policy (formerly Feature Policy)
         $response->headers->set('Permissions-Policy', 
             'geolocation=(), ' .
-            'microphone=(), ' .
-            'camera=(), ' .
+            'microphone=(self), ' .
+            'camera=(self), ' .
             'payment=(), ' .
             'usb=(), ' .
             'magnetometer=(), ' .

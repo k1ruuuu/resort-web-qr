@@ -9,7 +9,7 @@
                 <div class="text-center mb-3">
                     <i class="fas fa-id-card fa-3x text-primary"></i>
                 </div>
-                <h3 class="profile-username text-center font-weight-bold">{{ $voucher->booking->guest->full_name }}</h3>
+                <h3 class="profile-username text-center font-weight-bold">{{ $voucher->guest_name ?? ($voucher->booking?->guest?->full_name ?? 'Temporary Guest') }}</h3>
                 <p class="text-muted text-center mb-4">Digital Guest Card</p>
 
                 <div class="p-3 bg-light rounded border mb-4">
@@ -25,19 +25,25 @@
                 <ul class="list-group list-group-unbordered mb-4 text-left">
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Room</b> 
-                        <span>{{ $voucher->booking->room_label ?? $voucher->booking->room?->label ?? 'N/A' }} ({{ $voucher->booking->room?->code ?? 'N/A' }})</span>
+                        <span>{{ $voucher->booking?->room_label ?? $voucher->booking?->room?->label ?? 'Temporary' }} ({{ $voucher->booking?->room?->code ?? 'TEMP' }})</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Stay Dates</b> 
-                        <span>{{ $voucher->booking->check_in->format('d M Y') }} – {{ $voucher->booking->check_out->format('d M Y') }}</span>
+                        <span>{{ $voucher->booking ? $voucher->booking->check_in->format('d M Y') . ' – ' . $voucher->booking->check_out->format('d M Y') : ($voucher->expires_at ? $voucher->expires_at->format('d M Y H:i') : 'N/A') }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Total Pax</b> 
-                        <span>{{ $voucher->booking->total_pax }} (+ {{ $voucher->booking->extra_beds }} Extra Bed) = <strong>{{ $voucher->booking->total_pax + $voucher->booking->extra_beds }} Quota</strong></span>
+                        <span>
+                            @if($voucher->booking)
+                                {{ $voucher->booking->total_pax }} (+ {{ $voucher->booking->extra_beds }} Extra Bed) = <strong>{{ $voucher->booking->total_pax + $voucher->booking->extra_beds }} Quota</strong>
+                            @else
+                                1
+                            @endif
+                        </span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Booking Ref</b> 
-                        <span>{{ $voucher->booking->booking_code ?? $voucher->booking->reference }}</span>
+                        <span>{{ $voucher->booking?->booking_code ?? $voucher->booking?->reference ?? 'Temporary' }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Status</b> 
@@ -50,13 +56,17 @@
                 </a>
                 
                 @can('vouchers.resend')
+                @if($voucher->booking_id)
                 <form method="POST" action="{{ route('bookings.resend', $voucher->booking_id) }}" class="mt-2">
                     @csrf
                     <button type="submit" class="btn btn-warning btn-block">
                         <i class="fab fa-whatsapp"></i> Resend Voucher via WhatsApp
                     </button>
                 </form>
+                @endif
                 @endcan
+
+                {{-- 'Add Facilities to Voucher' feature removed per request --}}
             </div>
         </div>
     </div>

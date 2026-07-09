@@ -46,6 +46,9 @@ class RoomController extends Controller
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['in:available,occupied,maintenance'],
+            'bed_type' => ['nullable', 'string', 'max:32'],
+            'room_view' => ['nullable', 'string', 'max:64'],
+            'location' => ['nullable', 'string', 'max:64'],
         ]));
 
         return redirect()->route('rooms.show', $room)->with('success', 'Room created successfully.');
@@ -85,6 +88,9 @@ class RoomController extends Controller
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
             'status' => ['in:available,occupied,maintenance'],
+            'bed_type' => ['nullable', 'string', 'max:32'],
+            'room_view' => ['nullable', 'string', 'max:64'],
+            'location' => ['nullable', 'string', 'max:64'],
         ]));
 
         return redirect()->route('rooms.show', $room)->with('success', 'Room updated successfully.');
@@ -97,5 +103,54 @@ class RoomController extends Controller
         $room->delete();
 
         return redirect()->route('rooms.index')->with('success', 'Room deleted successfully.');
+    }
+
+    public function import(): View
+    {
+        abort_unless(auth()->user()?->can('rooms.manage'), 403);
+
+        return view('rooms.import');
+    }
+
+    public function processImport(Request $request): RedirectResponse
+    {
+        abort_unless(auth()->user()?->can('rooms.manage'), 403);
+
+        $request->validate([
+            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,cvs,txt', 'max:10240'],
+        ]);
+
+        try {
+            $import = new \App\Imports\RoomsImport();
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+
+            $message = "Import completed. {$import->getImported()} rooms imported";
+
+            if ($import->getSkipped() > 0) {
+                $message .= ", {$import->getSkipped()} skipped (duplicates or errors)";
+            }
+
+            if (count($import->getFailures()) > 0) {
+                $message .= ', ' . count($import->getFailures()) . ' failed';
+                session()->flash('import_failures', $import->getFailures());
+            }
+
+            if (count($import->getErrors()) > 0) {
+                session()->flash('import_errors', $import->getErrors());
+            }
+
+            return redirect()->route('rooms.index')->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Import failed: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        abort_unless(auth()->user()?->can('rooms.manage'), 403);
+
+        $export = new \App\Exports\RoomsTemplateExport();
+
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'rooms-import-template.xlsx');
     }
 }

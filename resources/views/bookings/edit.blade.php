@@ -95,15 +95,26 @@
                     </div>
                 </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select @error('status') is-invalid @enderror">
-                    <option value="pending" @if(old('status', $booking->status->value) === 'pending') selected @endif>Pending</option>
-                    <option value="checked_in" @if(old('status', $booking->status->value) === 'checked_in') selected @endif>Checked In</option>
-                    <option value="checked_out" @if(old('status', $booking->status->value) === 'checked_out') selected @endif>Checked Out</option>
-                    <option value="cancelled" @if(old('status', $booking->status->value) === 'cancelled') selected @endif>Cancelled</option>
-                </select>
-                @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select @error('status') is-invalid @enderror">
+                            <option value="pending" @if(old('status', $booking->status->value) === 'pending') selected @endif>Pending</option>
+                            <option value="checked_in" @if(old('status', $booking->status->value) === 'checked_in') selected @endif>Checked In</option>
+                            <option value="checked_out" @if(old('status', $booking->status->value) === 'checked_out') selected @endif>Checked Out</option>
+                            <option value="cancelled" @if(old('status', $booking->status->value) === 'cancelled') selected @endif>Cancelled</option>
+                        </select>
+                        @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Arrangement Code</label>
+                        <input type="text" name="arrangement_code" class="form-control @error('arrangement_code') is-invalid @enderror" value="{{ old('arrangement_code', $booking->arrangement_code) }}">
+                        @error('arrangement_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
             </div>
             <div class="row">
                 <div class="col-md-6">

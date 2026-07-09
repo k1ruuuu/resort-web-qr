@@ -36,7 +36,7 @@
                             default => 'secondary',
                         };
                     @endphp
-                    <span class="badge badge-{{ $statusBadge }}">{{ ucwords(str_replace('_', ' ', $booking->status->value)) }}</span>
+                    <span class="badge bg-{{ $statusBadge }} text-white">{{ ucwords(str_replace('_', ' ', $booking->status->value)) }}</span>
                 </p>
                 @if($booking->checked_in_at)
                     <p><strong>Checked In At:</strong> {{ $booking->checked_in_at->format('Y-m-d H:i:s') }}</p>
@@ -46,6 +46,10 @@
                 @endif
                 @if($booking->booking_code)<p><strong>PMS Code:</strong> {{ $booking->booking_code }}</p>@endif
                 @if($booking->room_label)<p><strong>Room:</strong> {{ $booking->room_label }}</p>@endif
+                @if($booking->room && $booking->room->room_view)<p><strong>Room View:</strong> {{ $booking->room->room_view }}</p>@endif
+                @if($booking->room && $booking->room->bed_type)<p><strong>Bed Type:</strong> {{ $booking->room->bed_type }}</p>@endif
+                @if($booking->room && $booking->room->location)<p><strong>Location:</strong> Zone {{ $booking->room->location }}</p>@endif
+                @if($booking->arrangement_code)<p><strong>Arrangement Code:</strong> {{ $booking->arrangement_code }}</p>@endif
                 <p><strong>Quota basis:</strong> total pax ({{ $booking->total_pax }}) + {{ $booking->extra_beds }} extra bed(s) = {{ $booking->total_pax + $booking->extra_beds }} quota</p>
             </div>
         </div>
@@ -68,12 +72,9 @@
     <div class="col-md-4">
         @can('bookings.checkin')
         @if($booking->status->value !== 'checked_in' && $booking->status->value !== 'checked_out')
-        <form method="POST" action="{{ route('bookings.check-in', $booking) }}" class="mb-2">
-            @csrf
-            <button class="btn btn-success w-100">
-                <i class="fas fa-sign-in-alt"></i> Check In
-            </button>
-        </form>
+        <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#checkinFacilitiesModal">
+            <i class="fas fa-sign-in-alt"></i> Check In
+        </button>
         @endif
         @endcan
         
@@ -122,7 +123,7 @@
                 default => 'secondary',
             };
         @endphp
-        <span class="badge badge-{{ $voucherBadge }} float-right">{{ ucfirst($booking->guestVoucher->status->value) }}</span>
+        <span class="badge bg-{{ $voucherBadge }} text-white float-end">{{ ucfirst($booking->guestVoucher->status->value) }}</span>
     </div>
     <div class="card-body">
         <div class="row align-items-center">
@@ -132,7 +133,7 @@
             <div class="col-md-8">
                 <p class="mb-1"><strong>QR Code Text:</strong> <code class="text-dark">{{ $booking->guestVoucher->qr_code }}</code></p>
                 <p class="mb-1"><strong>Secure Token:</strong> <code class="text-muted">{{ $booking->guestVoucher->secure_token }}</code></p>
-                <p class="mb-1"><strong>Status:</strong> <span class="badge badge-{{ $voucherBadge }}">{{ ucfirst($booking->guestVoucher->status->value) }}</span></p>
+                <p class="mb-1"><strong>Status:</strong> <span class="badge bg-{{ $voucherBadge }} text-white">{{ ucfirst($booking->guestVoucher->status->value) }}</span></p>
                 <p class="mb-1"><strong>Generated At:</strong> {{ $booking->guestVoucher->generated_at?->format('Y-m-d H:i:s') }}</p>
                 @if($booking->guestVoucher->status->value !== 'active')
                     <div class="alert alert-warning mt-2 mb-2">
@@ -152,4 +153,78 @@
     </div>
 </div>
 @endif
+
+<div class="modal fade" id="checkinFacilitiesModal" tabindex="-1" aria-labelledby="checkinFacilitiesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('bookings.check-in', $booking) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="checkinFacilitiesModalLabel">Select Facilities for QR Voucher</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Choose the facilities to include for this guest's QR voucher. Leave empty to use the default facilities.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Facilities</label>
+                        @if($facilityTemplates->isNotEmpty())
+                            <div class="form-check mb-3 p-2 bg-light border rounded">
+                                <input class="form-check-input" type="checkbox" id="selectAllFacilities">
+                                <label class="form-check-label fw-bold text-primary" for="selectAllFacilities">
+                                    <i class="fas fa-check-double me-2"></i>Select All Facilities
+                                </label>
+                            </div>
+                        @endif
+                        <div class="bg-light border rounded p-3">
+                            @if($facilityTemplates->isNotEmpty())
+                                @foreach($facilityTemplates as $facilityTemplate)
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input facility-checkbox" type="checkbox" name="facility_template_ids[]" value="{{ $facilityTemplate->id }}" id="facility_{{ $facilityTemplate->id }}" @checked($booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
+                                        <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
+                                            {{ $facilityTemplate->name }}
+                                        </label>
+                                    </div>
+                                @endforeach
+                            @else
+                                <p class="text-muted small mb-0">No facility templates available for this property.</p>
+                            @endif
+                        </div>
+                        <div class="form-text">Select one or more facility options for the voucher.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Confirm Check In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    const selectAllFacilitiesCheckbox = document.getElementById('selectAllFacilities');
+    const facilityCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .facility-checkbox');
+
+    if (selectAllFacilitiesCheckbox) {
+        selectAllFacilitiesCheckbox.addEventListener('change', function () {
+            facilityCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+
+        facilityCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                if (!this.checked && selectAllFacilitiesCheckbox.checked) {
+                    selectAllFacilitiesCheckbox.checked = false;
+                }
+
+                if (Array.from(facilityCheckboxes).every(checkbox => checkbox.checked)) {
+                    selectAllFacilitiesCheckbox.checked = true;
+                }
+            });
+        });
+    }
+</script>
+@endpush
 @endsection

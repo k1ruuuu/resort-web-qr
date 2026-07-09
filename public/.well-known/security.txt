@@ -1,0 +1,10 @@
+Contact: security@resort.com
+Expires: 2027-12-31T23:59:59Z
+Preferred-Languages: en
+Canonical: https://yourdomain.com/.well-known/security.txt
+Policy: https://yourdomain.com/security-policy
+
+# Security Disclosure Policy
+# Please report security vulnerabilities to security@resort.com
+# We aim to respond within 48 hours
+# Do not disclose vulnerabilities publicly before coordinated disclosure

@@ -17,10 +17,13 @@ class VoucherApiController extends Controller
 
     public function generate(GenerateVoucherRequest $request): JsonResponse
     {
-        $booking = Booking::query()->findOrFail($request->validated('booking_id'));
-
         try {
-            $created = $this->vouchers->generateForBooking($booking);
+            if ($request->filled('booking_id')) {
+                $booking = Booking::query()->findOrFail($request->validated('booking_id'));
+                $created = $this->vouchers->generateForBooking($booking);
+            } else {
+                $created = $this->vouchers->generateTemporaryVoucher($request->validated());
+            }
         } catch (VoucherException $e) {
             return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 422);
         }

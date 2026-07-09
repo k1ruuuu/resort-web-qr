@@ -19,7 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
-        $middleware->trustProxies(at: '*');
+        // SECURITY FIX: Only trust specific proxies, not all
+        // Configure specific proxy IPs in production (e.g., load balancer IPs)
+        $trustedProxies = env('TRUSTED_PROXIES', null);
+        if ($trustedProxies && $trustedProxies !== '*') {
+            $middleware->trustProxies(at: explode(',', $trustedProxies));
+        } elseif (env('APP_ENV') === 'local') {
+            // Only trust all proxies in local development
+            $middleware->trustProxies(at: '*');
+        }
 
         // Security middleware
         $middleware->append(\App\Http\Middleware\AttackDetectionMiddleware::class);
@@ -34,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ip.whitelist' => \App\Http\Middleware\IpWhitelistMiddleware::class,
             'validate.upload' => \App\Http\Middleware\ValidateFileUpload::class,
             'attack.detection' => \App\Http\Middleware\AttackDetectionMiddleware::class,
+            'validate.pagination' => \App\Http\Middleware\ValidatePaginationParameters::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (Request $request) => route('login'));

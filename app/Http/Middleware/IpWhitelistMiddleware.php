@@ -22,18 +22,26 @@ class IpWhitelistMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
-        // Skip in local environment
-        if (app()->environment('local')) {
-            return $next($request);
-        }
-
-        // If whitelist is empty, allow all (for easier setup)
+        // SECURITY FIX: Remove local environment bypass - enforce whitelist in all environments
+        // Whitelist bypass creates security vulnerability in staging/testing environments
+        
+        // If whitelist is empty, deny access by default (fail-secure approach)
         if (empty($this->whitelist)) {
-            \Log::warning('Admin IP whitelist is empty. All IPs allowed.', [
+            // Only log warning and allow if explicitly set in env to allow empty whitelist
+            if (env('ALLOW_EMPTY_IP_WHITELIST', false)) {
+                \Log::warning('Admin IP whitelist is empty but allowed by configuration.', [
+                    'ip' => $request->ip(),
+                    'route' => $request->path(),
+                ]);
+                return $next($request);
+            }
+            
+            \Log::critical('[SECURITY] Admin access denied - IP whitelist not configured', [
                 'ip' => $request->ip(),
                 'route' => $request->path(),
+                'user_id' => $request->user()?->id,
             ]);
-            return $next($request);
+            abort(403, 'Access denied. IP whitelist is not configured.');
         }
 
         // Check if IP is whitelisted

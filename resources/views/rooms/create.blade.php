@@ -46,6 +46,39 @@
                 @error('area_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Bed Type</label>
+                        <select name="bed_type" class="form-select @error('bed_type') is-invalid @enderror">
+                            <option value="">Select bed type...</option>
+                            <option value="KS" @if(old('bed_type') === 'KS') selected @endif>King Size (KS)</option>
+                            <option value="QS" @if(old('bed_type') === 'QS') selected @endif>Queen Bed Single (QS)</option>
+                            <option value="SB" @if(old('bed_type') === 'SB') selected @endif>Single Bed (SB)</option>
+                            <option value="TB" @if(old('bed_type') === 'TB') selected @endif>Twin Bed (TB)</option>
+                        </select>
+                        @error('bed_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Room View</label>
+                        <select name="room_view" class="form-select @error('room_view') is-invalid @enderror">
+                            <option value="">Select room view...</option>
+                            <option value="Pool View" @if(old('room_view') === 'Pool View') selected @endif>Pool View</option>
+                            <option value="Forest View" @if(old('room_view') === 'Forest View') selected @endif>Forest View</option>
+                        </select>
+                        @error('room_view')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">Location (Zone)</label>
+                        <input type="text" name="location" class="form-control @error('location') is-invalid @enderror" value="{{ old('location') }}" placeholder="e.g. 1">
+                        @error('location')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+            <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label">Capacity</label>

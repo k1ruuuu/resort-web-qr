@@ -48,7 +48,7 @@ class BookingService
         });
     }
 
-    public function checkIn(Booking $booking): Booking
+    public function checkIn(Booking $booking, array $facilityTemplateIds = []): Booking
     {
         if ($booking->status === BookingStatus::CheckedIn) {
             return $booking;
@@ -62,7 +62,21 @@ class BookingService
         }
 
         try {
-            $this->syncDefaultFacilities($booking);
+            if (!empty($facilityTemplateIds)) {
+                $booking->bookingFacilities()->delete();
+                $quotaTotal = $this->quota->quotaForBooking($booking);
+
+                foreach ($facilityTemplateIds as $facilityTemplateId) {
+                    $booking->bookingFacilities()->create([
+                        'facility_template_id' => $facilityTemplateId,
+                        'start_date' => $booking->check_in,
+                        'end_date' => $booking->check_out,
+                        'quota_total' => $quotaTotal,
+                    ]);
+                }
+            } else {
+                $this->syncDefaultFacilities($booking);
+            }
 
             $old = $booking->only(['status', 'checked_in_at']);
 

@@ -7,6 +7,8 @@ use App\Models\Guest;
 use App\Models\Property;
 use App\Models\Room;
 use App\Enums\BookingStatus;
+use App\Services\VoucherService;
+use App\Services\BookingService;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -18,22 +20,42 @@ use Maatwebsite\Excel\Validators\Failure;
 use Carbon\Carbon;
 use Throwable;
 
-class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError, SkipsOnFailure, WithBatchInserts, WithChunkReading
+class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError, SkipsOnFailure
 {
     protected $errors = [];
     protected $failures = [];
     protected $imported = 0;
     protected $skipped = 0;
+    protected int $headingRow = 1;
+    protected array $processedReferences = [];
+    protected array $checkedInBookings = [];
+
+    public function __construct(int $headingRow = 1)
+    {
+        $this->headingRow = $headingRow;
+    }
+
+    public function headingRow(): int
+    {
+        return $this->headingRow;
+    }
 
     public function model(array $row)
     {
-        // Check if booking with same reference already exists
+        // Check if booking with same reference already exists (database or current batch)
         if (!empty($row['reference'])) {
+            if (in_array($row['reference'], $this->processedReferences)) {
+                $this->skipped++;
+                return null;
+            }
+            
             $existing = Booking::where('reference', $row['reference'])->first();
             if ($existing) {
                 $this->skipped++;
                 return null;
             }
+            
+            $this->processedReferences[] = $row['reference'];
         }
 
         // Find guest by email or create new
@@ -121,22 +143,22 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         $nights = $checkIn->diffInDays($checkOut);
 
         // Parse status
-        $status = BookingStatus::PENDING;
+        $status = BookingStatus::Pending;
         if (!empty($row['status'])) {
             $statusValue = strtolower(str_replace(' ', '_', $row['status']));
-            $status = BookingStatus::tryFrom($statusValue) ?? BookingStatus::PENDING;
+            $status = BookingStatus::tryFrom($statusValue) ?? BookingStatus::Pending;
         }
 
         $this->imported++;
 
-        return new Booking([
+        $booking = new Booking([
             'property_id' => $property->id,
             'guest_id' => $guest->id,
             'room_id' => $room?->id,
             'booking_code' => $row['booking_code'] ?? null,
             'reference' => $row['reference'] ?? 'IMP-' . strtoupper(substr(md5(uniqid()), 0, 8)),
             'source' => $row['source'] ?? 'import',
-            'room_label' => $row['room_label'] ?? $room?->number ?? null,
+            'room_label' => $row['room_label'] ?? $row['room_number'] ?? $room?->number ?? null,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
             'expected_arrival' => !empty($row['expected_arrival']) ? $this->parseDate($row['expected_arrival']) : $checkIn,
@@ -147,8 +169,87 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             'extra_beds' => (int) ($row['extra_beds'] ?? 0),
             'total_pax' => (int) ($row['total_pax'] ?? ($row['adults'] ?? 2) + ($row['children'] ?? 0)),
             'status' => $status,
+            'arrangement_code' => $row['arrangement_code'] ?? null,
             'pms_voucher_ref' => $row['pms_voucher_ref'] ?? null,
         ]);
+
+        // Track checked-in bookings for voucher generation
+        if ($status === BookingStatus::CheckedIn) {
+            $this->checkedInBookings[] = $booking;
+        }
+
+        return $booking;
+    }
+
+    public function prepareForValidation($data, $index)
+    {
+        // 1. Property mapping fallback
+        if (empty($data['property_name']) && empty($data['property_id'])) {
+            $property = Property::where('is_active', true)->first();
+            if ($property) {
+                $data['property_id'] = $property->id;
+                $data['property_name'] = $property->name;
+            }
+        }
+
+        // 2. Dates mapping
+        if (empty($data['check_in']) && !empty($data['arrival'])) {
+            $data['check_in'] = $data['arrival'];
+        }
+        if (empty($data['check_out']) && !empty($data['departure'])) {
+            $data['check_out'] = $data['departure'];
+        }
+
+        // 3. Reference and Booking Code mapping
+        if (empty($data['reference']) && !empty($data['rsv_no'])) {
+            $ref = (string) $data['rsv_no'];
+            if (!empty($data['room_number'])) {
+                $roomSuffix = str_replace(' ', '', $data['room_number']);
+                $ref .= '-' . $roomSuffix;
+            }
+            $data['reference'] = $ref;
+        }
+        if (empty($data['booking_code']) && !empty($data['rsv_no'])) {
+            $code = (string) $data['rsv_no'];
+            if (!empty($data['room_number'])) {
+                $roomSuffix = str_replace(' ', '', $data['room_number']);
+                $code .= '-' . $roomSuffix;
+            }
+            $data['booking_code'] = $code;
+        }
+
+        // 4. Guest name splitting
+        if (empty($data['guest_first_name']) && empty($data['guest_last_name']) && !empty($data['guest_name'])) {
+            $parts = explode(',', $data['guest_name']);
+            if (count($parts) > 1) {
+                // LAST_NAME, FIRST_NAME
+                $data['guest_first_name'] = trim($parts[1]);
+                $data['guest_last_name'] = trim($parts[0]);
+            } else {
+                $data['guest_first_name'] = trim($data['guest_name']);
+                $data['guest_last_name'] = '';
+            }
+        }
+
+        // 5. Pax mapping
+        if (empty($data['adults']) && !empty($data['adult'])) {
+            $data['adults'] = (int) $data['adult'];
+        }
+        if (empty($data['children']) && !empty($data['child'])) {
+            $data['children'] = (int) $data['child'];
+        }
+
+        // 6. Status mapping
+        if (empty($data['status']) && !empty($data['reservation_status'])) {
+            $resStatus = trim($data['reservation_status']);
+            if ($resStatus === '1' || strtolower($resStatus) === 'confirmed' || strtolower($resStatus) === 'checked in' || strtolower($resStatus) === 'checked_in') {
+                $data['status'] = 'checked_in';
+            } else {
+                $data['status'] = 'pending';
+            }
+        }
+
+        return $data;
     }
 
     public function rules(): array
@@ -184,6 +285,22 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
             }
 
+            $value = trim($value);
+            
+            // Check for DD/MM/YY or DD/MM/YYYY formats
+            if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{2,4}$/', $value)) {
+                $parts = explode('/', $value);
+                $day = (int)$parts[0];
+                $month = (int)$parts[1];
+                $year = $parts[2];
+                
+                if (strlen($year) === 2) {
+                    $year = '20' . $year;
+                }
+                
+                return Carbon::createFromDate((int)$year, $month, $day)->startOfDay();
+            }
+
             // Try parsing various date formats
             return Carbon::parse($value);
         } catch (\Exception $e) {
@@ -208,15 +325,6 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         }
     }
 
-    public function batchSize(): int
-    {
-        return 50;
-    }
-
-    public function chunkSize(): int
-    {
-        return 50;
-    }
 
     public function getErrors(): array
     {
@@ -236,5 +344,10 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
     public function getSkipped(): int
     {
         return $this->skipped;
+    }
+
+    public function getCheckedInBookings(): array
+    {
+        return $this->checkedInBookings;
     }
 }

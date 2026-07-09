@@ -200,8 +200,10 @@ class RedisCacheService
     public function incrementRedemptionCount(int $facilityId, string $date): void
     {
         $key = "analytics:redemptions:{$facilityId}:{$date}";
-        Cache::increment($key);
-        Cache::expire($key, self::TTL_DAY);
+        
+        // Increment the counter
+        $currentCount = (int) Cache::get($key, 0);
+        Cache::put($key, $currentCount + 1, self::TTL_DAY);
     }
 
     /**

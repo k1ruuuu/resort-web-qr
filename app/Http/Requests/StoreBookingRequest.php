@@ -31,6 +31,7 @@ class StoreBookingRequest extends FormRequest
             'extra_beds' => ['nullable', 'integer', 'min:0'],
             'total_pax' => ['nullable', 'integer', 'min:1'],
             'status' => ['nullable', 'string', 'in:pending,checked_in,checked_out,cancelled'],
+            'arrangement_code' => ['nullable', 'string', 'max:64'],
             'pms_voucher_ref' => ['nullable', 'string', 'max:64'],
             'facilities' => ['nullable', 'array'],
             'facilities.*.facility_template_id' => ['required', 'exists:facility_templates,id'],

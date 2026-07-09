@@ -2,7 +2,7 @@
 
 <div class="btn-group" role="group">
     <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="bi bi-file-earmark-excel"></i> {{ $text }}
+        <i class="fas fa-file-excel mr-1"></i> {{ $text }}
     </button>
     <ul class="dropdown-menu">
         <li>
@@ -10,17 +10,17 @@
         </li>
         <li>
             <a class="dropdown-item" href="{{ route($route, array_merge($filters, ['format' => 'xlsx'])) }}">
-                <i class="bi bi-file-earmark-spreadsheet text-success"></i> Excel (.xlsx)
+                <i class="fas fa-file-excel text-success mr-1"></i> Excel (.xlsx)
             </a>
         </li>
         <li>
             <a class="dropdown-item" href="{{ route($route, array_merge($filters, ['format' => 'xls'])) }}">
-                <i class="bi bi-file-earmark-spreadsheet text-success"></i> Excel 97-2003 (.xls)
+                <i class="fas fa-file-excel text-success mr-1"></i> Excel 97-2003 (.xls)
             </a>
         </li>
         <li>
             <a class="dropdown-item" href="{{ route($route, array_merge($filters, ['format' => 'csv'])) }}">
-                <i class="bi bi-filetype-csv text-info"></i> CSV (.csv)
+                <i class="fas fa-file-csv text-info mr-1"></i> CSV (.csv)
             </a>
         </li>
     </ul>

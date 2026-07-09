@@ -15,6 +15,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         RateLimiter::for('voucher-redeem', function (Request $request) {
             return Limit::perMinute(config('voucher.redeem_rate_limit'))
                 ->by($request->user()?->id ?: $request->ip());

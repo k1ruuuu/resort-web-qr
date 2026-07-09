@@ -15,16 +15,22 @@ class GuestController extends Controller
 
         $query = Guest::query()->orderBy('last_name');
 
-        // Search filter
+        // Search filter with SQL injection protection
         if (request()->filled('search')) {
             $search = request('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%")
-                    ->orWhere('document_id', 'like', "%{$search}%");
-            });
+            // SECURITY FIX: Sanitize search input to prevent SQL injection
+            $search = preg_replace('/[^\w\s@.\-+]/', '', $search);
+            $search = trim($search);
+            
+            if (strlen($search) > 0) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('document_id', 'like', "%{$search}%");
+                });
+            }
         }
 
         $guests = $query->paginate(20)->withQueryString();
@@ -82,7 +88,7 @@ class GuestController extends Controller
         abort_unless(auth()->user()?->can('guests.manage'), 403);
 
         $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,xls,xlsx', 'max:10240'],
+            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,cvs,txt', 'max:10240'],
         ]);
 
         try {

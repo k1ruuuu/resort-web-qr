@@ -348,12 +348,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ qr_code: code })
+                body: JSON.stringify({ 
+                    qr_code: code,
+                    outlet_id: outletSelect.value
+                }),
+                credentials: 'same-origin'
             });
 
             const res = await response.json();
+
+            if (!response.ok) {
+                // Handle authentication errors (401) or other HTTP errors
+                if (response.status === 401 || response.status === 419) {
+                    showRedemptionError('Your session has expired. Please refresh the page and log in again.');
+                    return;
+                }
+                throw new Error(res.message || 'Verification failed');
+            }
 
             if (res.success) {
                 displayVerification(res.data);
@@ -461,17 +476,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     outlet_id: outletId,
                     qr_code: currentVoucherCode,
                     facility_template_id: selectedFacilityId,
                     pax_used: paxUsed,
-                })
+                }),
+                credentials: 'same-origin'
             });
 
             const res = await response.json();
+
+            if (!response.ok) {
+                // Handle authentication errors (401) or other HTTP errors
+                if (response.status === 401 || response.status === 419) {
+                    showRedemptionError('Your session has expired. Please refresh the page and log in again.');
+                    return;
+                }
+                throw new Error(res.message || 'Redemption failed');
+            }
 
             if (res.success) {
                 showRedemptionSuccess(res.data);

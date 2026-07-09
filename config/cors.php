@@ -19,7 +19,14 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    // SECURITY FIX: Restricted headers to specific needed headers only
+    'allowed_headers' => [
+        'Accept',
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+    ],
 
     'exposed_headers' => [],
 

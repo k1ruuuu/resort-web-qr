@@ -53,6 +53,18 @@
                         <td>{{ $room->capacity }}</td>
                     </tr>
                     <tr>
+                        <td class="fw-bold">Bed Type:</td>
+                        <td>{{ $room->bed_type ?? '—' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Room View:</td>
+                        <td>{{ $room->room_view ?? '—' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Location:</td>
+                        <td>{{ $room->location ? 'Zone ' . $room->location : '—' }}</td>
+                    </tr>
+                    <tr>
                         <td class="fw-bold">Status:</td>
                         <td>
                             <span class="badge bg-{{ $room->status === 'available' ? 'success' : ($room->status === 'occupied' ? 'warning' : 'secondary') }}">
