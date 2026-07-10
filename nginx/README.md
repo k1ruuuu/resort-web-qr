@@ -23,6 +23,10 @@ PHP-FPM notes:
 Docker example (compose):
 - If you run with Docker, use `root` in the container for `root /var/www/html/public;` and connect `nginx` to your `php-fpm` service on port `9000`.
 
+Ubuntu installer scripts:
+- `scripts/ubuntu-webserver-setup.sh`
+- `scripts/ubuntu-webserver-setup.py`
+
 Security:
 - Keep `fastcgi_param SCRIPT_FILENAME` pointing to `$document_root$fastcgi_script_name`.
 - Ensure sensitive files are denied by the config.

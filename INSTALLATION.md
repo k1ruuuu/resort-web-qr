@@ -68,6 +68,26 @@ This script will:
 - Set up storage links
 - Generate application key
 
+### Ubuntu 22 webserver installer
+
+A shell and Python installer are available at `scripts/ubuntu-webserver-setup.sh` and `scripts/ubuntu-webserver-setup.py`.
+
+Run from the project root or pass the project path:
+
+```bash
+sudo bash scripts/ubuntu-webserver-setup.sh
+# or
+sudo python3 scripts/ubuntu-webserver-setup.py
+```
+
+This installer will:
+- install Nginx, Apache2, PHP 8.1, and common PHP extensions
+- configure Apache on port `8080`
+- configure Nginx on port `80`
+- enable the Laravel site and restart services
+
+Note: update `/etc/nginx/sites-available/resort.conf` if your PHP-FPM socket differs.
+
 **Access the application:**
 ```
 http://localhost
