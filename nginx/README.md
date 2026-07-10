@@ -2,7 +2,7 @@ Nginx configuration for the Resort Voucher app
 
 Files:
 - `nginx/nginx.conf` — a minimal top-level nginx configuration that includes `conf.d` and `sites-enabled`.
-- `nginx/sites-available/resort.conf` — site configuration for the Laravel app (document root points to `/public`).
+- `nginx/sites-available/resort.conf` — site configuration for the Laravel app (document root points to `/var/www/resort-web-qr/public`).
 
 Installation (system nginx):
 1. Copy `nginx/nginx.conf` to `/etc/nginx/nginx.conf` (backup existing first).
