@@ -12,8 +12,14 @@
                         <label class="form-label font-weight-bold">Outlet Location</label>
                         <select id="outlet-select" class="form-select" required>
                             <option value="">Select an outlet...</option>
-                            @foreach($outlets as $outlet)
-                                <option value="{{ $outlet->id }}">{{ $outlet->name }}</option>
+                            @foreach($outlets as $propertyName => $propertyOutlets)
+                            <optgroup label="{{ $propertyName }}">
+                                @foreach($propertyOutlets as $outlet)
+                                <option value="{{ $outlet->id }}" data-facility="{{ $outlet->facilityTemplate->name }}">
+                                    {{ $outlet->name }} ({{ $outlet->facilityTemplate->code }})
+                                </option>
+                                @endforeach
+                            </optgroup>
                             @endforeach
                         </select>
                     </div>
@@ -72,6 +78,7 @@
                         </div>
                         <div class="col-md-6">
                             <p class="mb-1"><strong>Total Pax Quota:</strong> <span id="verify-total-pax">Quota</span></p>
+                            <p class="mb-1"><strong>Outlet:</strong> <span id="verify-outlet-name">-</span></p>
                         </div>
                     </div>
 
@@ -194,6 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const verifyRoomLabel = document.getElementById('verify-room-label');
     const verifyBookingCode = document.getElementById('verify-booking-code');
     const verifyTotalPax = document.getElementById('verify-total-pax');
+    const verifyOutletName = document.getElementById('verify-outlet-name');
     const facilityList = document.getElementById('facility-list');
     const redemptionInputBlock = document.getElementById('redemption-input-block');
     const historyTableBody = document.querySelector('#history-table tbody');
@@ -388,11 +396,15 @@ document.addEventListener('DOMContentLoaded', function() {
         scannerSection.classList.add('d-none');
         verificationSection.classList.remove('d-none');
 
+        const outletOption = outletSelect.options[outletSelect.selectedIndex];
+        const outletFacility = outletOption ? outletOption.dataset.facility || '' : '';
+
         verifyGuestName.textContent = data.guest_name;
         verifyStayDetails.textContent = `Check-In: ${data.check_in} | Check-Out: ${data.check_out}`;
         verifyRoomLabel.textContent = data.room_name + ` (${data.room_code})`;
         verifyBookingCode.textContent = data.booking_code;
         verifyTotalPax.textContent = `${data.total_pax} Pax (based on Pax + Extra Bed)`;
+        verifyOutletName.textContent = outletOption ? outletOption.textContent + (outletFacility ? ` - ${outletFacility}` : '') : '-';
 
         facilityList.innerHTML = '';
         redemptionInputBlock.classList.add('d-none');

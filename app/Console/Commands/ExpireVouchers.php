@@ -12,7 +12,7 @@ class ExpireVouchers extends Command
 {
     protected $signature = 'voucher:expire';
 
-    protected $description = 'Automatically expire vouchers that have passed their checkout time (9 PM)';
+    protected $description = 'Automatically expire vouchers that have passed their deadline (9 PM checkout or expires_at)';
 
     public function __construct(private readonly AuditService $audit)
     {
@@ -25,7 +25,7 @@ class ExpireVouchers extends Command
 
         $vouchers = GuestVoucher::query()
             ->where('status', VoucherStatus::Active)
-            ->with(['booking.property'])
+            ->with(['booking.property', 'property'])
             ->get();
 
         $expiredCount = 0;
@@ -43,7 +43,8 @@ class ExpireVouchers extends Command
                 );
 
                 $expiredCount++;
-                $this->line("Expired voucher #{$voucher->id} for booking #{$voucher->booking_id}");
+                $identifier = $voucher->booking_id ? "booking #{$voucher->booking_id}" : "temp voucher #{$voucher->id}";
+                $this->line("Expired voucher #{$voucher->id} for {$identifier}");
             }
         }
 
@@ -58,6 +59,22 @@ class ExpireVouchers extends Command
 
     private function shouldExpire(GuestVoucher $voucher): bool
     {
+        if ($voucher->category === 'temporary') {
+            $expiresAt = $voucher->expires_at;
+            if (!$expiresAt) {
+                return false;
+            }
+
+            $timezone = $voucher->property?->timezone ?? 'UTC';
+            $currentDateTime = Carbon::now($timezone);
+
+            return $currentDateTime->gte($expiresAt);
+        }
+
+        if (!$voucher->booking) {
+            return false;
+        }
+
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
         

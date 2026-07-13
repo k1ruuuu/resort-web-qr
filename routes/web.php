@@ -11,8 +11,10 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\FacilityController;
+use App\Http\Controllers\OutletController;
 use App\Http\Controllers\DeliverySettingsController;
 use App\Http\Controllers\DeliveryLogController;
+use App\Http\Controllers\DocsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
@@ -33,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('docs', DocsController::class)->name('docs');
 
     Route::resource('properties', PropertyController::class)->except(['destroy']);
     Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->name('properties.destroy');
@@ -70,6 +73,7 @@ Route::middleware('auth')->group(function () {
     Route::post('vouchers/scan-verify', [VoucherController::class, 'verifyScannedCode'])
         ->middleware('throttle:30,1')  // SECURITY FIX: Added rate limiting (30 req/min)
         ->name('vouchers.scan.verify');
+    Route::get('vouchers/{voucher}/edit', [VoucherController::class, 'edit'])->name('vouchers.edit');
     Route::get('vouchers/{voucher}', [VoucherController::class, 'show'])->name('vouchers.show');
     Route::post('vouchers/{voucher}/update', [VoucherController::class, 'update'])->name('vouchers.update');
     Route::get('vouchers/{voucher}/qr.svg', [VoucherController::class, 'qrImage'])->name('vouchers.qr');
@@ -90,4 +94,5 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class);
     Route::resource('facilities', FacilityController::class);
+    Route::resource('outlets', OutletController::class)->except(['show']);
 });

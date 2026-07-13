@@ -8,9 +8,13 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Report Filters</h3>
         <div class="card-tools">
+            <button class="btn btn-sm btn-tool d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#reportFilterCollapse" aria-expanded="true">
+                <i class="fas fa-chevron-down"></i>
+            </button>
             <span class="badge bg-primary">{{ $periodLabel }}</span>
         </div>
     </div>
+    <div class="collapse collapse-md-show" id="reportFilterCollapse">
     <div class="card-body">
         <form method="GET" action="{{ route('reports.index') }}" id="report-filter-form">
             <div class="row g-3 mb-3">
@@ -107,6 +111,7 @@
             text="Export Report" />
     </div>
     @endcan
+    </div>
 </div>
 
 {{-- KPI Summary --}}
@@ -206,7 +211,7 @@
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-ticket-alt mr-1"></i> Voucher Status Overview</h3>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0 table-responsive-stack">
                 <table class="table table-striped mb-0">
                     <thead class="table-light">
                         <tr>

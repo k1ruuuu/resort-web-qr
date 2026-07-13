@@ -148,6 +148,30 @@ class VoucherController extends Controller
         ]);
     }
 
+    public function edit(GuestVoucher $voucher): View
+    {
+        abort_unless(auth()->user()?->can('vouchers.generate'), 403);
+
+        $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities.facilityTemplate', 'property']);
+
+        $facilityTemplates = FacilityTemplate::query()
+            ->where('property_id', $voucher->property_id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $currentFacilityIds = $voucher->facility_template_id
+            ? array_map('intval', explode(',', $voucher->facility_template_id))
+            : [];
+
+        return view('vouchers.edit', [
+            'voucher' => $voucher,
+            'facilityTemplates' => $facilityTemplates,
+            'currentFacilityIds' => $currentFacilityIds,
+        ]);
+    }
+
     public function update(UpdateVoucherRequest $request, GuestVoucher $voucher): RedirectResponse
     {
         abort_unless(auth()->user()?->can('vouchers.generate'), 403);
@@ -158,15 +182,25 @@ class VoucherController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'Voucher updated successfully.');
+        return redirect()
+            ->route('vouchers.index')
+            ->with('success', 'Voucher facilities updated successfully.');
     }
 
     public function redeemForm(): View
     {
         abort_unless(auth()->user()?->can('vouchers.redeem'), 403);
 
+        $outlets = Outlet::query()
+            ->where('is_active', true)
+            ->with(['property', 'facilityTemplate'])
+            ->orderBy('property_id')
+            ->orderBy('name')
+            ->get()
+            ->groupBy(fn ($o) => $o->property->name);
+
         return view('vouchers.redeem', [
-            'outlets' => Outlet::query()->where('is_active', true)->orderBy('name')->get(),
+            'outlets' => $outlets,
         ]);
     }
 
@@ -174,8 +208,16 @@ class VoucherController extends Controller
     {
         abort_unless(auth()->user()?->can('vouchers.redeem'), 403);
 
+        $outlets = Outlet::query()
+            ->where('is_active', true)
+            ->with(['property', 'facilityTemplate'])
+            ->orderBy('property_id')
+            ->orderBy('name')
+            ->get()
+            ->groupBy(fn ($o) => $o->property->name);
+
         return view('vouchers.scan', [
-            'outlets' => Outlet::query()->where('is_active', true)->orderBy('name')->get(),
+            'outlets' => $outlets,
         ]);
     }
 
@@ -231,6 +273,7 @@ class VoucherController extends Controller
 
         // Auto-expire if passed checkout time
         $this->vouchers->checkAndExpireIfNeeded($voucher);
+        $voucher->refresh();
 
         // Check if outlet matches voucher property
         $voucherPropertyId = $voucher->property_id ?? $voucher->booking?->property_id;

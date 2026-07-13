@@ -37,9 +37,13 @@
 
 <!-- Search/Filter Card -->
 <div class="card mb-3">
-    <div class="card-header bg-info text-white">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Search & Filter Vouchers</h5>
+        <button class="btn btn-sm btn-light d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#voucherFilterCollapse" aria-expanded="true">
+            <i class="fas fa-chevron-down"></i>
+        </button>
     </div>
+    <div class="collapse collapse-md-show" id="voucherFilterCollapse">
     <div class="card-body">
         <form method="GET" action="{{ route('vouchers.index') }}" id="filterForm">
             <div class="row g-3">
@@ -116,6 +120,7 @@
                 </div>
             </div>
         </form>
+    </div>
     </div>
 </div>
 
@@ -270,8 +275,11 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-qrcode"></i> View
+                            <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                <i class="fas fa-qrcode"></i>
+                            </a>
+                            <a href="{{ route('vouchers.edit', $voucher) }}" class="btn btn-sm btn-outline-warning" title="Edit Facilities">
+                                <i class="fas fa-edit"></i>
                             </a>
                         </td>
                     </tr>

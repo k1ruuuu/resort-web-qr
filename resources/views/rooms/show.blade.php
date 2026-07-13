@@ -21,6 +21,7 @@
                 </div>
             </div>
             <div class="card-body">
+                <div class="detail-table-responsive">
                 <table class="table table-sm">
                     <tr>
                         <td class="fw-bold">Number:</td>
@@ -73,6 +74,7 @@
                         </td>
                     </tr>
                 </table>
+                </div>
             </div>
         </div>
     </div>

@@ -21,6 +21,7 @@
                 </div>
             </div>
             <div class="card-body">
+                <div class="detail-table-responsive">
                 <table class="table table-sm">
                     <tr>
                         <td class="fw-bold">Name:</td>
@@ -55,6 +56,7 @@
                         <td>{{ $property->bookings_count }}</td>
                     </tr>
                 </table>
+                </div>
             </div>
         </div>
     </div>

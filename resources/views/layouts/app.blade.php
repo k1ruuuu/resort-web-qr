@@ -58,6 +58,12 @@
                             <p>Dashboard</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('docs') }}" class="nav-link @if(request()->routeIs('docs')) active @endif">
+                            <i class="nav-icon fas fa-book"></i>
+                            <p>Dokumentasi</p>
+                        </a>
+                    </li>
                     @can('properties.manage')
                     <li class="nav-item">
                         <a href="{{ route('properties.index') }}" class="nav-link @if(request()->routeIs('properties.*')) active @endif">
@@ -79,6 +85,12 @@
                         <a href="{{ route('facilities.index') }}" class="nav-link @if(request()->routeIs('facilities.*')) active @endif">
                             <i class="nav-icon fas fa-concierge-bell"></i>
                             <p>Facilities</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ route('outlets.index') }}" class="nav-link @if(request()->routeIs('outlets.*')) active @endif">
+                            <i class="nav-icon fas fa-store"></i>
+                            <p>Outlets</p>
                         </a>
                     </li>
                     @endcan

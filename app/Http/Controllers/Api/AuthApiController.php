@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\ApiController;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
-class AuthApiController extends Controller
+class AuthApiController extends ApiController
 {
     public function login(LoginRequest $request): JsonResponse
     {
         $request->authenticate();
+        $user = $request->user();
+        $user->load('roles.permissions');
 
-        return response()->json([
-            'user' => $request->user(),
+        return $this->respond([
+            'user' => $user,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
         ]);
     }
 
@@ -25,6 +28,17 @@ class AuthApiController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Logged out']);
+        return $this->respondMessage('Logged out successfully.');
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->load('roles.permissions');
+
+        return $this->respond([
+            'user' => $user,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
     }
 }

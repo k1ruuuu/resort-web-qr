@@ -21,6 +21,7 @@
                 </div>
             </div>
             <div class="card-body">
+                <div class="detail-table-responsive">
                 <table class="table table-sm">
                     <tr>
                         <td class="fw-bold">First Name:</td>
@@ -59,6 +60,7 @@
                         <td>{{ $guest->document_id ?? '—' }}</td>
                     </tr>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -68,7 +70,7 @@
             <div class="card-header">
                 <h3 class="card-title">Bookings ({{ $guest->bookings->count() }})</h3>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0 table-responsive-stack">
                 <table class="table table-sm mb-0">
                     <thead>
                         <tr>

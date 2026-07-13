@@ -318,6 +318,8 @@ class VoucherService
                     $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
                     $this->cache->invalidateVoucher($voucher);
 
+                    $this->updateVoucherStatusIfFullyRedeemed($voucher);
+
                     return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
                 }
 
@@ -493,7 +495,9 @@ class VoucherService
 
     private function updateVoucherStatusIfFullyRedeemed(GuestVoucher $voucher): void
     {
-        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $timezone = $voucher->property?->timezone
+            ?? $voucher->booking?->property?->timezone
+            ?? 'UTC';
         $today = Carbon::today($timezone);
         $statuses = $voucher->getFacilityStatuses($today);
 

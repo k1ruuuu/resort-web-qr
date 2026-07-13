@@ -7,10 +7,16 @@
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title"><i class="fas fa-history mr-2"></i>Scan Logs</h3>
+                <div class="card-tools">
+                    <button class="btn btn-sm btn-tool d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#scanFilterCollapse" aria-expanded="true">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
             </div>
             <div class="card-body">
+                <div class="collapse collapse-md-show" id="scanFilterCollapse">
                 <form method="GET" action="{{ route('reports.scan-history') }}" class="mb-3">
                     <div class="row g-3">
                         <div class="col-md-3">
@@ -72,6 +78,7 @@
                         </div>
                     @endif
                 </form>
+                </div>
 
                 <div class="mb-3 d-flex justify-content-between align-items-center">
                     <div>
