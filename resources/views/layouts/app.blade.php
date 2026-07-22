@@ -4,30 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('app.name'))</title>
+    <link rel="icon" href="{{ asset('img/chanaya-logo.png') }}" type="image/png">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
-    <style>
-        .nav-sidebar .nav-treeview {
-            transition: all 0.3s ease-in-out;
-        }
-        
-        .nav-sidebar .has-treeview > a .right {
-            transition: transform 0.3s ease-in-out;
-        }
-        
-        .nav-sidebar .has-treeview.menu-open > a .right {
-            transform: rotate(-90deg);
-        }
-        
-        .nav-treeview > .nav-item > .nav-link {
-            padding-left: 3rem;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/theme-forest.css') }}">
 </head>
-<body class="hold-transition sidebar-mini">
+<body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
     <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
         <ul class="navbar-nav">
@@ -47,7 +35,8 @@
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('dashboard') }}" class="brand-link">
-            <span class="brand-text font-weight-light ms-2">{{ config('app.name') }}</span>
+            <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image" style="opacity: .9; max-height: 52px; width: auto;">
+            <span class="brand-text font-weight-light ms-2" style="font-size: 1.1rem;">E-Voucher</span>
         </a>
         <div class="sidebar">
             <nav class="mt-2">
@@ -220,7 +209,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
-<script>
+<script nonce="{{ $cspNonce }}">
 $(document).ready(function() {
     $('[data-widget="treeview"]').Treeview('init');
     

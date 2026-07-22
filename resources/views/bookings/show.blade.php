@@ -202,7 +202,7 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
     const selectAllFacilitiesCheckbox = document.getElementById('selectAllFacilities');
     const facilityCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .facility-checkbox');
 

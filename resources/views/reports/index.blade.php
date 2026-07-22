@@ -371,7 +371,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 function toggleFilterFields() {
     const type = document.getElementById('filter_type').value;
     const groups = {

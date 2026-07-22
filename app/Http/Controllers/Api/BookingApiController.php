@@ -27,7 +27,7 @@ class BookingApiController extends ApiController
             ->latest();
 
         if ($request->filled('search')) {
-            $search = preg_replace('/[^\w\s@.\-+]/', '', trim($request->string('search')));
+            $search = trim($request->string('search'));
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
                     $q->where('booking_code', 'like', "%{$search}%")

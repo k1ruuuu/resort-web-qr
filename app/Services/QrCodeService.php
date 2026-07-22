@@ -43,6 +43,67 @@ class QrCodeService
         ]);
     }
 
+    public function templateResponse(string $payload): Response
+    {
+        $options = new QROptions([
+            'outputType'   => QRCode::OUTPUT_IMAGE_PNG,
+            'outputBase64' => false,
+            'eccLevel'     => QRCode::ECC_L,
+            'scale'        => 12,
+            'margin'       => 2,
+        ]);
+
+        $qrRawData = (new QRCode($options))->render($payload);
+        $qrImage = imagecreatefromstring($qrRawData);
+
+        if ($qrImage === false) {
+            abort(500, 'Failed to generate QR code image.');
+        }
+
+        $templatePath = public_path('Barcode-Chanaya.png');
+
+        if (!file_exists($templatePath)) {
+            imagedestroy($qrImage);
+            abort(404, 'Template Barcode Chanaya.png tidak ditemukan di folder public.');
+        }
+
+        $templateImage = imagecreatefrompng($templatePath);
+
+        if ($templateImage === false) {
+            imagedestroy($qrImage);
+            abort(500, 'Failed to load template image.');
+        }
+
+        $templateWidth = imagesx($templateImage);
+        $templateHeight = imagesy($templateImage);
+        $qrWidth = imagesx($qrImage);
+        $qrHeight = imagesy($qrImage);
+
+        $posX = (int) (($templateWidth - $qrWidth) / 2);
+        $posY = (int) ($templateHeight * 0.48);
+
+        if ($posX < 0 || $posY < 0) {
+            imagedestroy($templateImage);
+            imagedestroy($qrImage);
+            abort(500, 'QR code is too large for the template.');
+        }
+
+        imagecopy($templateImage, $qrImage, $posX, $posY, 0, 0, $qrWidth, $qrHeight);
+
+        ob_start();
+        imagejpeg($templateImage, null, 90);
+        $finalImage = ob_get_clean();
+
+        imagedestroy($templateImage);
+        imagedestroy($qrImage);
+
+        return response($finalImage, 200, [
+            'Content-Type'  => 'image/jpeg',
+            'Cache-Control' => 'public, max-age=3600',
+            'Content-Length' => strlen($finalImage),
+        ]);
+    }
+
     public function payloadForVoucher(GuestVoucher $voucher): string
     {
         return $voucher->secure_token;

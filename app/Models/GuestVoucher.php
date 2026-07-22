@@ -17,6 +17,8 @@ class GuestVoucher extends Model
         'property_id',
         'facility_template_id',
         'pax_limit',
+        'addition',
+        'addition_facility_ids',
         'guest_name',
         'qr_code',
         'secure_token',
@@ -26,12 +28,14 @@ class GuestVoucher extends Model
         'expires_at',
     ];
 
+
     protected function casts(): array
     {
         return [
             'status' => VoucherStatus::class,
             'generated_at' => 'datetime',
             'expires_at' => 'datetime',
+            'addition' => 'integer',
         ];
     }
 
@@ -62,65 +66,16 @@ class GuestVoucher extends Model
 
     public function getFacilityStatuses(?Carbon $date = null): Collection
     {
-        // Handle temporary vouchers
-        if ($this->category === 'temporary' && $this->facility_template_id) {
-            $facilityIds = array_map('intval', explode(',', $this->facility_template_id));
-            $timezone = $this->property?->timezone ?? 'UTC';
-            $date ??= Carbon::today($timezone);
-            $dateString = $date->toDateString();
-            
-            $facilities = \App\Models\FacilityTemplate::query()
-                ->whereIn('id', $facilityIds)
-                ->where('is_active', true)
-                ->get();
-            
-            $redemptions = RedemptionLog::query()
-                ->where('guest_voucher_id', $this->id)
-                ->where('date', $dateString)
-                ->selectRaw('facility_template_id, SUM(pax_used) as total_used')
-                ->groupBy('facility_template_id')
-                ->pluck('total_used', 'facility_template_id');
-            
-            $paxLimit = $this->pax_limit ?? 1;
-            
-            return $facilities->map(function ($facility) use ($redemptions, $paxLimit) {
-                $used = (int) ($redemptions[$facility->id] ?? 0);
-                $remaining = max(0, $paxLimit - $used);
-                
-                return (object) [
-                    'facility_template_id' => $facility->id,
-                    'name' => $facility->name,
-                    'code' => $facility->code,
-                    'is_available' => $remaining > 0,
-                    'is_one_time' => false,
-                    'quota_total' => $paxLimit,
-                    'quota_used' => $used,
-                    'quota_remaining' => $remaining,
-                    'start_date' => Carbon::today($this->property?->timezone ?? 'UTC'),
-                    'end_date' => $this->expires_at ? Carbon::parse($this->expires_at) : Carbon::today($this->property?->timezone ?? 'UTC'),
-                ];
-            });
-        }
-        
-        // Handle standard booking vouchers
-        if (!$this->booking) {
-            return collect();
-        }
-
-        $this->loadMissing(['booking.bookingFacilities.facilityTemplate', 'booking.property']);
-        
-        $timezone = $this->booking->property->timezone ?? 'UTC';
+        $timezone = $this->property?->timezone ?? $this->booking?->property?->timezone ?? 'UTC';
         $date ??= Carbon::today($timezone);
         $dateString = $date->toDateString();
-
-        $booking = $this->booking;
-        $totalQuota = (int) ($this->pax_limit ?? ($booking->total_pax + $booking->extra_beds));
-
-        // NOTE: facility_template_id is used for redemption validation, NOT for display filtering
-        // We always show ALL facilities from the booking on the public page
-        // The restriction only applies during actual redemption in VoucherService
-
-        $bookingFacilities = $booking->bookingFacilities;
+        $addition = $this->addition ?? 0;
+        $additionFacilityIds = $this->addition_facility_ids
+            ? array_map('intval', explode(',', $this->addition_facility_ids))
+            : [];
+        $allowedFacilityIds = $this->facility_template_id
+            ? array_map('intval', explode(',', $this->facility_template_id))
+            : [];
 
         $redemptions = RedemptionLog::query()
             ->where('guest_voucher_id', $this->id)
@@ -129,8 +84,56 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('total_used', 'facility_template_id');
 
+        // Handle temporary vouchers
+        if ($this->category === 'temporary' && $allowedFacilityIds) {
+            $facilities = \App\Models\FacilityTemplate::query()
+                ->whereIn('id', $allowedFacilityIds)
+                ->where('is_active', true)
+                ->get();
+
+            $basePax = $this->pax_limit ?? 1;
+
+            return $facilities->map(function ($facility) use ($redemptions, $basePax, $addition, $additionFacilityIds) {
+                $quota = $basePax + (in_array($facility->id, $additionFacilityIds) ? $addition : 0);
+                $used = (int) ($redemptions[$facility->id] ?? 0);
+                $remaining = max(0, $quota - $used);
+
+                return (object) [
+                    'facility_template_id' => $facility->id,
+                    'name' => $facility->name,
+                    'code' => $facility->code,
+                    'is_available' => $remaining > 0,
+                    'is_one_time' => false,
+                    'quota_total' => $quota,
+                    'quota_used' => $used,
+                    'quota_remaining' => $remaining,
+                    'start_date' => Carbon::today($this->property?->timezone ?? 'UTC'),
+                    'end_date' => $this->expires_at ? Carbon::parse($this->expires_at) : Carbon::today($this->property?->timezone ?? 'UTC'),
+                ];
+            });
+        }
+
+        // Handle standard booking vouchers
+        if (!$this->booking) {
+            return collect();
+        }
+
+        $this->loadMissing(['booking.bookingFacilities.facilityTemplate', 'booking.property']);
+
+        $booking = $this->booking;
+        $baseQuota = (int) ($booking->total_pax + $booking->extra_beds);
+
+        $bookingFacilities = $booking->bookingFacilities;
+
+        // Filter by voucher's granted facility IDs so removed facilities don't show
+        if ($allowedFacilityIds) {
+            $bookingFacilities = $bookingFacilities->filter(fn($bf) =>
+                in_array($bf->facility_template_id, $allowedFacilityIds)
+            );
+        }
+
         // Get redemption dates for one-time facilities (to track if already used)
-        $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED']; // Welcome Snack, Dream Journaling, Animal Feeding
+        $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
         $oneTimeRedemptions = RedemptionLog::query()
             ->where('guest_voucher_id', $this->id)
             ->whereHas('facilityTemplate', function ($q) use ($oneTimeFacilityCodes) {
@@ -140,22 +143,19 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('first_redeemed_date', 'facility_template_id');
 
-        return $bookingFacilities->map(function ($bf) use ($dateString, $totalQuota, $redemptions, $oneTimeRedemptions, $timezone) {
+        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $redemptions, $oneTimeRedemptions, $oneTimeFacilityCodes) {
             $start = $bf->start_date->format('Y-m-d');
             $end = $bf->end_date->format('Y-m-d');
             $facilityCode = $bf->facilityTemplate->code;
-            $facilityQuota = (int) ($bf->quota_total ?? $totalQuota);
-            
-            // Check if this is a one-time facility
-            $isOneTimeFacility = in_array($facilityCode, ['SNACK', 'JOURNAL', 'FEED']);
-            
+            $facilityQuota = (int) (($bf->quota_total ?? $baseQuota) + (in_array($bf->facility_template_id, $additionFacilityIds) ? $addition : 0));
+
+            $isOneTimeFacility = in_array($facilityCode, $oneTimeFacilityCodes);
+
             if ($isOneTimeFacility) {
-                // One-time facilities: only available on first day (check-in date) and only if not redeemed
                 $isAvailable = ($dateString === $start) && !isset($oneTimeRedemptions[$bf->facility_template_id]);
                 $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
                 $remaining = $isAvailable ? max(0, $facilityQuota - $used) : 0;
             } else {
-                // Daily facilities: available every day within the date range, quota resets daily
                 $isAvailable = ($dateString >= $start && $dateString <= $end);
                 $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
                 $remaining = $isAvailable ? max(0, $facilityQuota - $used) : 0;

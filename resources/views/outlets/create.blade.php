@@ -21,16 +21,26 @@
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Facility</label>
-                    <select name="facility_template_id" class="form-select @error('facility_template_id') is-invalid @enderror" required>
-                        <option value="">Select Facility...</option>
-                        @foreach($facilityTemplates as $template)
-                            <option value="{{ $template->id }}" {{ old('facility_template_id') == $template->id ? 'selected' : '' }}>
-                                {{ $template->name }} ({{ $template->code }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('facility_template_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <label class="form-label">Facilities <small class="text-muted">(select one or more)</small></label>
+                    <div class="border rounded p-3 @error('facility_template_ids') border-danger @enderror" style="max-height: 200px; overflow-y: auto;">
+                        @forelse($facilityTemplates as $template)
+                            <div class="form-check">
+                                <input type="checkbox"
+                                       name="facility_template_ids[]"
+                                       value="{{ $template->id }}"
+                                       class="form-check-input"
+                                       id="ft-{{ $template->id }}"
+                                       {{ in_array($template->id, old('facility_template_ids', [])) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="ft-{{ $template->id }}">
+                                    {{ $template->name }} <code>({{ $template->code }})</code>
+                                </label>
+                            </div>
+                        @empty
+                            <p class="text-muted mb-0">No active facilities available.</p>
+                        @endforelse
+                    </div>
+                    @error('facility_template_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    @error('facility_template_ids.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="col-md-6">

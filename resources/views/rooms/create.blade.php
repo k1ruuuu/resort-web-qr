@@ -106,7 +106,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce }}">
 function loadRoomTypes() {
     const propertyId = document.querySelector('select[name="property_id"]').value;
     if (!propertyId) return;

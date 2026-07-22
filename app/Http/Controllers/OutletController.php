@@ -22,7 +22,7 @@ class OutletController extends Controller
         $this->authorizePermission('facilities.manage');
 
         $outlets = Outlet::query()
-            ->with(['property', 'facilityTemplate'])
+            ->with(['property', 'facilityTemplates'])
             ->orderBy('name')
             ->paginate(20);
 
@@ -54,6 +54,7 @@ class OutletController extends Controller
 
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
         $facilityTemplates = FacilityTemplate::query()->where('is_active', true)->orderBy('name')->get();
+        $outlet->load('facilityTemplates');
 
         return view('outlets.edit', compact('outlet', 'properties', 'facilityTemplates'));
     }

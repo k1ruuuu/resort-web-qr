@@ -457,13 +457,15 @@ class AttackDetectionMiddleware
             'status' => 403,
         ];
 
+        $e = 'htmlspecialchars';
+
         $html = <<<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{$page['title']}</title>
+    <title>{$e($page['title'])}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -496,7 +498,7 @@ class AttackDetectionMiddleware
             50% { transform: scale(1.1); }
         }
         h1 {
-            color: {$page['color']};
+            color: {$e($page['color'])};
             font-size: 20px;
             font-weight: 700;
             margin-bottom: 12px;
@@ -549,7 +551,7 @@ class AttackDetectionMiddleware
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: {$page['color']};
+            background: {$e($page['color'])};
             animation: bounce 1.4s infinite;
         }
         .dot:nth-child(2) { animation-delay: 0.2s; }
@@ -568,16 +570,16 @@ class AttackDetectionMiddleware
             <div class="dot"></div>
             <div class="dot"></div>
         </div>
-        <h1>{$page['title']}</h1>
-        <p class="message">{$page['message']}</p>
+        <h1>{$e($page['title'])}</h1>
+        <p class="message">{$e($page['message'])}</p>
         <div class="info-box">
             <div class="info-row">
                 <span class="info-label">IP Address</span>
-                <span class="info-value">{$clientIP}</span>
+                <span class="info-value">{$e($clientIP)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Attack Type</span>
-                <span class="info-value" style="color:{$page['color']}">{$attackType}</span>
+                <span class="info-value" style="color:{$e($page['color'])}">{$e($attackType)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Time</span>
@@ -591,7 +593,7 @@ class AttackDetectionMiddleware
 </html>
 HTML;
 
-        $html = sprintf($html, now()->format('Y-m-d H:i:s'));
+        $html = sprintf($html, $e(now()->format('Y-m-d H:i:s')));
 
         return response($html, $page['status'])->header('Content-Type', 'text/html');
     }

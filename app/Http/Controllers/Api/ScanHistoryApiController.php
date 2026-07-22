@@ -18,12 +18,9 @@ class ScanHistoryApiController extends ApiController
             ->latest('scanned_at');
 
         if ($request->filled('search')) {
-            $search = preg_replace('/[^\w\s@.\-+]/', '', trim($request->string('search')));
+            $search = trim($request->string('search'));
             if (strlen($search) > 0) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('qr_code', 'like', "%{$search}%")
-                        ->orWhereHas('guestVoucher', fn($q) => $q->where('guest_name', 'like', "%{$search}%"));
-                });
+                $query->whereHas('guestVoucher', fn($q) => $q->where('guest_name', 'like', "%{$search}%"));
             }
         }
 

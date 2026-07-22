@@ -97,7 +97,14 @@ class VoucherService
 
     public function updateVoucher(GuestVoucher $voucher, array $data): GuestVoucher
     {
-        $facilityTemplateIds = array_filter(array_map('intval', (array) ($data['facility_template_ids'] ?? [])));
+        $facilityTemplateIds = [];
+        if (isset($data['facility_status']) && is_array($data['facility_status'])) {
+            foreach ($data['facility_status'] as $id => $status) {
+                if ($status === 'granted') {
+                    $facilityTemplateIds[] = (int) $id;
+                }
+            }
+        }
         if (empty($facilityTemplateIds)) {
             throw new VoucherException('At least one facility must be selected for the voucher.', 422);
         }
@@ -112,19 +119,26 @@ class VoucherService
             throw new VoucherException('One or more selected facilities are invalid for this voucher.', 422);
         }
 
-        $paxLimit = isset($data['pax_limit'])
-            ? max(1, (int) $data['pax_limit'])
-            : ($voucher->pax_limit ?: 1);
+        $addition = isset($data['addition'])
+            ? max(0, (int) $data['addition'])
+            : ($voucher->addition ?? 0);
+
+        $additionFacilityIds = [];
+        if ($addition > 0 && !empty($data['addition_facility_ids'])) {
+            $additionFacilityIds = array_map('intval', (array) $data['addition_facility_ids']);
+        }
+
         $lock = $this->locks->lockVoucherGeneration($voucher->id, 15);
         if (!$lock) {
             throw new VoucherException('Another voucher update is in progress. Please wait.', 409);
         }
 
         try {
-            return DB::transaction(function () use ($voucher, $facilityTemplateIds, $paxLimit) {
+            return DB::transaction(function () use ($voucher, $facilityTemplateIds, $addition, $additionFacilityIds) {
                 $voucher->update([
                     'facility_template_id' => implode(',', $facilityTemplateIds),
-                    'pax_limit' => $paxLimit,
+                    'addition' => $addition,
+                    'addition_facility_ids' => $additionFacilityIds ? implode(',', $additionFacilityIds) : null,
                 ]);
 
                 $this->audit->log('voucher.updated', $voucher, null, $voucher->toArray());
@@ -286,7 +300,11 @@ class VoucherService
                         ->lockForUpdate()
                         ->sum('pax_used');
                     
-                    $paxLimit = $voucher->pax_limit ?? 1;
+                    $additionIds = $voucher->addition_facility_ids
+                        ? array_map('intval', explode(',', $voucher->addition_facility_ids))
+                        : [];
+                    $basePax = $voucher->pax_limit ?? 1;
+                    $paxLimit = $basePax + (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
                     $quotaRemaining = max(0, $paxLimit - $totalUsedToday);
                     
                     if ($quotaRemaining <= 0) {
@@ -365,7 +383,11 @@ class VoucherService
                 
                 // Get booking total quota
                 $booking = $voucher->booking;
-                $totalQuota = $voucher->pax_limit ?? (int) ($booking->total_pax + $booking->extra_beds);
+                $additionIds = $voucher->addition_facility_ids
+                    ? array_map('intval', explode(',', $voucher->addition_facility_ids))
+                    : [];
+                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds
+                    + (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0));
                 
                 if ($voucher->facility_template_id) {
                     $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
@@ -566,8 +588,8 @@ class VoucherService
         $roomCodeClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomCode);
         $roomNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomName);
 
-        // SECURITY FIX: Add random entropy to prevent QR code enumeration
-        $randomPart = Str::random(6);
+        // Random entropy to prevent QR code enumeration
+        $randomPart = Str::random(16);
         $baseQrCode = "{$guestNameClean}+{$roomCodeClean}+{$randomPart}+{$date}";
 
         $qrCode = $baseQrCode;

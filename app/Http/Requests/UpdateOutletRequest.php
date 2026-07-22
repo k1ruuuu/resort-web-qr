@@ -16,7 +16,8 @@ class UpdateOutletRequest extends FormRequest
     {
         return [
             'property_id' => ['required', 'exists:properties,id'],
-            'facility_template_id' => ['required', 'exists:facility_templates,id'],
+            'facility_template_ids' => ['required', 'array', 'min:1'],
+            'facility_template_ids.*' => ['integer', 'exists:facility_templates,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => [
                 'required',

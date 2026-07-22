@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Outlet extends Model
 {
     protected $fillable = [
         'property_id',
-        'facility_template_id',
         'name',
         'code',
         'is_active',
@@ -27,8 +27,9 @@ class Outlet extends Model
         return $this->belongsTo(Property::class);
     }
 
-    public function facilityTemplate(): BelongsTo
+    public function facilityTemplates(): BelongsToMany
     {
-        return $this->belongsTo(FacilityTemplate::class);
+        return $this->belongsToMany(FacilityTemplate::class)
+            ->withTimestamps();
     }
 }

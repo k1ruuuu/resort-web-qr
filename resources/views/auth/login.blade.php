@@ -7,7 +7,12 @@
     <div class="col-md-5">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="h4 mb-3">{{ config('app.name') }}</h1>
+                <div class="text-center mb-3">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:64px;height:64px;background:#1b4332;">
+                        <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya Logo" height="36">
+                    </div>
+                </div>
+                <h1 class="h4 mb-3 text-center">{{ config('app.name') }}</h1>
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
                     <div class="mb-3">

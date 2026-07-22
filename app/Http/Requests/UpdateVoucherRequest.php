@@ -14,9 +14,11 @@ class UpdateVoucherRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'facility_template_ids' => ['nullable', 'array'],
-            'facility_template_ids.*' => ['required', 'exists:facility_templates,id'],
-            'pax_limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'facility_status' => ['nullable', 'array'],
+            'facility_status.*' => ['required', 'string', 'in:granted,not_granted'],
+            'addition' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'addition_facility_ids' => ['nullable', 'array'],
+            'addition_facility_ids.*' => ['required', 'integer', 'exists:facility_templates,id'],
         ];
     }
 }

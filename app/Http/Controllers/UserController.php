@@ -20,10 +20,21 @@ class UserController extends Controller
     {
         $this->authorizePermission('users.manage');
 
-        $users = User::query()
+        $query = User::query()
             ->with('roles')
-            ->orderBy('name')
-            ->paginate(20);
+            ->orderBy('name');
+
+        if (request()->filled('search')) {
+            $search = trim(request('search'));
+            if (strlen($search) > 0) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+        }
+
+        $users = $query->paginate(20)->withQueryString();
 
         return view('users.index', compact('users'));
     }

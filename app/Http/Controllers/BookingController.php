@@ -28,12 +28,8 @@ class BookingController extends Controller
             ->with(['guest', 'property', 'room'])
             ->latest();
 
-        // Search filter with SQL injection protection
         if (request()->filled('search')) {
-            $search = request('search');
-            // SECURITY FIX: Sanitize search input to prevent SQL injection
-            $search = preg_replace('/[^\w\s@.\-+]/', '', $search);
-            $search = trim($search);
+            $search = trim(request('search'));
             
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {

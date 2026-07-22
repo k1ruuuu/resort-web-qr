@@ -237,7 +237,7 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 function saveWhatsAppToggle(checkbox) {
     const isEnabled = checkbox.checked;
     const spinner = document.getElementById('toggleSpinner');

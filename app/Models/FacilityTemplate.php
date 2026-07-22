@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FacilityTemplate extends Model
@@ -34,8 +35,9 @@ class FacilityTemplate extends Model
         return $this->hasMany(BookingFacility::class);
     }
 
-    public function outlets(): HasMany
+    public function outlets(): BelongsToMany
     {
-        return $this->hasMany(Outlet::class);
+        return $this->belongsToMany(Outlet::class)
+            ->withTimestamps();
     }
 }

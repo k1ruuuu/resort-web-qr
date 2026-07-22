@@ -137,10 +137,11 @@ class DemoDataSeeder extends Seeder
                 ['name' => $facility['name'], 'is_active' => true, 'sort_order' => $facility['order']]
             );
 
-            Outlet::query()->firstOrCreate(
+            $outlet = Outlet::query()->firstOrCreate(
                 ['property_id' => $property->id, 'code' => $facility['code'].'-OUT'],
-                ['facility_template_id' => $template->id, 'name' => $facility['name'].' Counter', 'is_active' => true]
+                ['name' => $facility['name'].' Counter', 'is_active' => true]
             );
+            $outlet->facilityTemplates()->syncWithoutDetaching([$template->id]);
         }
 
         $this->seedSampleBookings($property);
@@ -204,8 +205,8 @@ class DemoDataSeeder extends Seeder
 
                 $breakfast = FacilityTemplate::where('code', 'BREAKFAST')->first();
                 $tea = FacilityTemplate::where('code', 'TEA')->first();
-                $outletBreakfast = Outlet::where('facility_template_id', $breakfast->id)->first();
-                $outletTea = Outlet::where('facility_template_id', $tea->id)->first();
+                $outletBreakfast = $breakfast->outlets()->first();
+                $outletTea = $tea->outlets()->first();
                 $adminUser = \App\Models\User::first();
 
                 if ($breakfast && $outletBreakfast && $adminUser) {

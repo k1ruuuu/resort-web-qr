@@ -18,10 +18,9 @@ class QrScanLogController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('qr_code', 'like', "%{$search}%")
-                    ->orWhereHas('guestVoucher.guest', function ($q) use ($search) {
-                        $q->where('full_name', 'like', "%{$search}%");
-                    });
+                $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -62,10 +61,9 @@ class QrScanLogController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('qr_code', 'like', "%{$search}%")
-                    ->orWhereHas('guestVoucher.guest', function ($q) use ($search) {
-                        $q->where('full_name', 'like', "%{$search}%");
-                    });
+                $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%");
+                });
             });
         }
 

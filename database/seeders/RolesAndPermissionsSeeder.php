@@ -28,6 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'facilities.manage',
             'delivery_settings.manage',
             'voucher_settings.manage',
+            'vouchers.edit',
             'vouchers.resend',
             'delivery_logs.view',
             'reports.export',

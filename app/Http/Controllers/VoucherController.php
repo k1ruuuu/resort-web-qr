@@ -38,12 +38,8 @@ class VoucherController extends Controller
             ->with(['booking.guest', 'booking.room', 'property'])
             ->latest('generated_at');
 
-        // Search filter with SQL injection protection
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            // SECURITY FIX: Sanitize search input to prevent SQL injection
-            $search = preg_replace('/[^\w\s@.\-+]/', '', $search);
-            $search = trim($search);
+            $search = trim($request->input('search'));
             
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
@@ -130,7 +126,7 @@ class VoucherController extends Controller
 
     public function show(GuestVoucher $voucher): View
     {
-        abort_unless(auth()->user()?->can('vouchers.view'), 403);
+        $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
         $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities']);
 
@@ -150,7 +146,7 @@ class VoucherController extends Controller
 
     public function edit(GuestVoucher $voucher): View
     {
-        abort_unless(auth()->user()?->can('vouchers.generate'), 403);
+        $this->authorizeVoucherAccess($voucher, 'vouchers.edit');
 
         $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities.facilityTemplate', 'property']);
 
@@ -174,7 +170,7 @@ class VoucherController extends Controller
 
     public function update(UpdateVoucherRequest $request, GuestVoucher $voucher): RedirectResponse
     {
-        abort_unless(auth()->user()?->can('vouchers.generate'), 403);
+        $this->authorizeVoucherAccess($voucher, 'vouchers.edit');
 
         try {
             $updated = $this->vouchers->updateVoucher($voucher, $request->validated());
@@ -193,7 +189,7 @@ class VoucherController extends Controller
 
         $outlets = Outlet::query()
             ->where('is_active', true)
-            ->with(['property', 'facilityTemplate'])
+            ->with(['property', 'facilityTemplates'])
             ->orderBy('property_id')
             ->orderBy('name')
             ->get()
@@ -210,7 +206,7 @@ class VoucherController extends Controller
 
         $outlets = Outlet::query()
             ->where('is_active', true)
-            ->with(['property', 'facilityTemplate'])
+            ->with(['property', 'facilityTemplates'])
             ->orderBy('property_id')
             ->orderBy('name')
             ->get()
@@ -359,7 +355,7 @@ class VoucherController extends Controller
                     'booking_code' => null,
                     'check_in' => null,
                     'check_out' => null,
-                    'total_pax' => 1,
+                    'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
                     'facilities' => $facilityStatuses,
                     'history' => $history,
                 ]
@@ -434,7 +430,7 @@ class VoucherController extends Controller
                 'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
                 'check_in' => $voucher->booking->check_in->format('Y-m-d'),
                 'check_out' => $voucher->booking->check_out->format('Y-m-d'),
-                'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds,
+                'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
                 'facilities' => $facilityStatuses,
                 'history' => $history,
             ]
@@ -443,15 +439,18 @@ class VoucherController extends Controller
 
     public function processScannedCode(RedeemVoucherRequest $request): JsonResponse
     {
-        $outlet = Outlet::query()->with('facilityTemplate')->findOrFail($request->validated('outlet_id'));
+        $outlet = Outlet::query()->with('facilityTemplates')->findOrFail($request->validated('outlet_id'));
 
-        // Use facility from request if provided, otherwise use outlet's facility
-        $facilityTemplateId = $request->validated('facility_template_id') ?? $outlet->facility_template_id;
+        $facilityTemplateId = $request->validated('facility_template_id');
+        if (!$facilityTemplateId) {
+            $facilities = $outlet->facilityTemplates;
+            $facilityTemplateId = $facilities->count() === 1 ? $facilities->first()->id : null;
+        }
 
         if (!$facilityTemplateId) {
             return response()->json([
                 'success' => false,
-                'message' => 'This outlet is not configured with a facility. Please contact administrator.',
+                'message' => 'Please select a facility for this outlet.',
             ], 422);
         }
 
@@ -486,13 +485,16 @@ class VoucherController extends Controller
 
     public function redeem(RedeemVoucherRequest $request): RedirectResponse|JsonResponse
     {
-        $outlet = Outlet::query()->with('facilityTemplate')->findOrFail($request->validated('outlet_id'));
+        $outlet = Outlet::query()->with('facilityTemplates')->findOrFail($request->validated('outlet_id'));
 
-        // Use facility from request if provided, otherwise use outlet's facility
-        $facilityTemplateId = $request->validated('facility_template_id') ?? $outlet->facility_template_id;
+        $facilityTemplateId = $request->validated('facility_template_id');
+        if (!$facilityTemplateId) {
+            $facilities = $outlet->facilityTemplates;
+            $facilityTemplateId = $facilities->count() === 1 ? $facilities->first()->id : null;
+        }
 
         if (!$facilityTemplateId) {
-            $errorMessage = 'This outlet is not configured with a facility. Please contact administrator.';
+            $errorMessage = 'Please select a facility for this outlet.';
             
             if ($request->expectsJson()) {
                 return response()->json(['message' => $errorMessage], 422);
@@ -540,7 +542,7 @@ class VoucherController extends Controller
 
     public function qrImage(GuestVoucher $voucher): Response
     {
-        abort_unless(auth()->user()?->can('vouchers.view'), 403);
+        $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
         return $this->qr->svgResponse($this->qr->payloadForVoucher($voucher));
     }
@@ -549,7 +551,21 @@ class VoucherController extends Controller
     {
         $voucher = $this->findByPublicToken($token);
 
-        return $this->qr->svgResponse($this->qr->payloadForVoucher($voucher));
+        return $this->qr->templateResponse($this->qr->payloadForVoucher($voucher));
+    }
+
+    private function authorizeVoucherAccess(GuestVoucher $voucher, string $permission): void
+    {
+        $user = auth()->user();
+        abort_unless($user?->can($permission), 403);
+
+        if (!$user->hasRole('super-admin') && $voucher->property_id) {
+            $allowed = $user->properties()
+                ->where('property_id', $voucher->property_id)
+                ->exists();
+
+            abort_unless($allowed, 403);
+        }
     }
 
     private function findByPublicToken(string $token): GuestVoucher

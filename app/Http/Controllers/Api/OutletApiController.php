@@ -14,7 +14,7 @@ class OutletApiController extends ApiController
         $this->authorizePermission('facilities.manage');
 
         $outlets = Outlet::query()
-            ->with(['property', 'facilityTemplate'])
+            ->with(['property', 'facilityTemplates'])
             ->orderBy('name')
             ->paginate(request()->integer('per_page', 20));
 
@@ -25,7 +25,7 @@ class OutletApiController extends ApiController
     {
         $this->authorizePermission('facilities.manage');
 
-        $outlet->load(['property', 'facilityTemplate']);
+        $outlet->load(['property', 'facilityTemplates']);
 
         return $this->respond($outlet);
     }
@@ -36,11 +36,18 @@ class OutletApiController extends ApiController
 
         $outlet = Outlet::query()->create($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
-            'facility_template_id' => ['required', 'exists:facility_templates,id'],
+            'facility_template_ids' => ['required', 'array', 'min:1'],
+            'facility_template_ids.*' => ['integer', 'exists:facility_templates,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50'],
             'is_active' => ['boolean'],
         ]));
+
+        if (!empty($request->facility_template_ids)) {
+            $outlet->facilityTemplates()->sync($request->facility_template_ids);
+        }
+
+        $outlet->load('facilityTemplates');
 
         return $this->respondCreated($outlet);
     }
@@ -51,19 +58,25 @@ class OutletApiController extends ApiController
 
         $outlet->update($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
-            'facility_template_id' => ['required', 'exists:facility_templates,id'],
+            'facility_template_ids' => ['required', 'array', 'min:1'],
+            'facility_template_ids.*' => ['integer', 'exists:facility_templates,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:50'],
             'is_active' => ['boolean'],
         ]));
 
-        return $this->respond($outlet);
+        if ($request->has('facility_template_ids')) {
+            $outlet->facilityTemplates()->sync($request->facility_template_ids);
+        }
+
+        return $this->respond($outlet->load('facilityTemplates'));
     }
 
     public function destroy(Outlet $outlet): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
 
+        $outlet->facilityTemplates()->detach();
         $outlet->delete();
 
         return $this->respondMessage('Outlet deleted successfully.');

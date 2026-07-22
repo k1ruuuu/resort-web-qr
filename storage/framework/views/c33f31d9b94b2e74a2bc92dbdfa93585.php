@@ -7,7 +7,12 @@
     <div class="col-md-5">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="h4 mb-3"><?php echo e(config('app.name')); ?></h1>
+                <div class="text-center mb-3">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:64px;height:64px;background:#1b4332;">
+                        <img src="<?php echo e(asset('img/chanaya-logo.png')); ?>" alt="Chanaya Logo" height="36">
+                    </div>
+                </div>
+                <h1 class="h4 mb-3 text-center"><?php echo e(config('app.name')); ?></h1>
                 <form method="POST" action="<?php echo e(route('login')); ?>">
                     <?php echo csrf_field(); ?>
                     <div class="mb-3">
@@ -60,4 +65,4 @@ unset($__errorArgs, $__bag); ?>
 </div>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('layouts.guest', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /mnt/c/Users/thinkpad/Documents/Pawbxj/resort-web-qr/resources/views/auth/login.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('layouts.guest', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\thinkpad\Documents\Pawbxj\resort-web-qr\resources\views/auth/login.blade.php ENDPATH**/ ?>

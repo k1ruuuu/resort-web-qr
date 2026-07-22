@@ -129,7 +129,7 @@ class RedisCacheService
     public function cacheOutlet(Outlet $outlet): void
     {
         $key = "outlet:data:{$outlet->id}";
-        Cache::put($key, $outlet->load('facilityTemplate'), self::TTL_LONG);
+        Cache::put($key, $outlet->load('facilityTemplates'), self::TTL_LONG);
     }
 
     /**
@@ -141,7 +141,7 @@ class RedisCacheService
             "outlet:data:{$outletId}",
             self::TTL_LONG,
             function () use ($outletId) {
-                return Outlet::query()->with('facilityTemplate')->find($outletId);
+                return Outlet::query()->with('facilityTemplates')->find($outletId);
             }
         );
     }
@@ -153,7 +153,7 @@ class RedisCacheService
     {
         $outlets = Outlet::query()
             ->where('is_active', true)
-            ->with('facilityTemplate')
+            ->with('facilityTemplates')
             ->orderBy('name')
             ->get();
         
@@ -171,7 +171,7 @@ class RedisCacheService
             function () {
                 return Outlet::query()
                     ->where('is_active', true)
-                    ->with('facilityTemplate')
+                    ->with('facilityTemplates')
                     ->orderBy('name')
                     ->get();
             }
@@ -183,14 +183,25 @@ class RedisCacheService
      */
     public function trackScan(string $qrCode, string $ipAddress): bool
     {
-        $key = "scan:track:{$qrCode}:{$ipAddress}";
-        $attempts = (int) Cache::get($key, 0);
+        // Per-IP global rate limit (100 scans/min across all codes)
+        $ipKey = "scan:ip:{$ipAddress}";
+        $ipAttempts = (int) Cache::get($ipKey, 0);
 
-        if ($attempts >= 5) { // Max 5 scans per minute per IP
+        if ($ipAttempts >= 100) {
             return false;
         }
 
-        Cache::put($key, $attempts + 1, 60);
+        Cache::put($ipKey, $ipAttempts + 1, 60);
+
+        // Per-code + IP rate limit (5 scans/min for the same code)
+        $codeKey = "scan:code:{$qrCode}:{$ipAddress}";
+        $codeAttempts = (int) Cache::get($codeKey, 0);
+
+        if ($codeAttempts >= 5) {
+            return false;
+        }
+
+        Cache::put($codeKey, $codeAttempts + 1, 60);
         return true;
     }
 
@@ -200,10 +211,9 @@ class RedisCacheService
     public function incrementRedemptionCount(int $facilityId, string $date): void
     {
         $key = "analytics:redemptions:{$facilityId}:{$date}";
-        
-        // Increment the counter
-        $currentCount = (int) Cache::get($key, 0);
-        Cache::put($key, $currentCount + 1, self::TTL_DAY);
+
+        Cache::add($key, 0, self::TTL_DAY);
+        Cache::increment($key);
     }
 
     /**

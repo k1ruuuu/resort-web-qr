@@ -16,7 +16,7 @@
                         <th>Name</th>
                         <th>Code</th>
                         <th>Property</th>
-                        <th class="table-col-hide-sm">Facility</th>
+                        <th class="table-col-hide-sm">Facilities</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -27,7 +27,13 @@
                         <td><strong>{{ $outlet->name }}</strong></td>
                         <td><code class="text-primary font-weight-bold">{{ $outlet->code }}</code></td>
                         <td>{{ $outlet->property->name }}</td>
-                        <td class="table-col-hide-sm">{{ $outlet->facilityTemplate->name }}</td>
+                        <td class="table-col-hide-sm">
+                            @forelse($outlet->facilityTemplates as $ft)
+                                <span class="badge bg-info me-1">{{ $ft->name }}</span>
+                            @empty
+                                <span class="text-muted">—</span>
+                            @endforelse
+                        </td>
                         <td>
                             @if($outlet->is_active)
                                 <span class="badge bg-success">Active</span>

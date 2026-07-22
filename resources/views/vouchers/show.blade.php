@@ -15,10 +15,7 @@
                 <div class="p-3 bg-light rounded border mb-4">
                     <x-qr-code :url="$qrImageUrl" :size="240" class="rounded shadow-sm" />
                     <p class="mt-3 mb-0 small text-muted text-monospace">
-                        QR Text: <code>{{ $voucher->qr_code }}</code>
-                    </p>
-                    <p class="mb-0 small text-muted text-monospace mt-1">
-                        Secure Token: <code>{{ $voucher->secure_token }}</code>
+                        QR Code: <code>{{ substr($voucher->qr_code, 0, 12) }}{{ strlen($voucher->qr_code) > 12 ? '...' : '' }}</code>
                     </p>
                 </div>
 
@@ -35,9 +32,9 @@
                         <b>Total Pax</b> 
                         <span>
                             @if($voucher->booking)
-                                {{ $voucher->booking->total_pax }} (+ {{ $voucher->booking->extra_beds }} Extra Bed) = <strong>{{ $voucher->booking->total_pax + $voucher->booking->extra_beds }} Quota</strong>
+                                {{ $voucher->booking->total_pax }} (+ {{ $voucher->booking->extra_beds }} Extra Bed){{ $voucher->addition ? ' (+' . $voucher->addition . ' Addition)' : '' }} = <strong>{{ $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0) }} Quota</strong>
                             @else
-                                1
+                                {{ ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0) }}
                             @endif
                         </span>
                     </li>

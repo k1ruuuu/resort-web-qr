@@ -5,9 +5,9 @@
 @push('styles')
 <style>
     .facility-checkbox:checked + .btn-outline-primary {
-        background-color: #0d6efd;
+        background-color: #2d6a4f;
         color: white;
-        border-color: #0d6efd;
+        border-color: #2d6a4f;
         font-weight: 600;
     }
     .facility-checkbox + .btn-outline-primary {
@@ -259,7 +259,7 @@
                                 <strong>Expires:</strong> {{ $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i') : 'N/A' }}
                             @endif
                         </td>
-                        <td><code class="text-mono small">{{ $voucher->qr_code }}</code></td>
+                        <td><code class="text-mono small">{{ substr($voucher->qr_code, 0, 12) }}{{ strlen($voucher->qr_code) > 12 ? '...' : '' }}</code></td>
                         <td><code class="text-mono text-muted small">{{ substr($voucher->secure_token, 0, 12) }}...</code></td>
                         <td>
                             @php
@@ -278,9 +278,11 @@
                             <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-primary" title="View">
                                 <i class="fas fa-qrcode"></i>
                             </a>
-                            <a href="{{ route('vouchers.edit', $voucher) }}" class="btn btn-sm btn-outline-warning" title="Edit Facilities">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                            @can('vouchers.edit')
+                                <a href="{{ route('vouchers.edit', $voucher) }}" class="btn btn-sm btn-outline-warning" title="Edit Facilities">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            @endcan
                         </td>
                     </tr>
                 @empty
@@ -303,7 +305,7 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
     // Facility templates grouped by property
     const facilityTemplates = @json($facilityTemplates);
     

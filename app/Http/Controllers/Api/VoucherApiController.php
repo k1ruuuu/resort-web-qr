@@ -35,7 +35,7 @@ class VoucherApiController extends ApiController
             ->latest('generated_at');
 
         if ($request->filled('search')) {
-            $search = preg_replace('/[^\w\s@.\-+]/', '', trim($request->string('search')));
+            $search = trim($request->string('search'));
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
                     $q->where('qr_code', 'like', "%{$search}%")
@@ -76,7 +76,7 @@ class VoucherApiController extends ApiController
 
     public function show(GuestVoucher $voucher): JsonResponse
     {
-        $this->authorizePermission('vouchers.view');
+        $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
         $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities', 'property']);
 
@@ -105,7 +105,7 @@ class VoucherApiController extends ApiController
 
     public function update(UpdateVoucherRequest $request, GuestVoucher $voucher): JsonResponse
     {
-        $this->authorizePermission('vouchers.generate');
+        $this->authorizeVoucherAccess($voucher, 'vouchers.generate');
 
         try {
             $this->vouchers->updateVoucher($voucher, $request->validated());
@@ -194,7 +194,7 @@ class VoucherApiController extends ApiController
                 'booking_code' => null,
                 'check_in' => null,
                 'check_out' => null,
-                'total_pax' => 1,
+                'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
                 'facilities' => $facilityStatuses,
                 'history' => $history,
             ]);
@@ -253,7 +253,7 @@ class VoucherApiController extends ApiController
             'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
             'check_in' => $voucher->booking->check_in->format('Y-m-d'),
             'check_out' => $voucher->booking->check_out->format('Y-m-d'),
-            'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds,
+            'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
             'facilities' => $facilityStatuses,
             'history' => $history,
         ]);
@@ -263,12 +263,16 @@ class VoucherApiController extends ApiController
     {
         $this->authorizePermission('vouchers.redeem');
 
-        $outlet = Outlet::query()->with('facilityTemplate')->findOrFail($request->validated('outlet_id'));
+        $outlet = Outlet::query()->with('facilityTemplates')->findOrFail($request->validated('outlet_id'));
 
-        $facilityTemplateId = $request->validated('facility_template_id') ?? $outlet->facility_template_id;
+        $facilityTemplateId = $request->validated('facility_template_id');
+        if (!$facilityTemplateId) {
+            $facilities = $outlet->facilityTemplates;
+            $facilityTemplateId = $facilities->count() === 1 ? $facilities->first()->id : null;
+        }
 
         if (!$facilityTemplateId) {
-            return $this->respondError('This outlet is not configured with a facility.', 422);
+            return $this->respondError('Please select a facility for this outlet.', 422);
         }
 
         try {
@@ -324,5 +328,19 @@ class VoucherApiController extends ApiController
             'properties' => $properties,
             'facility_templates' => $facilityTemplates,
         ]);
+    }
+
+    private function authorizeVoucherAccess(GuestVoucher $voucher, string $permission): void
+    {
+        $user = request()->user();
+        abort_unless($user?->can($permission), 403);
+
+        if (!$user->hasRole('super-admin') && $voucher->property_id) {
+            $allowed = $user->properties()
+                ->where('property_id', $voucher->property_id)
+                ->exists();
+
+            abort_unless($allowed, 403);
+        }
     }
 }

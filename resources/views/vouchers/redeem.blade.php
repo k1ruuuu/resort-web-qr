@@ -15,8 +15,8 @@
                             @foreach($outlets as $propertyName => $propertyOutlets)
                             <optgroup label="{{ $propertyName }}">
                                 @foreach($propertyOutlets as $outlet)
-                                <option value="{{ $outlet->id }}" data-facility="{{ $outlet->facilityTemplate->name }}">
-                                    {{ $outlet->name }} ({{ $outlet->facilityTemplate->code }})
+                                <option value="{{ $outlet->id }}" data-facility="{{ $outlet->facilityTemplates->first()?->name }}">
+                                    {{ $outlet->name }} ({{ $outlet->facilityTemplates->first()?->code }})
                                 </option>
                                 @endforeach
                             </optgroup>
@@ -121,9 +121,9 @@
     border-radius: 8px;
 }
 .facility-card.active {
-    border-color: #0d6efd !important;
+    border-color: #2d6a4f !important;
     background-color: #f8f9fa;
-    box-shadow: 0 0.125rem 0.25rem rgba(13, 110, 253, 0.075);
+    box-shadow: 0 0.125rem 0.25rem rgba(45, 106, 79, 0.15);
 }
 .facility-card:hover:not(.disabled) {
     cursor: pointer;
@@ -138,7 +138,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const outletSelect = document.getElementById('outlet-select');
     const qrCodeInput = document.getElementById('qr-code-input');
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
         verifyStayDetails.textContent = `Check-In: ${data.check_in} | Check-Out: ${data.check_out}`;
         verifyRoomLabel.textContent = data.room_name + ` (${data.room_code})`;
         verifyBookingCode.textContent = data.booking_code;
-        verifyTotalPax.textContent = `${data.total_pax} Pax (based on Pax + Extra Bed)`;
+        verifyTotalPax.textContent = `${data.total_pax} Pax (base + addition)`;
         verifyOutletName.textContent = outletOption ? outletOption.textContent + (outletFacility ? ` - ${outletFacility}` : '') : '-';
 
         facilityList.innerHTML = '';
@@ -257,19 +257,28 @@ document.addEventListener('DOMContentLoaded', function() {
             card.dataset.id = facility.facility_template_id;
             card.dataset.remaining = facility.quota_remaining;
 
-            card.innerHTML = `
-                <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-0 font-weight-bold text-dark">${facility.name}</h6>
-                        <small class="text-muted">Quota: ${facility.quota_total} | Used: ${facility.quota_used}</small>
-                    </div>
-                    <div>
-                        <span class="badge bg-${facility.quota_remaining > 0 ? 'success' : 'danger'} px-3 py-2">
-                            ${facility.quota_remaining} Remaining
-                        </span>
-                    </div>
-                </div>
-            `;
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body p-3 d-flex justify-content-between align-items-center';
+
+            const leftDiv = document.createElement('div');
+            const nameEl = document.createElement('h6');
+            nameEl.className = 'mb-0 font-weight-bold text-dark';
+            nameEl.textContent = facility.name;
+            const quotaEl = document.createElement('small');
+            quotaEl.className = 'text-muted';
+            quotaEl.textContent = `Quota: ${facility.quota_total} | Used: ${facility.quota_used}`;
+            leftDiv.appendChild(nameEl);
+            leftDiv.appendChild(quotaEl);
+
+            const rightDiv = document.createElement('div');
+            const badge = document.createElement('span');
+            badge.className = `badge bg-${facility.quota_remaining > 0 ? 'success' : 'danger'} px-3 py-2`;
+            badge.textContent = `${facility.quota_remaining} Remaining`;
+            rightDiv.appendChild(badge);
+
+            cardBody.appendChild(leftDiv);
+            cardBody.appendChild(rightDiv);
+            card.appendChild(cardBody);
 
             if (!isDisabled) {
                 card.addEventListener('click', function() {
@@ -294,13 +303,22 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             data.history.forEach(log => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${log.date} ${log.time}</td>
-                    <td><strong>${log.facility}</strong></td>
-                    <td>${log.pax}</td>
-                    <td>${log.outlet}</td>
-                    <td>${log.staff}</td>
-                `;
+                const appendTd = (content, strong = false) => {
+                    const td = document.createElement('td');
+                    if (strong) {
+                        const strongEl = document.createElement('strong');
+                        strongEl.textContent = content;
+                        td.appendChild(strongEl);
+                    } else {
+                        td.textContent = content;
+                    }
+                    tr.appendChild(td);
+                };
+                appendTd(`${log.date} ${log.time}`);
+                appendTd(log.facility, true);
+                appendTd(log.pax);
+                appendTd(log.outlet);
+                appendTd(log.staff);
                 historyTableBody.appendChild(tr);
             });
         }

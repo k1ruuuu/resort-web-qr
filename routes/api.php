@@ -17,7 +17,7 @@ use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\VoucherApiController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['web'])->group(function () {
+Route::middleware(['web'])->name('api.')->group(function () {
     // Auth (no auth middleware)
     Route::post('/login', [AuthApiController::class, 'login'])->middleware('throttle:5,1');
 

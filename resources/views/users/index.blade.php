@@ -5,12 +5,18 @@
 
 <div class="row mb-3">
     <div class="col-md-6">
-        <div class="input-group">
+        <form action="{{ route('users.index') }}" method="GET" class="input-group">
             <span class="input-group-text bg-white border-end-0">
                 <i class="fas fa-search text-muted"></i>
             </span>
-            <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Search by name or email...">
-        </div>
+            <input type="text" name="search" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Search by name or email..." value="{{ request('search') }}">
+            @if(request()->filled('search'))
+                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary" title="Clear search">
+                    <i class="fas fa-times"></i>
+                </a>
+            @endif
+            <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
+        </form>
     </div>
     <div class="col-md-6 text-end">
         <a href="{{ route('users.create') }}" class="btn btn-primary">
@@ -209,20 +215,19 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 document.getElementById('searchInput').addEventListener('keyup', function() {
     const searchValue = this.value.toLowerCase();
     const tableRows = document.querySelectorAll('#usersTable tbody tr');
-    
     tableRows.forEach(row => {
+        row.style.display = '';
+    });
+    if (searchValue.length < 1) return;
+    tableRows.forEach(row => {
+        if (row.cells.length < 3) return;
         const name = row.cells[1]?.textContent.toLowerCase() || '';
         const email = row.cells[2]?.textContent.toLowerCase() || '';
-        
-        if (name.includes(searchValue) || email.includes(searchValue)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+        row.style.display = (name.includes(searchValue) || email.includes(searchValue)) ? '' : 'none';
     });
 });
 

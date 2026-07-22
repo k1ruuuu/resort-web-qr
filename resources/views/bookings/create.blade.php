@@ -89,7 +89,7 @@
 </div>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
     // Handle "Select All" checkbox functionality
     const selectAllCheckbox = document.getElementById('selectAllFacilities');
     

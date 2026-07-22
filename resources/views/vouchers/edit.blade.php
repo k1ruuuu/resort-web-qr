@@ -11,7 +11,7 @@
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        Modify the facilities and pax limit assigned to this voucher.
+                        Modify the facilities and addition assigned to this voucher.
                     </div>
 
                     <div class="row g-3 mb-4">
@@ -55,43 +55,71 @@
                     <hr class="my-4">
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Pax Limit</label>
-                        <p class="form-text text-muted mt-0 mb-2">Maximum number of people allowed per redemption. Leave empty to use booking default.</p>
-                        <input type="number" name="pax_limit" class="form-control @error('pax_limit') is-invalid @enderror"
-                               value="{{ old('pax_limit', $voucher->pax_limit) }}" min="1" max="50" placeholder="Leave empty for default">
-                        @error('pax_limit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <label class="form-label fw-bold">Addition</label>
+                        <p class="form-text text-muted mt-0 mb-2">Extra pax to add on top of the booking's Total Pax. Leave empty for no addition.</p>
+                        <input type="number" name="addition" class="form-control @error('addition') is-invalid @enderror"
+                               value="{{ old('addition', $voucher->addition) }}" min="0" max="50" placeholder="0">
+                        @error('addition')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Facility Access</label>
-                        <p class="form-text text-muted mt-0 mb-2">Select the facilities this voucher can redeem. Uncheck to remove access.</p>
+                        <p class="form-text text-muted mt-0 mb-2">Mark each facility as Granted or Not Granted. Changes take effect on save.</p>
 
                         @if($facilityTemplates->isEmpty())
                             <div class="alert alert-warning">No active facilities available for this property.</div>
                         @else
                             <div class="row g-2">
                                 @foreach($facilityTemplates as $facility)
+                                @php $isGranted = in_array($facility->id, $currentFacilityIds); @endphp
                                 <div class="col-md-6 col-lg-4">
-                                    <div class="form-check">
-                                        <input class="btn-check facility-checkbox"
-                                               type="checkbox"
-                                               name="facility_template_ids[]"
-                                               value="{{ $facility->id }}"
-                                               id="facility_{{ $facility->id }}"
-                                               autocomplete="off"
-                                               {{ in_array($facility->id, $currentFacilityIds) ? 'checked' : '' }}>
-                                        <label class="btn btn-outline-primary btn-sm w-100 text-start" for="facility_{{ $facility->id }}">
-                                            {{ $facility->name }}
-                                            @if(in_array($facility->id, $currentFacilityIds))
-                                                <i class="fas fa-check-circle text-success ms-1"></i>
-                                            @endif
-                                        </label>
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="fw-bold small mb-1">{{ $facility->name }}</div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                   name="facility_status[{{ $facility->id }}]"
+                                                   value="granted"
+                                                   id="facility_{{ $facility->id }}_granted"
+                                                   {{ $isGranted ? 'checked' : '' }}>
+                                            <label class="form-check-label small text-success" for="facility_{{ $facility->id }}_granted">Granted</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                   name="facility_status[{{ $facility->id }}]"
+                                                   value="not_granted"
+                                                   id="facility_{{ $facility->id }}_not_granted"
+                                                   {{ !$isGranted ? 'checked' : '' }}>
+                                            <label class="form-check-label small text-muted" for="facility_{{ $facility->id }}_not_granted">Not Granted</label>
+                                        </div>
                                     </div>
                                 </div>
                                 @endforeach
                             </div>
                         @endif
-                        @error('facility_template_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        @error('facility_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3" id="addition-facility-section" style="display: {{ ($voucher->addition ?? 0) > 0 ? 'block' : 'none' }}">
+                        <label class="form-label fw-bold">Apply Addition To</label>
+                        <p class="form-text text-muted mt-0 mb-2">Select which facilities get the extra pax. Leave all unchecked to apply to none (addition stored but not allocated).</p>
+                        @php $selectedAdditionIds = $voucher->addition_facility_ids ? array_map('intval', explode(',', $voucher->addition_facility_ids)) : []; @endphp
+                        <div class="row g-2">
+                            @foreach($facilityTemplates as $facility)
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="addition_facility_ids[]"
+                                           value="{{ $facility->id }}"
+                                           id="addition_facility_{{ $facility->id }}"
+                                           {{ in_array($facility->id, $selectedAdditionIds) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="addition_facility_{{ $facility->id }}">
+                                        {{ $facility->name }}
+                                    </label>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @error('addition_facility_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mt-4">
@@ -106,3 +134,15 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script nonce="{{ $cspNonce }}">
+    const additionInput = document.querySelector('input[name="addition"]');
+    const additionSection = document.getElementById('addition-facility-section');
+    if (additionInput && additionSection) {
+        additionInput.addEventListener('input', function () {
+            additionSection.style.display = parseInt(this.value) > 0 ? 'block' : 'none';
+        });
+    }
+</script>
+@endpush
