@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-IFS=$'\n\t'
+IFS=$' \t\n'
 
 # =============================================================================
 # resort-web-qr — All-in-One Automated Setup
@@ -216,6 +216,29 @@ if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
     run "$INSTALL_CMD ${MISSING_PKGS[*]}"
 fi
 
+# Enable extensions and verify they're loaded
+if command -v phpenmod &>/dev/null; then
+    info "Enabling PHP extensions..."
+    run "phpenmod -v 8.2 bcmath curl gd intl mbstring mysql sockets xml zip 2>/dev/null || true"
+fi
+
+info "Verifying critical PHP extensions..."
+CRITICAL_EXTS=(curl gd intl mbstring mysql xml zip)
+MISSING_AFTER=()
+for ext in "${CRITICAL_EXTS[@]}"; do
+    if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
+        MISSING_AFTER+=("$ext")
+    fi
+done
+if [[ ${#MISSING_AFTER[@]} -gt 0 ]]; then
+    warn "Still missing after install: ${MISSING_AFTER[*]}"
+    warn "Check PHP error log: php -i 2>/dev/null | grep 'Loaded Configuration File'"
+    if [[ " ${MISSING_AFTER[*]} " =~ " gd " ]]; then
+        warn "The GD extension is required for PhpSpreadsheet. Run manually:"
+        warn "  apt install php8.2-gd && phpenmod gd && systemctl restart php8.2-fpm"
+    fi
+fi
+
 # ===========================================================================
 # 2. php.ini Tuning
 # ===========================================================================
@@ -368,8 +391,22 @@ else
     info "APP_KEY already set."
 fi
 
-# 5f. Composer install
+# 5f. Verify critical PHP extensions for Composer
+info "Checking PHP extensions required by Composer..."
+COMPOSER_REQUIRED=(gd curl mbstring xml zip intl)
+COMPOSER_MISSING=()
+for ext in "${COMPOSER_REQUIRED[@]}"; do
+    if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
+        COMPOSER_MISSING+=("$ext")
+    fi
+done
+if [[ ${#COMPOSER_MISSING[@]} -gt 0 ]]; then
+    die "Required PHP extensions missing: ${COMPOSER_MISSING[*]}. Install them and re-run."
+fi
+
+# 5g. Composer install
 info "Installing PHP dependencies..."
+export COMPOSER_ALLOW_SUPERUSER=1
 if [[ "$PRODUCTION" == "true" ]]; then
     run "composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev"
 else
@@ -377,7 +414,7 @@ else
 fi
 ok "Dependencies installed."
 
-# 5g. Storage link
+# 5h. Storage link
 info "Creating storage symlink..."
 run "php artisan storage:link --force 2>/dev/null || true"
 ok "Storage link created."
