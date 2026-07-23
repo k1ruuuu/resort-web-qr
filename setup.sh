@@ -182,13 +182,38 @@ else
 fi
 
 # Verify extensions are available
-MISSING_EXT=()
-for ext in bcmath ctype curl fileinfo gd intl json mbstring openssl pdo mysqli tokenizer xml zip sockets; do
-    php -m 2>/dev/null | grep -qi "^$ext$" || MISSING_EXT+=("$ext")
+# Map: PHP extension name → package suffix (empty = built-in, no package needed)
+declare -A EXT_MAP=(
+    [bcmath]="bcmath"
+    [ctype]=""
+    [curl]="curl"
+    [fileinfo]="fileinfo"
+    [gd]="gd"
+    [intl]="intl"
+    [json]=""
+    [mbstring]="mbstring"
+    [openssl]=""
+    [pdo]=""
+    [mysqli]="mysql"
+    [tokenizer]=""
+    [xml]="xml"
+    [zip]="zip"
+    [sockets]="sockets"
+)
+MISSING_PKGS=()
+for ext in "${!EXT_MAP[@]}"; do
+    pkg="${EXT_MAP[$ext]}"
+    if [[ -z "$pkg" ]]; then
+        continue  # built-in extension, no package needed
+    fi
+    if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
+        MISSING_PKGS+=("${PHP_PREFIX}-${pkg}")
+    fi
 done
-if [[ ${#MISSING_EXT[@]} -gt 0 ]]; then
-    info "Installing missing PHP extensions: ${MISSING_EXT[*]}"
-    run "$INSTALL_CMD $(printf "${PHP_PREFIX}-%s " "${MISSING_EXT[@]}")"
+
+if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
+    info "Installing missing PHP extensions: ${MISSING_PKGS[*]}"
+    run "$INSTALL_CMD ${MISSING_PKGS[*]}"
 fi
 
 # ===========================================================================
