@@ -324,21 +324,6 @@ else
 fi
 
 # ===========================================================================
-# 4. Composer
-# ===========================================================================
-section "Installing Composer"
-
-if ! command -v composer &>/dev/null; then
-    info "Downloading Composer..."
-    run "php -r 'copy(\"https://getcomposer.org/installer\", \"composer-setup.php\");'"
-    run "php composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer"
-    run "rm -f composer-setup.php"
-    ok "Composer installed globally."
-else
-    info "Composer already installed: $(composer --version 2>/dev/null | head -1)"
-fi
-
-# ===========================================================================
 # 5. Project Setup (directories, .env, key, storage)
 # ===========================================================================
 section "Configuring the application"
