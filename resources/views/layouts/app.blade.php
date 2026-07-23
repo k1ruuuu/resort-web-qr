@@ -145,6 +145,14 @@
                         </a>
                     </li>
                     @endcan
+                    @can('import_logs.view')
+                    <li class="nav-item">
+                        <a href="{{ route('import-logs.index') }}" class="nav-link @if(request()->routeIs('import-logs.*')) active @endif">
+                            <i class="nav-icon fas fa-file-import"></i>
+                            <p>Import Logs</p>
+                        </a>
+                    </li>
+                    @endcan
                     @can('delivery_settings.manage')
                     <li class="nav-item">
                         <a href="{{ route('settings.delivery') }}" class="nav-link @if(request()->routeIs('settings.delivery')) active @endif">

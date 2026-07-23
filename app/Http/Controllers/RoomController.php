@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Property;
+use App\Models\ImportLog;
 use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Area;
@@ -130,17 +131,52 @@ class RoomController extends Controller
                 $message .= ", {$import->getSkipped()} skipped (duplicates or errors)";
             }
 
+            $errors = [];
             if (count($import->getFailures()) > 0) {
                 $message .= ', ' . count($import->getFailures()) . ' failed';
                 session()->flash('import_failures', $import->getFailures());
+                foreach ($import->getFailures() as $failure) {
+                    $errors[] = [
+                        'row' => $failure->row(),
+                        'attribute' => $failure->attribute(),
+                        'errors' => $failure->errors(),
+                        'values' => $failure->values(),
+                    ];
+                }
             }
 
             if (count($import->getErrors()) > 0) {
                 session()->flash('import_errors', $import->getErrors());
+                foreach ($import->getErrors() as $error) {
+                    $errors[] = ['message' => (string) $error];
+                }
             }
+
+            ImportLog::create([
+                'type' => 'rooms',
+                'filename' => $request->file('file')->getClientOriginalName(),
+                'user_id' => auth()->id(),
+                'total_rows' => $import->getImported() + $import->getSkipped() + count($import->getFailures()),
+                'imported' => $import->getImported(),
+                'skipped' => $import->getSkipped(),
+                'failed' => count($import->getFailures()) + count($import->getErrors()),
+                'errors' => !empty($errors) ? $errors : null,
+                'status' => count($import->getErrors()) > 0 ? 'partial' : 'completed',
+            ]);
 
             return redirect()->route('rooms.index')->with('success', $message);
         } catch (\Exception $e) {
+            ImportLog::create([
+                'type' => 'rooms',
+                'filename' => $request->file('file')->getClientOriginalName(),
+                'user_id' => auth()->id(),
+                'total_rows' => 0,
+                'imported' => 0,
+                'skipped' => 0,
+                'failed' => 0,
+                'errors' => [['message' => $e->getMessage()]],
+                'status' => 'failed',
+            ]);
             return back()->with('error', 'Import failed: ' . $e->getMessage());
         }
     }

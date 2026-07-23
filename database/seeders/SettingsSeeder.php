@@ -14,8 +14,8 @@ class SettingsSeeder extends Seeder
             'delivery.scheduled_enabled' => '0',
             'delivery.default_time' => '08:00',
             'delivery.timezone' => 'Asia/Jakarta',
-            'delivery.whatsapp_provider' => 'Fonnte',
-            'delivery.fonnte_token' => 'GpMC1EMdd5nHp9EWboyy',
+            'delivery.whatsapp_provider' => 'Convia',
+            'delivery.convia_api_key' => '',
             'delivery.message_template' => "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_code}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih.",
         ];
 

@@ -165,11 +165,11 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label font-weight-bold">Fonnte API Token</label>
-                                <input type="password" name="fonnte_token" class="form-control @error('fonnte_token') is-invalid @enderror" 
-                                       value="{{ old('fonnte_token', $settings['fonnte_token']) }}" placeholder="Enter Fonnte token...">
-                                <div class="form-text">Leave blank or use mock token for simulated local testing.</div>
-                                @error('fonnte_token')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                <label class="form-label font-weight-bold">Convia API Key</label>
+                                <input type="password" name="convia_api_key" class="form-control @error('convia_api_key') is-invalid @enderror" 
+                                       value="{{ old('convia_api_key', $settings['convia_api_key']) }}" placeholder="Enter Convia API key...">
+                                <div class="form-text">Leave blank or use MOCK_CONVIA_KEY for simulated local testing.</div>
+                                @error('convia_api_key')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
                         </div>
                     </div>

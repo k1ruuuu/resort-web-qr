@@ -32,6 +32,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'vouchers.resend',
             'delivery_logs.view',
             'reports.export',
+            'import_logs.view',
         ];
 
         foreach ($permissions as $permission) {

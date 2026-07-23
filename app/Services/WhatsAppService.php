@@ -8,24 +8,22 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
+    private const API_URL = 'https://api.convia.id/api/v1/public/messages/send';
+
     public function send(string $phone, string $message, ?string $qrUrl): array
     {
-        $token = Setting::get('delivery.fonnte_token');
+        $apiKey = Setting::get('delivery.convia_api_key');
 
-        // Clean phone number - remove all non-numeric except +
         $originalPhone = $phone;
         $phone = preg_replace('/[^0-9+]/', '', $phone);
-        
-        // Normalize phone number format for Fonnte
         $normalizedPhone = $this->normalizePhoneNumber($phone);
-        
+
         Log::info("Phone number normalization", [
             'original' => $originalPhone,
             'cleaned' => $phone,
             'normalized' => $normalizedPhone,
         ]);
 
-        // Check phone number filter mode
         $phoneFilterMode = Setting::get('delivery.phone_filter_mode', 'global');
         if ($phoneFilterMode === 'indonesian_only') {
             if (!$this->isIndonesianNumber($normalizedPhone)) {
@@ -41,13 +39,13 @@ class WhatsAppService
                 ];
             }
         }
-        
+
         Log::info("Phone filter check passed", [
             'mode' => $phoneFilterMode,
             'phone' => $normalizedPhone,
         ]);
 
-        if (empty($token) || $token === 'MOCK_FONNTE_TOKEN_12345') {
+        if (empty($apiKey) || $apiKey === 'MOCK_CONVIA_KEY') {
             Log::info("Simulated WhatsApp send", [
                 'phone' => $normalizedPhone,
                 'message' => $message,
@@ -62,16 +60,21 @@ class WhatsAppService
 
         try {
             $payload = [
-                'target' => $normalizedPhone,
-                'message' => $message,
+                'channel' => 'whatsapp',
+                'phone_number' => $normalizedPhone,
             ];
 
             if ($qrUrl) {
-                $payload['url'] = $qrUrl;
+                $payload['message_type'] = 'image';
+                $payload['media_url'] = $qrUrl;
+                $payload['caption'] = $message;
+            } else {
+                $payload['message_type'] = 'text';
+                $payload['content'] = $message;
             }
 
-            Log::info("Fonnte Request", [
-                'url' => 'https://api.fonnte.com/send',
+            Log::info("Convia Request", [
+                'url' => self::API_URL,
                 'payload' => $payload,
                 'phone_original' => $originalPhone,
                 'phone_normalized' => $normalizedPhone,
@@ -79,19 +82,18 @@ class WhatsAppService
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => $token,
-            ])->post('https://api.fonnte.com/send', $payload);
+                'X-API-Key' => $apiKey,
+            ])->post(self::API_URL, $payload);
 
             $body = $response->body();
             $data = $response->json();
 
-            Log::info("Fonnte Response", [
+            Log::info("Convia Response", [
                 'status_code' => $response->status(),
                 'response' => $body,
-                'target_sent' => $data['target'] ?? 'unknown'
             ]);
 
-            if ($response->successful() && (($data['status'] ?? false) === true || ($data['status'] ?? '') === 'true')) {
+            if ($response->successful() && ($data['success'] ?? false) === true) {
                 return [
                     'success' => true,
                     'message' => 'Sent successfully',
@@ -99,14 +101,17 @@ class WhatsAppService
                 ];
             }
 
+            $errorMsg = $data['error']['message'] ?? $data['message'] ?? 'Convia API rejected request';
+            $errorDetail = json_encode($data);
+
             return [
                 'success' => false,
-                'message' => $data['reason'] ?? $data['detail'] ?? 'Fonnte API rejected request',
+                'message' => $errorMsg,
                 'response' => $body,
             ];
 
         } catch (\Throwable $e) {
-            Log::error("Fonnte Error", [
+            Log::error("Convia Error", [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -118,64 +123,37 @@ class WhatsAppService
         }
     }
 
-    /**
-     * Normalize phone number for Fonnte API
-     * Converts various formats to international format without + sign
-     */
     private function normalizePhoneNumber(string $phone): string
     {
-        // Remove all non-numeric characters except +
         $phone = preg_replace('/[^0-9+]/', '', $phone);
-        
-        // Remove leading + if present
-        $phone = ltrim($phone, '+');
-        
-        // If starts with 0, assume Indonesian and convert to 62
+
+        if (str_starts_with($phone, '+')) {
+            return $phone;
+        }
+
         if (str_starts_with($phone, '0')) {
-            $phone = '62' . substr($phone, 1);
+            $phone = '+62' . substr($phone, 1);
+        } elseif (str_starts_with($phone, '62')) {
+            $phone = '+' . $phone;
+        } elseif (str_starts_with($phone, '8') && strlen($phone) >= 10 && strlen($phone) <= 12) {
+            $phone = '+62' . $phone;
         }
-        
-        // If starts with 8 and length is 10-12, assume Indonesian mobile
-        if (str_starts_with($phone, '8') && strlen($phone) >= 10 && strlen($phone) <= 12) {
-            $phone = '62' . $phone;
-        }
-        
-        // If already starts with country code, keep as is
-        // Otherwise, number is already in correct format or is international
-        
+
         return $phone;
     }
 
-    /**
-     * Check if a phone number is Indonesian
-     * Indonesian numbers start with:
-     * - +62 (country code)
-     * - 62 (without plus)
-     * - 08 (local format)
-     * - 8 (after removing leading zeros)
-     */
     private function isIndonesianNumber(string $phone): bool
     {
-        // Remove all non-numeric characters except +
         $phone = preg_replace('/[^0-9+]/', '', $phone);
-        
-        // Check various Indonesian number formats
-        if (str_starts_with($phone, '+62')) {
+
+        if (str_starts_with($phone, '+62') || str_starts_with($phone, '62') || str_starts_with($phone, '08')) {
             return true;
         }
-        
-        if (str_starts_with($phone, '62')) {
-            return true;
-        }
-        
-        if (str_starts_with($phone, '08')) {
-            return true;
-        }
-        
+
         if (str_starts_with($phone, '8') && strlen($phone) >= 10 && strlen($phone) <= 13) {
             return true;
         }
-        
+
         return false;
     }
 }

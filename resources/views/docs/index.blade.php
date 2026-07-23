@@ -284,7 +284,7 @@
                     <tr><td>WhatsApp Delivery</td><td>Toggle aktif/nonaktifkan fitur pengiriman.</td></tr>
                     <tr><td>Delivery Method</td><td>QR Code Image Attachment atau Public Guest Card Link.</td></tr>
                     <tr><td>Auto/Scheduled</td><td>Kirim otomatis saat check-in atau terjadwal.</td></tr>
-                    <tr><td>Fonnte Token</td><td>Token API untuk layanan WhatsApp.</td></tr>
+                    <tr><td>Convia API Key</td><td>API key untuk layanan WhatsApp Convia.</td></tr>
                     <tr><td>Message Template</td><td>Template dengan variable: <code>{guest_name}</code>, <code>{voucher_link}</code>, dll.</td></tr>
                 </tbody></table></div>
             </div>

@@ -20,8 +20,8 @@ class DeliverySettingsController extends Controller
             'scheduled_enabled' => Setting::get('delivery.scheduled_enabled', '0'),
             'default_time' => Setting::get('delivery.default_time', '08:00'),
             'timezone' => Setting::get('delivery.timezone', 'Asia/Jakarta'),
-            'whatsapp_provider' => Setting::get('delivery.whatsapp_provider', 'Fonnte'),
-            'fonnte_token' => Setting::get('delivery.fonnte_token', 'GpMC1EMdd5nHp9EWboyy'),
+            'whatsapp_provider' => Setting::get('delivery.whatsapp_provider', 'Convia'),
+            'convia_api_key' => Setting::get('delivery.convia_api_key', ''),
             'phone_filter_mode' => Setting::get('delivery.phone_filter_mode', 'global'),
             'message_template' => Setting::get(
                 'delivery.message_template',
@@ -44,7 +44,7 @@ class DeliverySettingsController extends Controller
             'default_time' => ['required', 'regex:/^\d{2}:\d{2}$/'],
             'timezone' => ['required', 'string', 'max:100'],
             'whatsapp_provider' => ['required', 'string', 'max:50'],
-            'fonnte_token' => ['nullable', 'string', 'max:255'],
+            'convia_api_key' => ['nullable', 'string', 'max:255'],
             'phone_filter_mode' => ['required', 'in:global,indonesian_only'],
             'message_template' => ['required', 'string'],
         ]);
@@ -58,7 +58,7 @@ class DeliverySettingsController extends Controller
         Setting::set('delivery.default_time', $validated['default_time']);
         Setting::set('delivery.timezone', $validated['timezone']);
         Setting::set('delivery.whatsapp_provider', $validated['whatsapp_provider']);
-        Setting::set('delivery.fonnte_token', $validated['fonnte_token'] ?? '');
+        Setting::set('delivery.convia_api_key', $validated['convia_api_key'] ?? '');
         Setting::set('delivery.phone_filter_mode', $validated['phone_filter_mode']);
         Setting::set('delivery.message_template', $validated['message_template']);
 

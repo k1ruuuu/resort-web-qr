@@ -13,7 +13,7 @@ class DeliverySettingsApiController extends ApiController
         $this->authorizePermission('delivery_settings.manage');
 
         return $this->respond([
-            'fonnte_token' => \App\Models\Setting::get('delivery.fonnte_token', ''),
+            'convia_api_key' => \App\Models\Setting::get('delivery.convia_api_key', ''),
             'message_template' => \App\Models\Setting::get('delivery.message_template', ''),
             'whatsapp_active' => (bool) \App\Models\Setting::get('delivery.whatsapp_active', false),
         ]);
@@ -24,12 +24,12 @@ class DeliverySettingsApiController extends ApiController
         $this->authorizePermission('delivery_settings.manage');
 
         $data = $request->validate([
-            'fonnte_token' => ['nullable', 'string'],
+            'convia_api_key' => ['nullable', 'string'],
             'message_template' => ['nullable', 'string'],
         ]);
 
-        if (isset($data['fonnte_token'])) {
-            \App\Models\Setting::set('delivery.fonnte_token', $data['fonnte_token']);
+        if (isset($data['convia_api_key'])) {
+            \App\Models\Setting::set('delivery.convia_api_key', $data['convia_api_key']);
         }
 
         if (isset($data['message_template'])) {
