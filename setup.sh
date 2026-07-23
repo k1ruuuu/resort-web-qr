@@ -303,12 +303,16 @@ if command -v mysql &>/dev/null; then
     DB_PORT="${DB_PORT:-3306}"
 
     info "Creating database '${DB_NAME}' and user '${DB_USER}'..."
-    run "mysql -u root <<-EOSQL
-        CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-        CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
-        GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
-        FLUSH PRIVILEGES;
-EOSQL"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "  [DRY-RUN] mysql -u root (create database + user)"
+    else
+        mysql -u root <<-EOSQL
+            CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+            CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+            GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+            FLUSH PRIVILEGES;
+EOSQL
+    fi
     ok "Database '${DB_NAME}' ready with user '${DB_USER}'."
 else
     warn "MySQL command not found."
