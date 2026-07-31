@@ -89,7 +89,7 @@
                     <h6 class="text-danger">General Errors</h6>
                     <ul class="text-danger">
                         @foreach(session('import_errors') as $error)
-                        <li>{{ $error }}</li>
+                        <li>{{ is_string($error) ? $error : (is_array($error) ? ($error['message'] ?? json_encode($error)) : '') }}</li>
                         @endforeach
                     </ul>
                 </div>

@@ -13,6 +13,7 @@ class AuthApiController extends ApiController
     public function login(LoginRequest $request): JsonResponse
     {
         $request->authenticate();
+        $request->session()->regenerate();
         $user = $request->user();
         $user->load('roles.permissions');
 

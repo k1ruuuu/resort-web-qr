@@ -29,7 +29,7 @@ class VoucherService
 
     public function generateForBooking(Booking $booking): GuestVoucher
     {
-        if ($booking->status !== BookingStatus::CheckedIn) {
+        if ($booking->status !== BookingStatus::CheckIn) {
             throw VoucherException::bookingNotCheckedIn();
         }
 
@@ -119,13 +119,22 @@ class VoucherService
             throw new VoucherException('One or more selected facilities are invalid for this voucher.', 422);
         }
 
-        $addition = isset($data['addition'])
-            ? max(0, (int) $data['addition'])
-            : ($voucher->addition ?? 0);
-
+        $additionMap = null;
+        $additionTotal = 0;
         $additionFacilityIds = [];
-        if ($addition > 0 && !empty($data['addition_facility_ids'])) {
-            $additionFacilityIds = array_map('intval', (array) $data['addition_facility_ids']);
+        if (isset($data['addition_map']) && is_array($data['addition_map'])) {
+            $additionMap = [];
+            foreach ($data['addition_map'] as $facilityId => $amount) {
+                $amount = max(0, (int) $amount);
+                if ($amount > 0) {
+                    $additionMap[(int) $facilityId] = $amount;
+                    $additionTotal += $amount;
+                    $additionFacilityIds[] = (int) $facilityId;
+                }
+            }
+            if (empty($additionMap)) {
+                $additionMap = null;
+            }
         }
 
         $lock = $this->locks->lockVoucherGeneration($voucher->id, 15);
@@ -134,12 +143,16 @@ class VoucherService
         }
 
         try {
-            return DB::transaction(function () use ($voucher, $facilityTemplateIds, $addition, $additionFacilityIds) {
-                $voucher->update([
+            return DB::transaction(function () use ($voucher, $facilityTemplateIds, $additionMap, $additionTotal, $additionFacilityIds) {
+                $voucher->forceFill([
                     'facility_template_id' => implode(',', $facilityTemplateIds),
-                    'addition' => $addition,
+                    'addition_map' => $additionMap,
+                    'addition' => $additionTotal,
                     'addition_facility_ids' => $additionFacilityIds ? implode(',', $additionFacilityIds) : null,
-                ]);
+                ])->save();
+
+                // L-07: keep the cached voucher data in sync
+                $this->cache->invalidateVoucher($voucher);
 
                 $this->audit->log('voucher.updated', $voucher, null, $voucher->toArray());
 
@@ -171,7 +184,7 @@ class VoucherService
                 throw VoucherException::noFacilities();
             }
 
-            $guestName = $booking->guest->full_name;
+            $guestName = $booking->guest?->full_name ?? 'Guest #' . $booking->guest_id;
             $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'ROOM';
             $roomName = $booking->room?->label ?? $booking->room?->roomType?->name ?? 'Room';
             $date = $booking->check_in->format('Y-m-d');
@@ -180,7 +193,13 @@ class VoucherService
 
             $secureToken = (string) Str::random(32);
 
-            $voucher = DB::transaction(function () use ($booking, $qrCode, $secureToken, $guestName) {
+            $facilityTemplateIds = $booking->bookingFacilities
+                ->pluck('facility_template_id')
+                ->filter()
+                ->values()
+                ->toArray();
+
+            $voucher = DB::transaction(function () use ($booking, $qrCode, $secureToken, $guestName, $facilityTemplateIds) {
                 $voucher = GuestVoucher::query()->where('booking_id', $booking->id)->first();
 
                 if (!$voucher) {
@@ -188,6 +207,7 @@ class VoucherService
                         'booking_id' => $booking->id,
                         'guest_id' => $booking->guest_id,
                         'property_id' => $booking->property_id,
+                        'facility_template_id' => $facilityTemplateIds ? implode(',', $facilityTemplateIds) : null,
                         'guest_name' => $guestName,
                         'qr_code' => $qrCode,
                         'secure_token' => $secureToken,
@@ -268,7 +288,7 @@ class VoucherService
                     throw new VoucherException('Voucher is no longer active.', 422);
                 }
 
-                if ($voucher->booking && $voucher->booking->status !== BookingStatus::CheckedIn) {
+                if ($voucher->booking && $voucher->booking->status !== BookingStatus::CheckIn) {
                     throw new VoucherException('Booking is not currently checked in.', 422);
                 }
 
@@ -289,6 +309,24 @@ class VoucherService
                         throw new VoucherException('This outlet belongs to a different property.', 403);
                     }
 
+                    // CRITICAL: Only allow redemption of facilities granted to this voucher
+                    if ($voucher->facility_template_id) {
+                        $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
+                        if (!in_array($facilityTemplateId, $allowedFacilityIds, true)) {
+                            throw new VoucherException('Facility is not linked to this voucher.', 422);
+                        }
+                    }
+
+                    $facility = FacilityTemplate::query()
+                        ->where('id', $facilityTemplateId)
+                        ->where('property_id', $voucher->property_id)
+                        ->where('is_active', true)
+                        ->first();
+
+                    if (!$facility) {
+                        throw new VoucherException('Facility is not linked to this voucher.', 422);
+                    }
+
                     $today = Carbon::today($timezone);
                     $todayString = $today->toDateString();
                     
@@ -300,11 +338,13 @@ class VoucherService
                         ->lockForUpdate()
                         ->sum('pax_used');
                     
+                    $additionMap = $voucher->addition_map ?? [];
                     $additionIds = $voucher->addition_facility_ids
                         ? array_map('intval', explode(',', $voucher->addition_facility_ids))
                         : [];
                     $basePax = $voucher->pax_limit ?? 1;
-                    $paxLimit = $basePax + (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
+                    $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
+                    $paxLimit = $basePax + $add;
                     $quotaRemaining = max(0, $paxLimit - $totalUsedToday);
                     
                     if ($quotaRemaining <= 0) {
@@ -339,6 +379,10 @@ class VoucherService
                     $this->updateVoucherStatusIfFullyRedeemed($voucher);
 
                     return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
+                }
+
+                if (!$voucher->booking) {
+                    throw new VoucherException('Voucher has no associated booking.', 422);
                 }
 
                 $timezone = $voucher->booking->property->timezone ?? 'UTC';
@@ -383,11 +427,12 @@ class VoucherService
                 
                 // Get booking total quota
                 $booking = $voucher->booking;
+                $additionMap = $voucher->addition_map ?? [];
                 $additionIds = $voucher->addition_facility_ids
                     ? array_map('intval', explode(',', $voucher->addition_facility_ids))
                     : [];
-                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds
-                    + (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0));
+                $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
+                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds + $add);
                 
                 if ($voucher->facility_template_id) {
                     $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
@@ -405,19 +450,21 @@ class VoucherService
                     throw new VoucherException('Facility is not linked to this booking.', 422);
                 }
                 
-                // Check if facility is available today
-                $start = $bookingFacility->start_date->format('Y-m-d');
-                $end = $bookingFacility->end_date->format('Y-m-d');
+                // Check if facility is available today (M-12: compare in the property timezone)
+                $tz = $voucher->booking->property->timezone ?? 'UTC';
+                $start = $bookingFacility->start_date->setTimezone($tz)->toDateString();
+                $end = $bookingFacility->end_date->setTimezone($tz)->toDateString();
                 $facilityCode = $bookingFacility->facilityTemplate->code;
                 $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
-                $isOneTimeFacility = in_array($facilityCode, $oneTimeFacilityCodes);
+                // Item 3: DB flag overrides the code heuristic; null keeps legacy behavior
+                $isOneTimeFacility = $bookingFacility->facilityTemplate->is_one_time
+                    ?? in_array($facilityCode, $oneTimeFacilityCodes);
                 
-                if ($isOneTimeFacility) {
-                    // One-time facilities: only available on check-in date and can only be redeemed once
+                if ($isOneTimeFacility && !($add > 0)) {
                     if ($todayString !== $start) {
                         throw new VoucherException('This facility is only available on check-in date.', 422);
                     }
-                    
+
                     if ($totalUsedToday > 0) {
                         throw VoucherException::expired();
                     }
@@ -429,6 +476,9 @@ class VoucherService
                 }
 
                 $facilityQuota = $bookingFacility->quota_total ?? $totalQuota;
+                if ($bookingFacility->quota_total !== null) {
+                    $facilityQuota += $add;
+                }
                 $quotaRemaining = max(0, $facilityQuota - $totalUsedToday);
                 
                 if ($quotaRemaining <= 0) {
@@ -558,6 +608,10 @@ class VoucherService
                 }
             }
 
+            return false;
+        }
+
+        if (!$voucher->booking) {
             return false;
         }
 

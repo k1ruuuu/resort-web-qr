@@ -11,7 +11,8 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'v/*', 'sanctum/csrf-cookie'],
+    // L-18: 'sanctum/csrf-cookie' removed — Sanctum is not used (session-based API auth)
+    'paths' => ['api/*', 'v/*'],
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 

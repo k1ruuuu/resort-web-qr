@@ -86,6 +86,10 @@ class UserApiController extends ApiController
     {
         $this->authorizePermission('users.manage');
 
+        if ($user->id === auth()->id()) {
+            return $this->respondError('You cannot delete your own account.', 403);
+        }
+
         $user->delete();
 
         return $this->respondMessage('User deleted successfully.');

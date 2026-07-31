@@ -16,6 +16,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'bookings.view',
             'bookings.create',
             'bookings.checkin',
+            'bookings.checkout',
             'vouchers.view',
             'vouchers.generate',
             'vouchers.redeem',

@@ -55,11 +55,28 @@
                     <hr class="my-4">
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Addition</label>
-                        <p class="form-text text-muted mt-0 mb-2">Extra pax to add on top of the booking's Total Pax. Leave empty for no addition.</p>
-                        <input type="number" name="addition" class="form-control @error('addition') is-invalid @enderror"
-                               value="{{ old('addition', $voucher->addition) }}" min="0" max="50" placeholder="0">
-                        @error('addition')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <label class="form-label fw-bold">Additional Pax per Facility</label>
+                        <p class="form-text text-muted mt-0 mb-2">Set extra pax for each facility. Leave 0 for no addition.</p>
+                        @php $additionMap = $voucher->addition_map ?? []; @endphp
+                        <div class="row g-2">
+                            @foreach($facilityTemplates as $facility)
+                            @php $isGranted = in_array($facility->id, $currentFacilityIds); @endphp
+                            <div class="col-md-4 col-lg-3">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="fw-bold small mb-1">{{ $facility->name }}</div>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">+</span>
+                                        <input type="number" name="addition_map[{{ $facility->id }}]"
+                                               class="form-control @error('addition_map.{{ $facility->id }}') is-invalid @enderror"
+                                               value="{{ old('addition_map.' . $facility->id, $additionMap[$facility->id] ?? 0) }}"
+                                               min="0" max="50" {{ !$isGranted ? 'disabled' : '' }}>
+                                        <span class="input-group-text">pax</span>
+                                    </div>
+                                    @error('addition_map.{{ $facility->id }}')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -99,28 +116,7 @@
                         @error('facility_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="mb-3" id="addition-facility-section" style="display: {{ ($voucher->addition ?? 0) > 0 ? 'block' : 'none' }}">
-                        <label class="form-label fw-bold">Apply Addition To</label>
-                        <p class="form-text text-muted mt-0 mb-2">Select which facilities get the extra pax. Leave all unchecked to apply to none (addition stored but not allocated).</p>
-                        @php $selectedAdditionIds = $voucher->addition_facility_ids ? array_map('intval', explode(',', $voucher->addition_facility_ids)) : []; @endphp
-                        <div class="row g-2">
-                            @foreach($facilityTemplates as $facility)
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox"
-                                           name="addition_facility_ids[]"
-                                           value="{{ $facility->id }}"
-                                           id="addition_facility_{{ $facility->id }}"
-                                           {{ in_array($facility->id, $selectedAdditionIds) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="addition_facility_{{ $facility->id }}">
-                                        {{ $facility->name }}
-                                    </label>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                        @error('addition_facility_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
+
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary">
@@ -135,14 +131,4 @@
 </div>
 @endsection
 
-@push('scripts')
-<script nonce="{{ $cspNonce }}">
-    const additionInput = document.querySelector('input[name="addition"]');
-    const additionSection = document.getElementById('addition-facility-section');
-    if (additionInput && additionSection) {
-        additionInput.addEventListener('input', function () {
-            additionSection.style.display = parseInt(this.value) > 0 ? 'block' : 'none';
-        });
-    }
-</script>
-@endpush
+

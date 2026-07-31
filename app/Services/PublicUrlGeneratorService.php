@@ -35,7 +35,7 @@ class PublicUrlGeneratorService
         $scheme = strtolower($parsed['scheme']);
         $host = strtolower($parsed['host']);
         
-        if ($scheme !== 'https') {
+        if ($scheme !== 'https' && app()->environment('production')) {
             throw new \InvalidArgumentException("URL scheme must be HTTPS, got: '{$scheme}'");
         }
         

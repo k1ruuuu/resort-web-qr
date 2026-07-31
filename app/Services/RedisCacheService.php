@@ -184,24 +184,22 @@ class RedisCacheService
     public function trackScan(string $qrCode, string $ipAddress): bool
     {
         // Per-IP global rate limit (100 scans/min across all codes)
+        // L-06: atomic check-and-increment
         $ipKey = "scan:ip:{$ipAddress}";
-        $ipAttempts = (int) Cache::get($ipKey, 0);
+        $ipAttempts = Cache::add($ipKey, 1, 60) ? 1 : (int) Cache::increment($ipKey);
 
-        if ($ipAttempts >= 100) {
+        if ($ipAttempts > 100) {
             return false;
         }
-
-        Cache::put($ipKey, $ipAttempts + 1, 60);
 
         // Per-code + IP rate limit (5 scans/min for the same code)
         $codeKey = "scan:code:{$qrCode}:{$ipAddress}";
-        $codeAttempts = (int) Cache::get($codeKey, 0);
+        $codeAttempts = Cache::add($codeKey, 1, 60) ? 1 : (int) Cache::increment($codeKey);
 
-        if ($codeAttempts >= 5) {
+        if ($codeAttempts > 5) {
             return false;
         }
 
-        Cache::put($codeKey, $codeAttempts + 1, 60);
         return true;
     }
 

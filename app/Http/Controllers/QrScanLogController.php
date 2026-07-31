@@ -11,15 +11,18 @@ class QrScanLogController extends Controller
 {
     public function index(Request $request)
     {
+        abort_unless(auth()->user()?->can('reports.view'), 403);
+
         $query = QrScanLog::query()
             ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'outlet', 'user'])
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->search);
             $query->where(function ($q) use ($search) {
                 $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
-                    $q->where('full_name', 'like', "%{$search}%");
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             });
         }
@@ -59,10 +62,11 @@ class QrScanLogController extends Controller
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->search);
             $query->where(function ($q) use ($search) {
                 $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
-                    $q->where('full_name', 'like', "%{$search}%");
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
                 });
             });
         }
@@ -83,7 +87,7 @@ class QrScanLogController extends Controller
             $query->whereDate('scanned_at', '<=', $request->date_to);
         }
 
-        $logs = $query->get();
+        $logs = $query->limit(10000)->get();
 
         $filters = $request->only(['search', 'scan_result', 'outlet_id', 'date_from', 'date_to']);
 
@@ -96,13 +100,4 @@ class QrScanLogController extends Controller
         );
     }
 
-    private function getExcelType(string $format): string
-    {
-        return match($format) {
-            'csv' => \Maatwebsite\Excel\Excel::CSV,
-            'xls' => \Maatwebsite\Excel\Excel::XLS,
-            'xlsx' => \Maatwebsite\Excel\Excel::XLSX,
-            default => \Maatwebsite\Excel\Excel::XLSX,
-        };
-    }
 }

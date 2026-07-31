@@ -4,7 +4,15 @@
 <div class="card card-primary card-outline shadow-lg border-0 rounded-4">
     <div class="card-body text-center p-4">
         <div class="mb-3">
-            <span class="badge bg-success px-3 py-2 rounded-pill text-uppercase tracking-wider small">Active Stay Pass</span>
+            @if($voucherState === 'active')
+                <span class="badge bg-success px-3 py-2 rounded-pill text-uppercase tracking-wider small">Active Stay Pass</span>
+            @elseif($voucherState === 'expired')
+                <span class="badge bg-danger px-3 py-2 rounded-pill text-uppercase tracking-wider small">Expired</span>
+            @elseif($voucherState === 'not_checked_in')
+                <span class="badge bg-warning px-3 py-2 rounded-pill text-uppercase tracking-wider small">Not Checked In</span>
+            @else
+                <span class="badge bg-secondary px-3 py-2 rounded-pill text-uppercase tracking-wider small">Inactive</span>
+            @endif
         </div>
         
         <h1 class="h3 font-weight-bold text-dark mb-1">{{ $voucher->guest_name ?? ($voucher->booking?->guest?->full_name ?? 'Temporary Guest') }}</h1>

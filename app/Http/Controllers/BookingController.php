@@ -25,12 +25,13 @@ class BookingController extends Controller
     {
         $this->authorizePermission('bookings.view');
 
-        $query = Booking::query()
+        $query = $this->applyPropertyScope(Booking::query())
             ->with(['guest', 'property', 'room'])
             ->latest();
 
         if (request()->filled('search')) {
             $search = trim(request('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
@@ -108,6 +109,7 @@ class BookingController extends Controller
     public function show(Booking $booking): View
     {
         $this->authorizePermission('bookings.view');
+        $this->authorizePropertyAccess($booking);
 
         $booking->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate', 'guestVoucher']);
 
@@ -123,6 +125,17 @@ class BookingController extends Controller
     public function checkIn(Request $request, Booking $booking): RedirectResponse
     {
         $this->authorizePermission('bookings.checkin');
+        $this->authorizePropertyAccess($booking);
+
+        if ($request->filled('phone')) {
+            $phone = trim($request->input('phone'));
+            if ($booking->guest) {
+                $validated = $request->validate([
+                    'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+                ]);
+                $booking->guest->update(['phone' => $validated['phone']]);
+            }
+        }
 
         $facilityTemplateIds = collect($request->input('facility_template_ids', []))
             ->filter(fn ($id) => filled($id))
@@ -131,7 +144,11 @@ class BookingController extends Controller
             ->values()
             ->all();
 
-        $this->bookings->checkIn($booking, $facilityTemplateIds);
+        try {
+            $this->bookings->checkIn($booking, $facilityTemplateIds);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Guest checked in.');
     }
@@ -139,10 +156,11 @@ class BookingController extends Controller
     public function checkOut(Booking $booking): RedirectResponse
     {
         $this->authorizePermission('bookings.checkout');
+        $this->authorizePropertyAccess($booking);
 
         $this->bookings->checkOut($booking);
 
-        return back()->with('success', 'Guest checked out.');
+        return redirect()->route('bookings.index')->with('success', 'Booking completed and archived.');
     }
 
     public function import(): View
@@ -157,7 +175,7 @@ class BookingController extends Controller
         $this->authorizePermission('bookings.create');
 
         $request->validate([
-            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,cvs,txt', 'max:10240'],
+            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,txt', 'mimes:csv,txt,xls,xlsx', 'max:10240'],
         ]);
 
         try {
@@ -173,25 +191,28 @@ class BookingController extends Controller
             
             foreach ($checkedInBookings as $booking) {
                 try {
-                    // Refresh booking to ensure it's saved
-                    $booking->refresh();
-                    
+                    // M-16: batch-inserted models are in-memory only — re-query from the DB
+                    $dbBooking = Booking::query()
+                        ->with(['property', 'room.roomType', 'bookingFacilities', 'guest'])
+                        ->find($booking->id);
+
+                    if (!$dbBooking) {
+                        continue;
+                    }
+
                     // Check if voucher already exists
-                    if ($booking->guestVoucher) {
+                    if ($dbBooking->guestVoucher) {
                         continue;
                     }
                     
-                    // Load necessary relationships
-                    $booking->load(['property', 'room.roomType', 'bookingFacilities', 'guest']);
-                    
                     // Sync default facilities if none exist
-                    if ($booking->bookingFacilities->isEmpty()) {
-                        $this->bookings->syncDefaultFacilities($booking);
-                        $booking->load('bookingFacilities');
+                    if ($dbBooking->bookingFacilities->isEmpty()) {
+                        $this->bookings->syncDefaultFacilities($dbBooking);
+                        $dbBooking->load('bookingFacilities');
                     }
                     
                     // Generate voucher
-                    $this->vouchers->generateForBooking($booking);
+                    $this->vouchers->generateForBooking($dbBooking);
                     $vouchersGenerated++;
                 } catch (\Exception $e) {
                     \Log::warning("Failed to auto-generate voucher for booking {$booking->id}: " . $e->getMessage());
@@ -205,7 +226,7 @@ class BookingController extends Controller
             }
             
             if ($import->getSkipped() > 0) {
-                $message .= ", {$import->getSkipped()} skipped (duplicates or errors)";
+                $message .= ", {$import->getSkipped()} skipped (duplicates)";
             }
 
             $errors = [];
@@ -254,7 +275,8 @@ class BookingController extends Controller
                 'errors' => [['message' => $e->getMessage()]],
                 'status' => 'failed',
             ]);
-            return back()->with('error', 'Import failed: ' . $e->getMessage());
+            \Log::error('Booking import failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Import failed. Please check the file and try again.');
         }
     }
 
@@ -269,6 +291,7 @@ class BookingController extends Controller
     public function edit(Booking $booking): View
     {
         $this->authorizePermission('bookings.create');
+        $this->authorizePropertyAccess($booking);
 
         $booking->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate']);
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
@@ -288,16 +311,13 @@ class BookingController extends Controller
     public function update(StoreBookingRequest $request, Booking $booking): RedirectResponse
     {
         $this->authorizePermission('bookings.create');
+        $this->authorizePropertyAccess($booking);
 
-        $validated = $request->safe()->except('facilities');
-        $booking->update($validated);
-        
-        if ($request->has('facilities')) {
-            $booking->bookingFacilities()->delete();
-            foreach ($request->validated('facilities', []) as $facility) {
-                $booking->bookingFacilities()->create($facility);
-            }
-        }
+        $this->bookings->updateBooking(
+            $booking,
+            $request->safe()->except('facilities'),
+            $request->validated('facilities', [])
+        );
 
         return redirect()
             ->route('bookings.show', $booking)
@@ -307,6 +327,7 @@ class BookingController extends Controller
     public function destroy(Booking $booking): RedirectResponse
     {
         $this->authorizePermission('bookings.create');
+        $this->authorizePropertyAccess($booking);
 
         $booking->delete();
 
@@ -350,6 +371,10 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             \Log::warning('Failed to detect heading row, using default line 1: ' . $e->getMessage());
         }
+
+        // L-14: no header matched in the first 10 rows — warn so silent mis-imports are traceable
+        \Log::warning('No header row detected in the first 10 rows of the import file; falling back to line 1.');
+
         return 1;
     }
 }

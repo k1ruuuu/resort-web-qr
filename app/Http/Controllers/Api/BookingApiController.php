@@ -22,12 +22,13 @@ class BookingApiController extends ApiController
     {
         $this->authorizePermission('bookings.view');
 
-        $query = Booking::query()
+        $query = $this->applyPropertyScope(Booking::query())
             ->with(['guest', 'property', 'room'])
             ->latest();
 
         if ($request->filled('search')) {
             $search = trim($request->string('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
                     $q->where('booking_code', 'like', "%{$search}%")
@@ -86,17 +87,13 @@ class BookingApiController extends ApiController
     {
         $this->authorizePermission('bookings.create');
 
-        $validated = $request->safe()->except('facilities');
-        $booking->update($validated);
+        $booking = $this->bookings->updateBooking(
+            $booking,
+            $request->safe()->except('facilities'),
+            $request->validated('facilities', [])
+        );
 
-        if ($request->has('facilities')) {
-            $booking->bookingFacilities()->delete();
-            foreach ($request->validated('facilities', []) as $facility) {
-                $booking->bookingFacilities()->create($facility);
-            }
-        }
-
-        return $this->respond($booking->fresh()->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate']));
+        return $this->respond($booking);
     }
 
     public function destroy(Booking $booking): JsonResponse
@@ -119,7 +116,11 @@ class BookingApiController extends ApiController
             ->values()
             ->all();
 
-        $this->bookings->checkIn($booking, $facilityTemplateIds);
+        try {
+            $this->bookings->checkIn($booking, $facilityTemplateIds);
+        } catch (\InvalidArgumentException $e) {
+            return $this->respondError($e->getMessage(), 422);
+        }
 
         return $this->respondMessage('Guest checked in successfully.');
     }

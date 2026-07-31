@@ -107,16 +107,38 @@
 </div>
 
 <script nonce="{{ $cspNonce }}">
+const allRoomTypes = @json($roomTypes->groupBy('property_id'));
+const allAreas = @json($areas->groupBy('property_id'));
+
 function loadRoomTypes() {
     const propertyId = document.querySelector('select[name="property_id"]').value;
+    const roomTypeSelect = document.getElementById('room_type_id');
+    const areaSelect = document.getElementById('area_id');
+
+    roomTypeSelect.innerHTML = '<option value="">Select room type...</option>';
+    areaSelect.innerHTML = '<option value="">Select area...</option>';
+
     if (!propertyId) return;
-    
-    fetch(`/properties/${propertyId}`, {
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.json())
-    .then(data => {
+
+    (allRoomTypes[propertyId] || []).forEach(rt => {
+        const opt = document.createElement('option');
+        opt.value = rt.id;
+        opt.textContent = rt.name;
+        roomTypeSelect.appendChild(opt);
+    });
+
+    (allAreas[propertyId] || []).forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.name;
+        areaSelect.appendChild(opt);
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    if (document.querySelector('select[name="property_id"]').value) {
+        loadRoomTypes();
+    }
+});
 </script>
 @endsection

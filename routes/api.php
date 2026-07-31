@@ -26,7 +26,7 @@ Route::middleware(['web'])->name('api.')->group(function () {
         ->middleware('throttle:30,1');
 
     // Authenticated routes
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'throttle:api'])->group(function () {
         // Auth
         Route::post('/logout', [AuthApiController::class, 'logout']);
         Route::get('/me', [AuthApiController::class, 'me']);

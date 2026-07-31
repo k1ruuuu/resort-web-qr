@@ -36,6 +36,7 @@ class VoucherApiController extends ApiController
 
         if ($request->filled('search')) {
             $search = trim($request->string('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
                     $q->where('qr_code', 'like', "%{$search}%")
@@ -145,7 +146,7 @@ class VoucherApiController extends ApiController
             return $this->respondError('Voucher not found.', 404);
         }
 
-        $voucher->load(['booking.guest', 'booking.room', 'booking.property', 'property']);
+        $voucher->load(['booking.guest', 'booking.room', 'booking.property', 'booking.bookingFacilities.facilityTemplate', 'property']);
 
         $this->vouchers->checkAndExpireIfNeeded($voucher);
         $voucher->refresh();
@@ -168,8 +169,23 @@ class VoucherApiController extends ApiController
 
         if ($voucher->category === 'temporary') {
             $timezone = $voucher->property?->timezone ?? 'UTC';
+            $currentDateTime = Carbon::now($timezone);
+            $expiresAt = $voucher->expires_at;
+
+            if ($expiresAt && $currentDateTime->gte($expiresAt)) {
+                if ($outlet && $user) {
+                    $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
+                }
+                return $this->respondError('This temporary voucher has expired.', 422);
+            }
+
             $today = Carbon::today($timezone);
             $facilityStatuses = $voucher->getFacilityStatuses($today);
+
+            if ($outlet) {
+                $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
+                $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+            }
 
             $history = RedemptionLog::query()
                 ->where('guest_voucher_id', $voucher->id)
@@ -196,18 +212,19 @@ class VoucherApiController extends ApiController
                 'check_out' => null,
                 'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
                 'facilities' => $facilityStatuses,
+                'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                 'history' => $history,
             ]);
         }
 
-        if ($voucher->booking->status !== \App\Enums\BookingStatus::CheckedIn) {
+        if (!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
             }
             return $this->respondError('Booking is not currently checked in.', 422);
         }
 
-        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $timezone = $voucher->booking->property?->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
         $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
         $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
@@ -230,6 +247,11 @@ class VoucherApiController extends ApiController
         $today = Carbon::today($timezone);
         $facilityStatuses = $voucher->getFacilityStatuses($today);
 
+        if ($outlet) {
+            $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
+            $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+        }
+
         $history = RedemptionLog::query()
             ->where('guest_voucher_id', $voucher->id)
             ->with(['facilityTemplate', 'outlet', 'user'])
@@ -247,7 +269,7 @@ class VoucherApiController extends ApiController
 
         return $this->respond([
             'voucher_id' => $voucher->id,
-            'guest_name' => $voucher->booking->guest->full_name,
+            'guest_name' => $voucher->booking->guest?->full_name ?? 'N/A',
             'room_code' => $voucher->booking->room?->code ?? $voucher->booking->room?->number ?? 'N/A',
             'room_name' => $voucher->booking->room?->label ?? 'N/A',
             'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
@@ -255,6 +277,7 @@ class VoucherApiController extends ApiController
             'check_out' => $voucher->booking->check_out->format('Y-m-d'),
             'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
             'facilities' => $facilityStatuses,
+            'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
             'history' => $history,
         ]);
     }

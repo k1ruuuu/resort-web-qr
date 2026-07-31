@@ -19,9 +19,9 @@ class SecurityHeadersMiddleware
         // Content Security Policy
         $response->headers->set('Content-Security-Policy', 
             "default-src 'self'; " .
-            "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " .
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " .
-            "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; " .
+            "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net; " .
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " .
             "img-src 'self' data: https:; " .
             "connect-src 'self'; " .
             "frame-ancestors 'none'; " .
@@ -31,6 +31,13 @@ class SecurityHeadersMiddleware
 
         // Prevent clickjacking
         $response->headers->set('X-Frame-Options', 'DENY');
+
+        // Never cache pages: they embed per-session CSRF tokens. Without no-store,
+        // the browser can serve a stale login page (back/forward cache) after logout,
+        // and submitting it fails with 419 "Page Expired".
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
 
         // Prevent MIME-type sniffing
         $response->headers->set('X-Content-Type-Options', 'nosniff');

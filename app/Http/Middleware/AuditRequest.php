@@ -15,7 +15,7 @@ class AuditRequest
     {
         $response = $next($request);
 
-        if ($request->user()) {
+        if ($request->user() && in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'])) {
             $this->audit->log($action, null, null, [
                 'method' => $request->method(),
                 'path' => $request->path(),

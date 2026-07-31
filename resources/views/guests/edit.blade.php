@@ -28,6 +28,11 @@
                 @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="mb-3">
+                <label class="form-label">WhatsApp</label>
+                <input type="text" name="whatsapp" class="form-control @error('whatsapp') is-invalid @enderror" value="{{ old('whatsapp', $guest->whatsapp) }}">
+                @error('whatsapp')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Document ID</label>
                 <input type="text" name="document_id" class="form-control @error('document_id') is-invalid @enderror" value="{{ old('document_id', $guest->document_id) }}">
                 @error('document_id')<div class="invalid-feedback">{{ $message }}</div>@enderror

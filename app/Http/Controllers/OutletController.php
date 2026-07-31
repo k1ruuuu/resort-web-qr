@@ -21,7 +21,7 @@ class OutletController extends Controller
     {
         $this->authorizePermission('facilities.manage');
 
-        $outlets = Outlet::query()
+        $outlets = $this->applyPropertyScope(Outlet::query())
             ->with(['property', 'facilityTemplates'])
             ->orderBy('name')
             ->paginate(20);
@@ -51,6 +51,7 @@ class OutletController extends Controller
     public function edit(Outlet $outlet): View
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
 
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
         $facilityTemplates = FacilityTemplate::query()->where('is_active', true)->orderBy('name')->get();
@@ -61,6 +62,9 @@ class OutletController extends Controller
 
     public function update(UpdateOutletRequest $request, Outlet $outlet): RedirectResponse
     {
+        $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
+
         $this->outletService->update($outlet, $request->validated());
 
         return redirect()
@@ -71,6 +75,7 @@ class OutletController extends Controller
     public function destroy(Outlet $outlet): RedirectResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
 
         $this->outletService->delete($outlet);
 

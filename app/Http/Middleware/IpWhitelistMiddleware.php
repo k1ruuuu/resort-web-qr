@@ -15,8 +15,7 @@ class IpWhitelistMiddleware
 
     public function __construct()
     {
-        // Load from environment variable
-        $ips = env('ADMIN_IP_WHITELIST', '');
+        $ips = config('services.admin_ip_whitelist', '');
         $this->whitelist = $ips ? explode(',', $ips) : [];
     }
 
@@ -28,7 +27,7 @@ class IpWhitelistMiddleware
         // If whitelist is empty, deny access by default (fail-secure approach)
         if (empty($this->whitelist)) {
             // Only log warning and allow if explicitly set in env to allow empty whitelist
-            if (env('ALLOW_EMPTY_IP_WHITELIST', false)) {
+            if (config('services.allow_empty_ip_whitelist', false)) {
                 \Log::warning('Admin IP whitelist is empty but allowed by configuration.', [
                     'ip' => $request->ip(),
                     'route' => $request->path(),
@@ -68,7 +67,7 @@ class IpWhitelistMiddleware
     }
 
     /**
-     * Check if IP is in range (supports CIDR notation)
+     * Check if IP is in range (supports CIDR notation, IPv4 and IPv6)
      */
     protected function ipInRange(string $ip, string $range): bool
     {
@@ -77,15 +76,49 @@ class IpWhitelistMiddleware
             return true;
         }
 
-        // CIDR notation (e.g., 192.168.1.0/24)
+        // CIDR notation (e.g., 192.168.1.0/24 or 2001:db8::/32)
         if (strpos($range, '/') !== false) {
-            [$subnet, $mask] = explode('/', $range);
-            
-            $ipLong = ip2long($ip);
-            $subnetLong = ip2long($subnet);
-            $maskLong = -1 << (32 - (int) $mask);
-            
-            return ($ipLong & $maskLong) === ($subnetLong & $maskLong);
+            [$subnet, $maskStr] = explode('/', $range);
+
+            // Non-numeric or malformed masks must not match anything
+            if (!ctype_digit($maskStr)) {
+                return false;
+            }
+
+            $mask = (int) $maskStr;
+            $ipBin = inet_pton($ip);
+            $subnetBin = inet_pton($subnet);
+
+            // Malformed IPs or non-CIDR entries must not match anything
+            if ($ipBin === false || $subnetBin === false || $mask < 0) {
+                return false;
+            }
+
+            $maxBits = strlen($subnetBin) * 8;
+
+            // Mask outside the range for this IP version never matches
+            if ($mask > $maxBits) {
+                return false;
+            }
+
+            $fullBytes = intdiv($mask, 8);
+            $remainingBits = $mask % 8;
+
+            $maskBytes = str_repeat("\xff", $fullBytes);
+
+            if ($remainingBits > 0) {
+                $maskBytes .= chr(0xff << (8 - $remainingBits));
+            }
+
+            $maskBytes .= str_repeat("\x00", strlen($subnetBin) - strlen($maskBytes));
+
+            for ($i = 0; $i < strlen($subnetBin); $i++) {
+                if ((($ipBin[$i] ?? "\x00") & $maskBytes[$i]) !== ($subnetBin[$i] & $maskBytes[$i])) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         return false;

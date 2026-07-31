@@ -17,8 +17,6 @@ class GuestVoucher extends Model
         'property_id',
         'facility_template_id',
         'pax_limit',
-        'addition',
-        'addition_facility_ids',
         'guest_name',
         'qr_code',
         'secure_token',
@@ -26,6 +24,7 @@ class GuestVoucher extends Model
         'category',
         'generated_at',
         'expires_at',
+        'addition_map',
     ];
 
 
@@ -36,6 +35,7 @@ class GuestVoucher extends Model
             'generated_at' => 'datetime',
             'expires_at' => 'datetime',
             'addition' => 'integer',
+            'addition_map' => 'array',
         ];
     }
 
@@ -73,6 +73,7 @@ class GuestVoucher extends Model
         $additionFacilityIds = $this->addition_facility_ids
             ? array_map('intval', explode(',', $this->addition_facility_ids))
             : [];
+        $additionMap = $this->addition_map ?? [];
         $allowedFacilityIds = $this->facility_template_id
             ? array_map('intval', explode(',', $this->facility_template_id))
             : [];
@@ -92,9 +93,12 @@ class GuestVoucher extends Model
                 ->get();
 
             $basePax = $this->pax_limit ?? 1;
+            $nowInPropertyTz = Carbon::now($this->property?->timezone ?? 'UTC');
+            $isExpired = $this->expires_at !== null && $nowInPropertyTz->gte($this->expires_at);
 
-            return $facilities->map(function ($facility) use ($redemptions, $basePax, $addition, $additionFacilityIds) {
-                $quota = $basePax + (in_array($facility->id, $additionFacilityIds) ? $addition : 0);
+            return $facilities->map(function ($facility) use ($redemptions, $basePax, $addition, $additionFacilityIds, $additionMap, $isExpired) {
+                $add = $additionMap[$facility->id] ?? (in_array($facility->id, $additionFacilityIds) ? $addition : 0);
+                $quota = $basePax + $add;
                 $used = (int) ($redemptions[$facility->id] ?? 0);
                 $remaining = max(0, $quota - $used);
 
@@ -102,7 +106,7 @@ class GuestVoucher extends Model
                     'facility_template_id' => $facility->id,
                     'name' => $facility->name,
                     'code' => $facility->code,
-                    'is_available' => $remaining > 0,
+                    'is_available' => !$isExpired && $remaining > 0,
                     'is_one_time' => false,
                     'quota_total' => $quota,
                     'quota_used' => $used,
@@ -143,16 +147,24 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('first_redeemed_date', 'facility_template_id');
 
-        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $redemptions, $oneTimeRedemptions, $oneTimeFacilityCodes) {
-            $start = $bf->start_date->format('Y-m-d');
-            $end = $bf->end_date->format('Y-m-d');
+        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $oneTimeRedemptions, $oneTimeFacilityCodes, $timezone) {
+            if (!$bf->facilityTemplate) {
+                return null;
+            }
+
+            // M-12: compare facility dates in the property timezone
+            $start = $bf->start_date?->setTimezone($timezone)->toDateString() ?? $dateString;
+            $end = $bf->end_date?->setTimezone($timezone)->toDateString() ?? $dateString;
             $facilityCode = $bf->facilityTemplate->code;
-            $facilityQuota = (int) (($bf->quota_total ?? $baseQuota) + (in_array($bf->facility_template_id, $additionFacilityIds) ? $addition : 0));
+            $facilityAdd = $additionMap[$bf->facility_template_id] ?? (in_array($bf->facility_template_id, $additionFacilityIds) ? $addition : 0);
+            $facilityQuota = (int) (($bf->quota_total ?? $baseQuota) + $facilityAdd);
 
-            $isOneTimeFacility = in_array($facilityCode, $oneTimeFacilityCodes);
+            $isOneTimeFacility = $bf->facilityTemplate->is_one_time
+                ?? in_array($facilityCode, $oneTimeFacilityCodes);
 
-            if ($isOneTimeFacility) {
-                $isAvailable = ($dateString === $start) && !isset($oneTimeRedemptions[$bf->facility_template_id]);
+            if ($isOneTimeFacility && !($facilityAdd > 0)) {
+                $neverRedeemed = !isset($oneTimeRedemptions[$bf->facility_template_id]);
+                $isAvailable = ($dateString === $start) && $neverRedeemed;
                 $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
                 $remaining = $isAvailable ? max(0, $facilityQuota - $used) : 0;
             } else {

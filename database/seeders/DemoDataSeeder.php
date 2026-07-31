@@ -186,7 +186,7 @@ class DemoDataSeeder extends Seeder
             }
             $booking = $importer->importRow($property, $row);
 
-            if ($booking->status === BookingStatus::CheckedIn) {
+            if ($booking->status === BookingStatus::CheckIn) {
                 $templates = FacilityTemplate::query()->where('property_id', $property->id)->where('is_active', true)->get();
                 $q = $quota->quotaForBooking($booking);
 

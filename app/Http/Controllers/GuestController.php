@@ -18,6 +18,7 @@ class GuestController extends Controller
 
         if (request()->filled('search')) {
             $search = trim(request('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
@@ -50,7 +51,8 @@ class GuestController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+            'whatsapp' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
             'document_id' => ['nullable', 'string', 'max:64'],
         ]));
 
@@ -144,7 +146,8 @@ class GuestController extends Controller
                 'errors' => [['message' => $e->getMessage()]],
                 'status' => 'failed',
             ]);
-            return back()->with('error', 'Import failed: ' . $e->getMessage());
+            \Log::error('Guest import failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Import failed. Please check the file and try again.');
         }
     }
 
@@ -164,7 +167,8 @@ class GuestController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+            'whatsapp' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
             'document_id' => ['nullable', 'string', 'max:64'],
         ]));
 
@@ -174,6 +178,10 @@ class GuestController extends Controller
     public function destroy(Guest $guest): RedirectResponse
     {
         abort_unless(auth()->user()?->can('guests.manage'), 403);
+
+        if ($guest->bookings()->exists()) {
+            return back()->with('error', 'Cannot delete guest with existing bookings.');
+        }
 
         $guest->delete();
 

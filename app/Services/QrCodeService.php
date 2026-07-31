@@ -60,18 +60,50 @@ class QrCodeService
             abort(500, 'Failed to generate QR code image.');
         }
 
-        $templatePath = public_path('Barcode-Chanaya.png');
+        $templatePaths = [
+            public_path('img/Barcode-Chanaya.jpg'),
+            public_path('img/Barcode-Chanaya.png'),
+            public_path('Barcode-Chanaya.png'),
+            public_path('Barcode-Chanaya.jpg'),
+        ];
 
-        if (!file_exists($templatePath)) {
-            imagedestroy($qrImage);
-            abort(404, 'Template Barcode Chanaya.png tidak ditemukan di folder public.');
+        $templateImage = null;
+        $loadedPath = null;
+        foreach ($templatePaths as $path) {
+            if (file_exists($path)) {
+                $loadedPath = $path;
+                $lower = strtolower($path);
+                if (str_ends_with($lower, '.jpg') || str_ends_with($lower, '.jpeg')) {
+                    $templateImage = @imagecreatefromjpeg($path);
+                } else {
+                    $templateImage = @imagecreatefrompng($path);
+                }
+                if ($templateImage !== false) {
+                    break;
+                }
+            }
         }
 
-        $templateImage = imagecreatefrompng($templatePath);
-
-        if ($templateImage === false) {
+        if ($templateImage === null) {
             imagedestroy($qrImage);
-            abort(500, 'Failed to load template image.');
+
+            $options = new QROptions([
+                'outputType' => QRCode::OUTPUT_IMAGE_PNG,
+                'outputBase64' => true,
+                'eccLevel' => QRCode::ECC_L,
+                'scale' => 12,
+                'margin' => 2,
+            ]);
+            $fallbackData = (new QRCode($options))->render($payload);
+
+            return response(
+                '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>QR Code</title>'
+                . '<meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+                . '<body style="display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f5f5f5;">'
+                . '<img src="' . $fallbackData . '" alt="QR Code" style="max-width:90vw;max-height:90vh;"></body></html>',
+                200,
+                ['Content-Type' => 'text/html', 'Cache-Control' => 'public, max-age=3600']
+            );
         }
 
         $templateWidth = imagesx($templateImage);

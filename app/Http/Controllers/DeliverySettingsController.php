@@ -20,8 +20,9 @@ class DeliverySettingsController extends Controller
             'scheduled_enabled' => Setting::get('delivery.scheduled_enabled', '0'),
             'default_time' => Setting::get('delivery.default_time', '08:00'),
             'timezone' => Setting::get('delivery.timezone', 'Asia/Jakarta'),
-            'whatsapp_provider' => Setting::get('delivery.whatsapp_provider', 'Convia'),
-            'convia_api_key' => Setting::get('delivery.convia_api_key', ''),
+            'whatsapp_provider' => Setting::get('delivery.whatsapp_provider', 'Fonnte'),
+            'fonnte_api_key' => Setting::get('delivery.fonnte_api_key', ''),
+            'whacenter_device_id' => Setting::get('delivery.whacenter_device_id', ''),
             'phone_filter_mode' => Setting::get('delivery.phone_filter_mode', 'global'),
             'message_template' => Setting::get(
                 'delivery.message_template',
@@ -43,8 +44,9 @@ class DeliverySettingsController extends Controller
             'scheduled_enabled' => ['required', 'in:0,1'],
             'default_time' => ['required', 'regex:/^\d{2}:\d{2}$/'],
             'timezone' => ['required', 'string', 'max:100'],
-            'whatsapp_provider' => ['required', 'string', 'max:50'],
-            'convia_api_key' => ['nullable', 'string', 'max:255'],
+            'whatsapp_provider' => ['required', 'string', 'in:Fonnte,Whacenter'],
+            'fonnte_api_key' => ['nullable', 'string', 'max:255'],
+            'whacenter_device_id' => ['nullable', 'string', 'max:255'],
             'phone_filter_mode' => ['required', 'in:global,indonesian_only'],
             'message_template' => ['required', 'string'],
         ]);
@@ -58,7 +60,8 @@ class DeliverySettingsController extends Controller
         Setting::set('delivery.default_time', $validated['default_time']);
         Setting::set('delivery.timezone', $validated['timezone']);
         Setting::set('delivery.whatsapp_provider', $validated['whatsapp_provider']);
-        Setting::set('delivery.convia_api_key', $validated['convia_api_key'] ?? '');
+        Setting::set('delivery.fonnte_api_key', $validated['fonnte_api_key'] ?? '');
+        Setting::set('delivery.whacenter_device_id', $validated['whacenter_device_id'] ?? '');
         Setting::set('delivery.phone_filter_mode', $validated['phone_filter_mode']);
         Setting::set('delivery.message_template', $validated['message_template']);
 

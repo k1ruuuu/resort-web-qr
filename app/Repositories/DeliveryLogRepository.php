@@ -17,7 +17,7 @@ class DeliveryLogRepository
         return DeliveryLog::query()->create([
             'booking_id' => $booking->id,
             'guest_id' => $booking->guest_id,
-            'phone_number' => $booking->guest->phone ?? '',
+            'phone_number' => $booking->guest?->phone ?? '',
             'message_content' => $message,
             'qr_path' => $qrPath,
             'delivery_status' => 'pending',

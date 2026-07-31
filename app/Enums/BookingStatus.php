@@ -4,9 +4,8 @@ namespace App\Enums;
 
 enum BookingStatus: string
 {
-    case ConfirmedReservation = 'confirmed_reservation';
-    case CheckedIn = 'checked_in';
-    case CheckedOut = 'checked_out';
+    case ExpectedArrival = 'expected_arrival';
+    case CheckIn = 'check_in';
+    case ExpectedDeparture = 'expected_departure';
     case Cancelled = 'cancelled';
-    case Pending = 'pending';
 }

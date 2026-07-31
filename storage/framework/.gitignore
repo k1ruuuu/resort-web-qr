@@ -8,3 +8,7 @@ routes.scanned.php
 schedule-*
 services.json
 !
+# Runtime caches — never commit (stale compiled views cause bugs after deploy)
+/cache/data/*
+/sessions/*
+/views/*

@@ -27,7 +27,7 @@
             <div class="icon">
                 <i class="fas fa-hotel"></i>
             </div>
-            <a href="{{ route('bookings.index') }}?status=checked_in" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{{ route('bookings.index') }}?status=check_in" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3 mb-responsive">
@@ -139,18 +139,18 @@
                                 <tr>
                                     <td><small>{{ $activity->created_at->format('H:i') }}</small></td>
                                     <td>
-                                        <strong class="text-truncate d-inline-block" style="max-width: 120px;" title="{{ $activity->guest->full_name }}">
-                                            {{ $activity->guest->full_name }}
+                                        <strong class="text-truncate d-inline-block" style="max-width: 120px;" title="{{ $activity->guest?->full_name ?? 'N/A' }}">
+                                            {{ $activity->guest?->full_name ?? 'N/A' }}
                                         </strong>
                                     </td>
                                     <td class="d-none d-md-table-cell">
                                         <span class="badge bg-light border text-dark">
-                                            {{ $activity->booking->room_label ?? $activity->booking->room?->number ?? 'N/A' }}
+                                            {{ $activity->booking?->room_label ?? $activity->booking?->room?->number ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="text-primary text-truncate d-inline-block" style="max-width: 100px;" title="{{ $activity->facilityTemplate->name }}">
-                                            {{ $activity->facilityTemplate->name }}
+                                        <span class="text-primary text-truncate d-inline-block" style="max-width: 100px;" title="{{ $activity->facilityTemplate?->name ?? 'N/A' }}">
+                                            {{ $activity->facilityTemplate?->name ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td class="d-none d-lg-table-cell">{{ $activity->pax_used }}</td>

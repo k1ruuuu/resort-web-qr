@@ -37,7 +37,7 @@
                     </div>
 
                     <div id="camera-container" class="mb-3 d-none position-relative rounded border bg-dark overflow-hidden" style="width: 100%; max-height: 480px;">
-                        <video id="camera-stream" autoplay playsinline muted width="100%" height="auto" style="display: block; transform: scaleX(-1);"></video>
+                        <video id="camera-stream" autoplay playsinline muted width="100%" height="auto" style="display: block;"></video>
                         <canvas id="camera-canvas" style="display: none;"></canvas>
                         <div id="scanner-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid rgba(0, 255, 0, 0.3); pointer-events: none;"></div>
                         <div id="camera-loading" class="d-none position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center;">
@@ -177,7 +177,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" integrity="sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx" crossorigin="anonymous"></script>
 <script nonce="{{ $cspNonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const videoElement = document.getElementById('camera-stream');
@@ -457,6 +457,13 @@ document.addEventListener('DOMContentLoaded', function() {
             facilityList.appendChild(card);
         });
 
+        if (data.auto_select_facility) {
+            const autoCard = document.querySelector(`.facility-card[data-id="${data.auto_select_facility}"]`);
+            if (autoCard) {
+                autoCard.click();
+            }
+        }
+
         historyTableBody.innerHTML = '';
         if (data.history.length === 0) {
             historyTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No redemptions logged yet.</td></tr>';
@@ -551,26 +558,33 @@ document.addEventListener('DOMContentLoaded', function() {
         resultIcon.innerHTML = '<i class="fas fa-check-circle fa-5x text-success"></i>';
         resultTitle.textContent = 'Redemption Successful';
         resultMessage.className = 'alert alert-success';
-        resultMessage.innerHTML = 'Facility redeemed successfully.';
-        
-        resultDetails.innerHTML = `
-            <div class="row g-2">
-                <div class="col-6 text-muted">Guest:</div>
-                <div class="col-6 font-weight-bold">${data.guest}</div>
-                
-                <div class="col-6 text-muted">Facility Redeemed:</div>
-                <div class="col-6 font-weight-bold">${data.facility}</div>
-                
-                <div class="col-6 text-muted">Pax Used:</div>
-                <div class="col-6 font-weight-bold">${data.pax_used}</div>
-                
-                <div class="col-6 text-muted">Remaining Today:</div>
-                <div class="col-6 font-weight-bold text-success">${data.remaining_quota}</div>
-                
-                <div class="col-6 text-muted">Timestamp:</div>
-                <div class="col-6 font-weight-bold">${data.date} ${data.time}</div>
-            </div>
-        `;
+        resultMessage.textContent = 'Facility redeemed successfully.';
+
+        const rows = [
+            ['Guest:', data.guest],
+            ['Facility Redeemed:', data.facility],
+            ['Pax Used:', data.pax_used],
+            ['Remaining Today:', data.remaining_quota],
+            ['Timestamp:', `${data.date} ${data.time}`],
+        ];
+
+        resultDetails.replaceChildren();
+        rows.forEach(([label, value]) => {
+            const row = document.createElement('div');
+            row.className = 'row g-2';
+
+            const labelCol = document.createElement('div');
+            labelCol.className = 'col-6 text-muted';
+            labelCol.textContent = label;
+
+            const valueCol = document.createElement('div');
+            valueCol.className = 'col-6 font-weight-bold text-success';
+            valueCol.textContent = String(value);
+
+            row.appendChild(labelCol);
+            row.appendChild(valueCol);
+            resultDetails.appendChild(row);
+        });
     }
 
     function showRedemptionError(message) {

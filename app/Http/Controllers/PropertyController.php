@@ -75,6 +75,10 @@ class PropertyController extends Controller
     {
         abort_unless(auth()->user()?->can('properties.manage'), 403);
 
+        if ($property->rooms()->exists() || $property->bookings()->exists()) {
+            return back()->with('error', 'Cannot delete property with existing rooms or bookings.');
+        }
+
         $property->delete();
 
         return redirect()->route('properties.index')->with('success', 'Property deleted successfully.');

@@ -21,22 +21,28 @@
                 </div>
             </div>
             <div class="card-body">
-                <p><strong>Guest:</strong> {{ $booking->guest->full_name }}</p>
-                <p><strong>Property:</strong> {{ $booking->property->name }}</p>
-                <p><strong>Stay:</strong> {{ $booking->check_in->format('Y-m-d') }} – {{ $booking->check_out->format('Y-m-d') }}</p>
+                <p><strong>Guest:</strong> {{ $booking->guest?->full_name ?? 'N/A' }}</p>
+                <p><strong>Property:</strong> {{ $booking->property?->name ?? 'N/A' }}</p>
+                <p><strong>Stay:</strong> {{ $booking->check_in?->format('Y-m-d') ?? 'N/A' }} – {{ $booking->check_out?->format('Y-m-d') ?? 'N/A' }}</p>
                 <p><strong>Pax:</strong> {{ $booking->total_pax }}</p>
                 <p><strong>Status:</strong> 
                     @php
                         $statusBadge = match($booking->status->value) {
-                            'checked_in' => 'success',
-                            'checked_out' => 'secondary',
-                            'confirmed_reservation' => 'info',
+                            'check_in' => 'success',
+                            'expected_departure' => 'secondary',
+                            'expected_arrival' => 'info',
                             'cancelled' => 'danger',
-                            'pending' => 'warning',
                             default => 'secondary',
                         };
+                        $statusLabel = match($booking->status->value) {
+                            'check_in' => 'Check In',
+                            'expected_departure' => 'Expected Departure',
+                            'expected_arrival' => 'Expected Arrival',
+                            'cancelled' => 'Cancelled',
+                            default => ucwords(str_replace('_', ' ', $booking->status->value)),
+                        };
                     @endphp
-                    <span class="badge bg-{{ $statusBadge }} text-white">{{ ucwords(str_replace('_', ' ', $booking->status->value)) }}</span>
+                    <span class="badge bg-{{ $statusBadge }} text-white">{{ $statusLabel }}</span>
                 </p>
                 @if($booking->checked_in_at)
                     <p><strong>Checked In At:</strong> {{ $booking->checked_in_at->format('Y-m-d H:i:s') }}</p>
@@ -71,7 +77,7 @@
     </div>
     <div class="col-md-4">
         @can('bookings.checkin')
-        @if($booking->status->value !== 'checked_in' && $booking->status->value !== 'checked_out')
+        @if($booking->status->value === 'expected_arrival')
         <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#checkinFacilitiesModal">
             <i class="fas fa-sign-in-alt"></i> Check In
         </button>
@@ -79,7 +85,7 @@
         @endcan
         
         @can('bookings.checkout')
-        @if($booking->status->value === 'checked_in')
+        @if($booking->status->value === 'check_in')
         <form method="POST" action="{{ route('bookings.check-out', $booking) }}" class="mb-2" onsubmit="return confirm('Check out this guest? The QR voucher will no longer be usable.');">
             @csrf
             <button class="btn btn-danger w-100">
@@ -90,7 +96,7 @@
         @endcan
         
         @can('vouchers.generate')
-        @if($booking->status->value === 'checked_in' && !$booking->guestVoucher)
+        @if($booking->status->value === 'check_in' && !$booking->guestVoucher)
         <form method="POST" action="{{ route('vouchers.generate') }}">
             @csrf
             <input type="hidden" name="booking_id" value="{{ $booking->id }}">
@@ -99,7 +105,7 @@
         @endif
         @endcan
         @can('vouchers.resend')
-        @if($booking->status->value === 'checked_in' && $booking->guestVoucher)
+        @if($booking->status->value === 'check_in' && $booking->guestVoucher)
         <form method="POST" action="{{ route('bookings.resend', $booking) }}" class="mt-2">
             @csrf
             <button class="btn btn-warning w-100">
@@ -160,41 +166,54 @@
             <form method="POST" action="{{ route('bookings.check-in', $booking) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="checkinFacilitiesModalLabel">Select Facilities for QR Voucher</h5>
+                    <h5 class="modal-title" id="checkinFacilitiesModalLabel">Check In Guest</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small">Choose the facilities to include for this guest's QR voucher. Leave empty to use the default facilities.</p>
-                    <div class="mb-3">
-                        <label class="form-label">Facilities</label>
-                        @if($facilityTemplates->isNotEmpty())
-                            <div class="form-check mb-3 p-2 bg-light border rounded">
-                                <input class="form-check-input" type="checkbox" id="selectAllFacilities">
-                                <label class="form-check-label fw-bold text-primary" for="selectAllFacilities">
-                                    <i class="fas fa-check-double me-2"></i>Select All Facilities
-                                </label>
-                            </div>
-                        @endif
-                        <div class="bg-light border rounded p-3">
-                            @if($facilityTemplates->isNotEmpty())
-                                @foreach($facilityTemplates as $facilityTemplate)
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input facility-checkbox" type="checkbox" name="facility_template_ids[]" value="{{ $facilityTemplate->id }}" id="facility_{{ $facilityTemplate->id }}" @checked($booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
-                                        <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
-                                            {{ $facilityTemplate->name }}
-                                        </label>
-                                    </div>
-                                @endforeach
-                            @else
-                                <p class="text-muted small mb-0">No facility templates available for this property.</p>
-                            @endif
+                    <div id="stepPhone">
+                        <p class="text-muted small">Enter the guest's phone number for WhatsApp delivery.</p>
+                        <div class="mb-3">
+                            <label class="form-label" for="guestPhone">Phone Number</label>
+                            <input type="text" class="form-control" id="guestPhone" name="phone" value="{{ $booking->guest->phone ?? '' }}" placeholder="e.g. 6281234567890">
+                            <div class="form-text">Include country code (e.g. 62 for Indonesia).</div>
                         </div>
-                        <div class="form-text">Select one or more facility options for the voucher.</div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-primary" id="btnToFacilities">Next</button>
+                        </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Confirm Check In</button>
+                    <div id="stepFacilities" style="display:none;">
+                        <p class="text-muted small">Choose the facilities to include for this guest's QR voucher. Leave empty to use the default facilities.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Facilities</label>
+                            @if($facilityTemplates->isNotEmpty())
+                                <div class="form-check mb-3 p-2 bg-light border rounded">
+                                    <input class="form-check-input" type="checkbox" id="selectAllFacilities">
+                                    <label class="form-check-label fw-bold text-primary" for="selectAllFacilities">
+                                        <i class="fas fa-check-double me-2"></i>Select All Facilities
+                                    </label>
+                                </div>
+                            @endif
+                            <div class="bg-light border rounded p-3">
+                                @if($facilityTemplates->isNotEmpty())
+                                    @foreach($facilityTemplates as $facilityTemplate)
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input facility-checkbox" type="checkbox" name="facility_template_ids[]" value="{{ $facilityTemplate->id }}" id="facility_{{ $facilityTemplate->id }}" @checked($booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
+                                            <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
+                                                {{ $facilityTemplate->name }}
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <p class="text-muted small mb-0">No facility templates available for this property.</p>
+                                @endif
+                            </div>
+                            <div class="form-text">Select one or more facility options for the voucher.</div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" id="btnBackToPhone">Back</button>
+                            <button type="submit" class="btn btn-success">Confirm Check In</button>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -203,28 +222,62 @@
 
 @push('scripts')
 <script nonce="{{ $cspNonce }}">
-    const selectAllFacilitiesCheckbox = document.getElementById('selectAllFacilities');
-    const facilityCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .facility-checkbox');
+    (function () {
+        const stepPhone = document.getElementById('stepPhone');
+        const stepFacilities = document.getElementById('stepFacilities');
+        const btnToFacilities = document.getElementById('btnToFacilities');
+        const btnBackToPhone = document.getElementById('btnBackToPhone');
+        const guestPhone = document.getElementById('guestPhone');
 
-    if (selectAllFacilitiesCheckbox) {
-        selectAllFacilitiesCheckbox.addEventListener('change', function () {
+        btnToFacilities.addEventListener('click', function () {
+            const phone = guestPhone.value.trim();
+            if (!phone) {
+                guestPhone.classList.add('is-invalid');
+                if (!document.querySelector('#guestPhone + .invalid-feedback')) {
+                    const feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = 'Phone number is required.';
+                    guestPhone.parentNode.appendChild(feedback);
+                }
+                return;
+            }
+            guestPhone.classList.remove('is-invalid');
+            stepPhone.style.display = 'none';
+            stepFacilities.style.display = 'block';
+        });
+
+        btnBackToPhone.addEventListener('click', function () {
+            stepFacilities.style.display = 'none';
+            stepPhone.style.display = 'block';
+        });
+
+        guestPhone.addEventListener('input', function () {
+            this.classList.remove('is-invalid');
+        });
+
+        const selectAllFacilitiesCheckbox = document.getElementById('selectAllFacilities');
+        const facilityCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .facility-checkbox');
+
+        if (selectAllFacilitiesCheckbox) {
+            selectAllFacilitiesCheckbox.addEventListener('change', function () {
+                facilityCheckboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                });
+            });
+
             facilityCheckboxes.forEach(cb => {
-                cb.checked = this.checked;
-            });
-        });
+                cb.addEventListener('change', function () {
+                    if (!this.checked && selectAllFacilitiesCheckbox.checked) {
+                        selectAllFacilitiesCheckbox.checked = false;
+                    }
 
-        facilityCheckboxes.forEach(cb => {
-            cb.addEventListener('change', function () {
-                if (!this.checked && selectAllFacilitiesCheckbox.checked) {
-                    selectAllFacilitiesCheckbox.checked = false;
-                }
-
-                if (Array.from(facilityCheckboxes).every(checkbox => checkbox.checked)) {
-                    selectAllFacilitiesCheckbox.checked = true;
-                }
+                    if (Array.from(facilityCheckboxes).every(checkbox => checkbox.checked)) {
+                        selectAllFacilitiesCheckbox.checked = true;
+                    }
+                });
             });
-        });
-    }
+        }
+    })();
 </script>
 @endpush
 @endsection

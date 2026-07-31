@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RoomStatus;
 use App\Models\Property;
 use App\Models\ImportLog;
 use App\Models\Room;
@@ -17,7 +18,7 @@ class RoomController extends Controller
     {
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
 
-        $rooms = Room::query()
+        $rooms = $this->applyPropertyScope(Room::query())
             ->with(['property', 'area', 'roomType'])
             ->orderBy('number')
             ->paginate(20);
@@ -30,8 +31,10 @@ class RoomController extends Controller
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
 
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
+        $roomTypes = \App\Models\RoomType::query()->orderBy('name')->get();
+        $areas = \App\Models\Area::query()->orderBy('name')->get();
 
-        return view('rooms.create', compact('properties'));
+        return view('rooms.create', compact('properties', 'roomTypes', 'areas'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -40,13 +43,13 @@ class RoomController extends Controller
 
         $room = Room::query()->create($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
-            'number' => ['required', 'string', 'max:50'],
+            'number' => ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('rooms', 'number')->where('property_id', $request->property_id)],
             'code' => ['nullable', 'string', 'max:50'],
             'label' => ['nullable', 'string', 'max:100'],
             'room_type_id' => ['required', 'exists:room_types,id'],
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
-            'status' => ['in:available,occupied,maintenance'],
+            'status' => [\Illuminate\Validation\Rule::enum(RoomStatus::class)],
             'bed_type' => ['nullable', 'string', 'max:32'],
             'room_view' => ['nullable', 'string', 'max:64'],
             'location' => ['nullable', 'string', 'max:64'],
@@ -82,13 +85,13 @@ class RoomController extends Controller
 
         $room->update($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
-            'number' => ['required', 'string', 'max:50'],
+            'number' => ['required', 'string', 'max:50', \Illuminate\Validation\Rule::unique('rooms', 'number')->where('property_id', $request->property_id)->ignore($room->id)],
             'code' => ['nullable', 'string', 'max:50'],
             'label' => ['nullable', 'string', 'max:100'],
             'room_type_id' => ['required', 'exists:room_types,id'],
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
-            'status' => ['in:available,occupied,maintenance'],
+            'status' => [\Illuminate\Validation\Rule::enum(RoomStatus::class)],
             'bed_type' => ['nullable', 'string', 'max:32'],
             'room_view' => ['nullable', 'string', 'max:64'],
             'location' => ['nullable', 'string', 'max:64'],
@@ -177,7 +180,8 @@ class RoomController extends Controller
                 'errors' => [['message' => $e->getMessage()]],
                 'status' => 'failed',
             ]);
-            return back()->with('error', 'Import failed: ' . $e->getMessage());
+            \Log::error('Room import failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Import failed. Please check the file and try again.');
         }
     }
 

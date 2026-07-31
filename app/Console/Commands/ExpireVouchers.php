@@ -23,30 +23,30 @@ class ExpireVouchers extends Command
     {
         $this->info('Checking for vouchers to expire...');
 
-        $vouchers = GuestVoucher::query()
-            ->where('status', VoucherStatus::Active)
-            ->with(['booking.property', 'property'])
-            ->get();
-
         $expiredCount = 0;
 
-        foreach ($vouchers as $voucher) {
-            if ($this->shouldExpire($voucher)) {
-                $oldStatus = $voucher->status->value;
-                $voucher->update(['status' => VoucherStatus::Expired]);
-                
-                $this->audit->log(
-                    'voucher.auto_expired',
-                    $voucher,
-                    ['status' => $oldStatus],
-                    ['status' => VoucherStatus::Expired->value]
-                );
+        GuestVoucher::query()
+            ->where('status', VoucherStatus::Active)
+            ->with(['booking.property', 'property'])
+            ->chunk(100, function ($vouchers) use (&$expiredCount) {
+                foreach ($vouchers as $voucher) {
+                    if ($this->shouldExpire($voucher)) {
+                        $oldStatus = $voucher->status->value;
+                        $voucher->update(['status' => VoucherStatus::Expired]);
+                        
+                        $this->audit->log(
+                            'voucher.auto_expired',
+                            $voucher,
+                            ['status' => $oldStatus],
+                            ['status' => VoucherStatus::Expired->value]
+                        );
 
-                $expiredCount++;
-                $identifier = $voucher->booking_id ? "booking #{$voucher->booking_id}" : "temp voucher #{$voucher->id}";
-                $this->line("Expired voucher #{$voucher->id} for {$identifier}");
-            }
-        }
+                        $expiredCount++;
+                        $identifier = $voucher->booking_id ? "booking #{$voucher->booking_id}" : "temp voucher #{$voucher->id}";
+                        $this->line("Expired voucher #{$voucher->id} for {$identifier}");
+                    }
+                }
+            });
 
         if ($expiredCount > 0) {
             $this->info("Successfully expired {$expiredCount} voucher(s).");

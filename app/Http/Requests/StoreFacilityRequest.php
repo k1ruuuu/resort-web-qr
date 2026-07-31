@@ -30,4 +30,21 @@ class StoreFacilityRequest extends FormRequest
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
+
+    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    {
+        $validator->after(function ($validator) {
+            $user = $this->user();
+
+            if (!$user || $user->hasRole('super-admin')) {
+                return;
+            }
+
+            $propertyIds = $user->properties()->pluck('property_id');
+
+            if (!in_array((int) $this->input('property_id'), $propertyIds->map(fn ($id) => (int) $id)->all(), true)) {
+                $validator->errors()->add('property_id', 'You do not have access to this property.');
+            }
+        });
+    }
 }

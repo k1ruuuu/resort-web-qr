@@ -36,6 +36,20 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
+                        <label class="form-label">Room</label>
+                        <select name="room_id" class="form-select @error('room_id') is-invalid @enderror">
+                            <option value="">Select room...</option>
+                            @foreach($booking->property->rooms as $room)
+                                <option value="{{ $room->id }}" @if(old('room_id', $booking->room_id) == $room->id) selected @endif>
+                                    {{ $room->number }} @if($room->label)({{ $room->label }})@endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('room_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
                         <label class="form-label">Check-in</label>
                         <input type="date" name="check_in" class="form-control @error('check_in') is-invalid @enderror" value="{{ old('check_in', $booking->check_in->format('Y-m-d')) }}" required>
                         @error('check_in')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -100,9 +114,9 @@
                     <div class="mb-3">
                         <label class="form-label">Status</label>
                         <select name="status" class="form-select @error('status') is-invalid @enderror">
-                            <option value="pending" @if(old('status', $booking->status->value) === 'pending') selected @endif>Pending</option>
-                            <option value="checked_in" @if(old('status', $booking->status->value) === 'checked_in') selected @endif>Checked In</option>
-                            <option value="checked_out" @if(old('status', $booking->status->value) === 'checked_out') selected @endif>Checked Out</option>
+                            <option value="expected_arrival" @if(old('status', $booking->status->value) === 'expected_arrival') selected @endif>Expected Arrival</option>
+                            <option value="check_in" @if(old('status', $booking->status->value) === 'check_in') selected @endif>Check In</option>
+                            <option value="expected_departure" @if(old('status', $booking->status->value) === 'expected_departure') selected @endif>Expected Departure</option>
                             <option value="cancelled" @if(old('status', $booking->status->value) === 'cancelled') selected @endif>Cancelled</option>
                         </select>
                         @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror

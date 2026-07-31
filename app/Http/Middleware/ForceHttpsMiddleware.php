@@ -11,7 +11,7 @@ class ForceHttpsMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // SECURITY FIX: Check environment variable to enable/disable HTTPS enforcement
-        $forceHttps = env('FORCE_HTTPS', false);
+        $forceHttps = config('app.force_https', false);
         
         // Only enforce HTTPS when explicitly enabled (production should have FORCE_HTTPS=true)
         if ($forceHttps && !$request->secure()) {

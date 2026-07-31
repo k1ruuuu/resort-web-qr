@@ -17,7 +17,7 @@
                         <li>Fill in your booking data in the template</li>
                         <li>Required fields: guest info, property, check-in, check-out dates</li>
                         <li>Date format must be YYYY-MM-DD (e.g., 2024-12-25)</li>
-                        <li>Status options: pending, confirmed, checked_in, checked_out, cancelled</li>
+                        <li>Status options: expected_arrival, check_in, expected_departure, cancelled</li>
                         <li>Save as CSV, XLS, or XLSX format</li>
                         <li>Upload the file below to import</li>
                     </ul>
@@ -98,7 +98,7 @@
                     <h6 class="text-danger">General Errors</h6>
                     <ul class="text-danger">
                         @foreach(session('import_errors') as $error)
-                        <li>{{ $error }}</li>
+                        <li>{{ is_string($error) ? $error : (is_array($error) ? ($error['message'] ?? json_encode($error)) : '') }}</li>
                         @endforeach
                     </ul>
                 </div>

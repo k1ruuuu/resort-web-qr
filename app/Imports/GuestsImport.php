@@ -20,6 +20,8 @@ class GuestsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnEr
     protected $imported = 0;
     protected $skipped = 0;
     protected int $headingRow = 1;
+    protected array $seenEmails = [];
+    protected array $seenPhones = [];
 
     public function __construct(int $headingRow = 1)
     {
@@ -37,11 +39,31 @@ class GuestsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnEr
         $existing = null;
         
         if (!empty($row['email'])) {
+            if (in_array($row['email'], $this->seenEmails, true)) {
+                $this->skipped++;
+                return null;
+            }
             $existing = Guest::where('email', $row['email'])->first();
         }
         
         if (!$existing && !empty($row['phone'])) {
+            if (in_array($row['phone'], $this->seenPhones, true)) {
+                $this->skipped++;
+                return null;
+            }
             $existing = Guest::where('phone', $row['phone'])->first();
+        }
+
+        if ($existing) {
+            $this->skipped++;
+            return null;
+        }
+
+        if (!empty($row['email'])) {
+            $this->seenEmails[] = $row['email'];
+        }
+        if (!empty($row['phone'])) {
+            $this->seenPhones[] = $row['phone'];
         }
 
         if ($existing) {

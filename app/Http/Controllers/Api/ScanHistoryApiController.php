@@ -19,13 +19,18 @@ class ScanHistoryApiController extends ApiController
 
         if ($request->filled('search')) {
             $search = trim($request->string('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             if (strlen($search) > 0) {
                 $query->whereHas('guestVoucher', fn($q) => $q->where('guest_name', 'like', "%{$search}%"));
             }
         }
 
         if ($request->filled('scan_result')) {
-            $query->where('scan_result', $request->string('scan_result'));
+            $validResults = ['success', 'not_found', 'voucher_not_active', 'booking_not_checked_in', 'outside_stay_period', 'invalid_outlet', 'facility_not_linked', 'invalid_date', 'quota_exceeded', 'lock_failed', 'rate_limit_exceeded', 'validation_error', 'system_error'];
+            $result = $request->string('scan_result');
+            if (in_array($result, $validResults)) {
+                $query->where('scan_result', $result);
+            }
         }
 
         if ($request->filled('outlet_id')) {

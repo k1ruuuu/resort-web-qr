@@ -20,7 +20,7 @@ class FacilityController extends Controller
     {
         $this->authorizePermission('facilities.manage');
 
-        $facilities = FacilityTemplate::query()
+        $facilities = $this->applyPropertyScope(FacilityTemplate::query())
             ->with('property')
             ->orderBy('name')
             ->paginate(20);
@@ -49,6 +49,7 @@ class FacilityController extends Controller
     public function edit(FacilityTemplate $facility): View
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
 
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
 
@@ -57,6 +58,9 @@ class FacilityController extends Controller
 
     public function update(UpdateFacilityRequest $request, FacilityTemplate $facility): RedirectResponse
     {
+        $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
+
         $this->facilityService->update($facility, $request->validated());
 
         return redirect()
@@ -67,8 +71,13 @@ class FacilityController extends Controller
     public function destroy(FacilityTemplate $facility): RedirectResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
 
-        $this->facilityService->delete($facility);
+        try {
+            $this->facilityService->delete($facility);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('facilities.index')

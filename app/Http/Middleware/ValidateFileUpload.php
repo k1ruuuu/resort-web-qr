@@ -23,10 +23,11 @@ class ValidateFileUpload
      * Dangerous file extensions to block
      */
     protected array $dangerousExtensions = [
-        'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps',
+        'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'phps', 'phar', 'pht',
         'exe', 'dll', 'bat', 'cmd', 'sh', 'bash',
         'js', 'jar', 'app', 'dmg', 'com', 'bin',
         'scr', 'msi', 'vbs', 'ps1', 'reg',
+        'shtml', 'cgi', 'pl', 'py', 'rb',
     ];
 
     public function handle(Request $request, Closure $next): Response
@@ -72,8 +73,26 @@ class ValidateFileUpload
                 return back()->withErrors(['file' => 'Invalid file type. Only CSV and Excel files are allowed.'])->withInput();
             }
 
-            // Additional security: Read first bytes to verify actual file type
-            $fileContent = file_get_contents($file->getRealPath(), false, null, 0, 1024);
+            $realPath = $file->getRealPath();
+            if ($realPath === false) {
+                return back()->withErrors(['file' => 'Could not verify uploaded file.'])->withInput();
+            }
+
+            // Verify MIME type server-side using the file content (client MIME is untrusted)
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $realMime = $finfo->file($realPath);
+            if (!in_array($realMime, $this->allowedMimes, true)) {
+                \Log::warning('Invalid MIME type upload attempt', [
+                    'client_mime' => $mimeType,
+                    'real_mime' => $realMime,
+                    'filename' => $file->getClientOriginalName(),
+                    'ip' => $request->ip(),
+                ]);
+
+                return back()->withErrors(['file' => 'Invalid file type. Only CSV and Excel files are allowed.'])->withInput();
+            }
+
+            $fileContent = file_get_contents($realPath, false, null, 0, 1024);
             
             // Check for PHP tags (code injection attempt)
             if (stripos($fileContent, '<?php') !== false || stripos($fileContent, '<?=') !== false) {

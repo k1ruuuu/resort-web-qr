@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RoomStatus;
 use App\Http\Controllers\ApiController;
 use App\Models\Room;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,7 @@ class RoomApiController extends ApiController
     {
         $this->authorizePermission('rooms.manage');
 
-        $rooms = Room::query()
+        $rooms = $this->applyPropertyScope(Room::query())
             ->with(['property', 'area', 'roomType'])
             ->orderBy('number')
             ->paginate(request()->integer('per_page', 20));
@@ -42,7 +43,7 @@ class RoomApiController extends ApiController
             'room_type_id' => ['required', 'exists:room_types,id'],
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
-            'status' => ['in:available,occupied,maintenance'],
+            'status' => [\Illuminate\Validation\Rule::enum(RoomStatus::class)],
             'bed_type' => ['nullable', 'string', 'max:32'],
             'room_view' => ['nullable', 'string', 'max:64'],
             'location' => ['nullable', 'string', 'max:64'],
@@ -63,7 +64,7 @@ class RoomApiController extends ApiController
             'room_type_id' => ['required', 'exists:room_types,id'],
             'area_id' => ['nullable', 'exists:areas,id'],
             'capacity' => ['nullable', 'integer', 'min:1'],
-            'status' => ['in:available,occupied,maintenance'],
+            'status' => [\Illuminate\Validation\Rule::enum(RoomStatus::class)],
             'bed_type' => ['nullable', 'string', 'max:32'],
             'room_view' => ['nullable', 'string', 'max:64'],
             'location' => ['nullable', 'string', 'max:64'],

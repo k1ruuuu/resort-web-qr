@@ -18,13 +18,12 @@ class DashboardApiController extends ApiController
 
     public function index(): JsonResponse
     {
-        $this->authorizePermission('bookings.view');
-
+        // Landing page for all authenticated roles (route group already enforces auth).
         $today = Carbon::today();
         $timezone = 'UTC';
 
         $totalGuests = Guest::query()->count();
-        $activeGuests = Booking::query()->where('status', 'checked_in')->count();
+        $activeGuests = Booking::query()->where('status', BookingStatus::CheckIn->value)->count();
         $totalBookings = Booking::query()->count();
 
         $todayQuota = $this->quota->getTodayQuota($timezone);

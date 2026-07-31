@@ -13,7 +13,7 @@ class FacilityApiController extends ApiController
     {
         $this->authorizePermission('facilities.manage');
 
-        $facilities = FacilityTemplate::query()
+        $facilities = $this->applyPropertyScope(FacilityTemplate::query())
             ->with('property')
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -51,14 +51,18 @@ class FacilityApiController extends ApiController
     {
         $this->authorizePermission('facilities.manage');
 
-        $facility->update($request->validate([
-            'property_id' => ['required', 'exists:properties,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:50'],
-            'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['boolean'],
-        ]));
+        try {
+            $facility->update($request->validate([
+                'property_id' => ['required', 'exists:properties,id'],
+                'name' => ['required', 'string', 'max:255'],
+                'code' => ['required', 'string', 'max:50'],
+                'description' => ['nullable', 'string'],
+                'sort_order' => ['nullable', 'integer', 'min:0'],
+                'is_active' => ['boolean'],
+            ]));
+        } catch (\RuntimeException $e) {
+            return $this->respondError($e->getMessage(), 422);
+        }
 
         return $this->respond($facility);
     }
@@ -67,7 +71,11 @@ class FacilityApiController extends ApiController
     {
         $this->authorizePermission('facilities.manage');
 
-        $facility->delete();
+        try {
+            $facility->delete();
+        } catch (\RuntimeException $e) {
+            return $this->respondError($e->getMessage(), 422);
+        }
 
         return $this->respondMessage('Facility deleted successfully.');
     }

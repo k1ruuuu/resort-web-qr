@@ -14,18 +14,28 @@ class DashboardController extends Controller
 {
     public function __invoke(): View
     {
+        // Dashboard is the landing page after login for every authenticated role
+        // (e.g. redeem-only staff without bookings.view). Data queries below are
+        // property-scoped for non-super-admins; the sidebar hides what a role can't do.
+        $user = auth()->user();
+        $propertyIds = $user->hasRole('super-admin') ? null : $user->properties()->pluck('property_id');
+
         $totalGuests = Guest::query()->count();
 
         $activeGuests = Booking::query()
-            ->where('status', BookingStatus::CheckedIn)
+            ->where('status', BookingStatus::CheckIn)
+            ->when($propertyIds, fn($q) => $q->whereIn('property_id', $propertyIds))
             ->sum('total_pax');
 
-        $bookingCount = Booking::query()->count();
+        $bookingCount = Booking::query()
+            ->when($propertyIds, fn($q) => $q->whereIn('property_id', $propertyIds))
+            ->count();
 
         $todayStr = Carbon::today()->toDateString();
         
         $activeBookings = Booking::query()
-            ->where('status', BookingStatus::CheckedIn)
+            ->where('status', BookingStatus::CheckIn)
+            ->when($propertyIds, fn($q) => $q->whereIn('property_id', $propertyIds))
             ->with('bookingFacilities')
             ->get();
 
@@ -43,6 +53,7 @@ class DashboardController extends Controller
 
         $redeemedToday = (int) RedemptionLog::query()
             ->where('date', $todayStr)
+            ->when($propertyIds, fn($q) => $q->whereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds)))
             ->sum('pax_used');
 
         $remainingToday = max(0, $totalQuotaToday - $redeemedToday);
@@ -50,6 +61,7 @@ class DashboardController extends Controller
         $topFacilities = RedemptionLog::query()
             ->select('facility_templates.name as facility_name', DB::raw('SUM(redemption_logs.pax_used) as total_pax'))
             ->join('facility_templates', 'facility_templates.id', '=', 'redemption_logs.facility_template_id')
+            ->when($propertyIds, fn($q) => $q->whereIn('facility_templates.property_id', $propertyIds))
             ->groupBy('facility_templates.id', 'facility_templates.name')
             ->orderByDesc('total_pax')
             ->limit(5)
@@ -57,6 +69,7 @@ class DashboardController extends Controller
 
         $outletActivity = RedemptionLog::query()
             ->with(['guest', 'facilityTemplate', 'outlet', 'user'])
+            ->when($propertyIds, fn($q) => $q->whereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds)))
             ->latest()
             ->limit(10)
             ->get();

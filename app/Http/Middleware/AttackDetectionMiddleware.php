@@ -81,12 +81,26 @@ class AttackDetectionMiddleware
 
     /**
      * Whitelisted paths (won't be checked for attacks)
+     *
+     * L-01: /api/auth was removed — credential endpoints must not be exempt
+     * from URL pattern checks.
      */
     protected array $whitelistedPaths = [
         '/',
         '/login',
-        '/api/auth',
         '/api/health',
+    ];
+
+    /**
+     * Conservative body-inspection patterns (L-05): only highly specific
+     * payloads are blocked so legitimate form/JSON data is not rejected.
+     */
+    protected array $bodyAttackPatterns = [
+        '/<\s*script[^>]*>/i',
+        '/\bunion\s+(all\s+)?select\b/i',
+        '/\bor\s+["\']?\s*\d+\s*=\s*\d+/i',
+        '/\.\.\/|\.\.\\\\/i',
+        '/\/etc\/passwd|\/proc\/self|%00/i',
     ];
 
     /**
@@ -152,28 +166,47 @@ class AttackDetectionMiddleware
                 $this->logAttack('PATH_TRAVERSAL', $clientIP, $fullUrl, $this->safeDecode($payload), $method);
                 return $this->getBlockPage('PATH_TRAVERSAL', $clientIP, $fullUrl);
             }
+
+            // L-05: inspect request bodies (JSON / form-encoded only, skip multipart uploads)
+            if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && $this->detectBodyAttack($request)) {
+                $this->logAttack('BODY_INJECTION', $clientIP, $fullUrl, 'Request body blocked by pattern match', $method);
+                return $this->getBlockPage('SQLi', $clientIP, $fullUrl);
+            }
         }
 
         return $next($request);
     }
 
     /**
+     * L-05: conservative scan of request bodies for injection payloads.
+     */
+    protected function detectBodyAttack(Request $request): bool
+    {
+        $contentType = strtolower((string) $request->header('Content-Type', ''));
+
+        if (str_contains($contentType, 'multipart/')) {
+            return false;
+        }
+
+        $body = substr((string) $request->getContent(), 0, 8192);
+        if ($body === '') {
+            return false;
+        }
+
+        return $this->testPatterns($body, $this->bodyAttackPatterns);
+    }
+
+    /**
      * Get client IP address
+     *
+     * Only trust the actual remote address (respecting Laravel's TrustProxies
+     * configuration when proxies are configured). Never read client-supplied
+     * X-Forwarded-For / X-Real-IP headers directly, otherwise attackers can
+     * spoof any IP to bypass rate limiting and attack detection.
      */
     protected function getClientIP(Request $request): string
     {
-        $forwarded = $request->header('X-Forwarded-For');
-        if ($forwarded) {
-            $ips = array_map('trim', explode(',', $forwarded));
-            foreach ($ips as $ip) {
-                if (!$this->isPrivateIP($ip)) {
-                    return $ip;
-                }
-            }
-            return $ips[0] ?? 'unknown';
-        }
-
-        return $request->header('X-Real-IP') ?? $request->ip() ?? 'unknown';
+        return $request->ip() ?: 'unknown';
     }
 
     /**
@@ -324,40 +357,31 @@ class AttackDetectionMiddleware
             ];
         }
 
-        // Get current request timestamps
-        $timestamps = Cache::get($key, []);
-        $now = time();
-        $windowStart = $now - $this->rateLimitWindow;
-
-        // Filter out old timestamps
-        $timestamps = array_filter($timestamps, fn($ts) => $ts > $windowStart);
-        $timestamps[] = $now;
+        // L-04: atomic sliding count via Cache::add + increment (no read-modify-write race)
+        $count = Cache::add($key, 1, $this->rateLimitWindow) ? 1 : (int) Cache::increment($key);
 
         // Check for DDoS
-        if (count($timestamps) > $this->ddosThreshold) {
-            Cache::put($blockKey, ['type' => 'DDoS', 'count' => count($timestamps)], $this->blockTtl);
+        if ($count > $this->ddosThreshold) {
+            Cache::put($blockKey, ['type' => 'DDoS', 'count' => $count], $this->blockTtl);
             Log::critical('[SECURITY] DDoS Attack Detected', [
                 'ip' => $ip,
-                'requests' => count($timestamps),
+                'requests' => $count,
                 'window' => $this->rateLimitWindow,
             ]);
-            return ['blocked' => true, 'isDDoS' => true, 'requestCount' => count($timestamps)];
+            return ['blocked' => true, 'isDDoS' => true, 'requestCount' => $count];
         }
 
         // Check for rate limit
-        if (count($timestamps) > $this->rateLimitMax) {
-            Cache::put($blockKey, ['type' => 'RATE_LIMIT', 'count' => count($timestamps)], 30);
+        if ($count > $this->rateLimitMax) {
+            Cache::put($blockKey, ['type' => 'RATE_LIMIT', 'count' => $count], 30);
             Log::warning('[SECURITY] Rate Limit Exceeded', [
                 'ip' => $ip,
-                'requests' => count($timestamps),
+                'requests' => $count,
             ]);
-            return ['blocked' => true, 'isDDoS' => false, 'requestCount' => count($timestamps)];
+            return ['blocked' => true, 'isDDoS' => false, 'requestCount' => $count];
         }
 
-        // Update timestamps
-        Cache::put($key, $timestamps, $this->rateLimitWindow);
-
-        return ['blocked' => false, 'isDDoS' => false, 'requestCount' => count($timestamps)];
+        return ['blocked' => false, 'isDDoS' => false, 'requestCount' => $count];
     }
 
     /**
@@ -583,7 +607,7 @@ class AttackDetectionMiddleware
             </div>
             <div class="info-row">
                 <span class="info-label">Time</span>
-                <span class="info-value">%s</span>
+                <span class="info-value">%TIMESTAMP%</span>
             </div>
         </div>
         <a href="/" class="back-btn">← Back to Home</a>
@@ -593,7 +617,7 @@ class AttackDetectionMiddleware
 </html>
 HTML;
 
-        $html = sprintf($html, $e(now()->format('Y-m-d H:i:s')));
+        $html = str_replace('%TIMESTAMP%', $e(now()->format('Y-m-d H:i:s')), $html);
 
         return response($html, $page['status'])->header('Content-Type', 'text/html');
     }

@@ -40,6 +40,7 @@ class VoucherController extends Controller
 
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
+            $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
@@ -193,7 +194,7 @@ class VoucherController extends Controller
             ->orderBy('property_id')
             ->orderBy('name')
             ->get()
-            ->groupBy(fn ($o) => $o->property->name);
+            ->groupBy(fn ($o) => $o->property?->name ?? 'Unassigned');
 
         return view('vouchers.redeem', [
             'outlets' => $outlets,
@@ -210,7 +211,7 @@ class VoucherController extends Controller
             ->orderBy('property_id')
             ->orderBy('name')
             ->get()
-            ->groupBy(fn ($o) => $o->property->name);
+            ->groupBy(fn ($o) => $o->property?->name ?? 'Unassigned');
 
         return view('vouchers.scan', [
             'outlets' => $outlets,
@@ -328,6 +329,11 @@ class VoucherController extends Controller
             $today = Carbon::today($timezone);
             $facilityStatuses = $voucher->getFacilityStatuses($today);
 
+            if ($outlet) {
+                $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
+                $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+            }
+
             $history = RedemptionLog::query()
                 ->where('guest_voucher_id', $voucher->id)
                 ->with(['facilityTemplate', 'outlet', 'user'])
@@ -357,13 +363,14 @@ class VoucherController extends Controller
                     'check_out' => null,
                     'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
                     'facilities' => $facilityStatuses,
+                    'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                     'history' => $history,
                 ]
             ]);
         }
 
         // Validate booking status
-        if ($voucher->booking->status !== \App\Enums\BookingStatus::CheckedIn) {
+        if (!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
             }
@@ -374,7 +381,7 @@ class VoucherController extends Controller
         }
 
         // Validate expiration time (9 PM on checkout date)
-        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $timezone = $voucher->booking->property?->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
         $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
         $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
@@ -403,6 +410,11 @@ class VoucherController extends Controller
         $today = Carbon::today($timezone);
         $facilityStatuses = $voucher->getFacilityStatuses($today);
 
+        if ($outlet) {
+            $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
+            $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+        }
+
         $history = RedemptionLog::query()
             ->where('guest_voucher_id', $voucher->id)
             ->with(['facilityTemplate', 'outlet', 'user'])
@@ -424,7 +436,7 @@ class VoucherController extends Controller
             'success' => true,
             'data' => [
                 'voucher_id' => $voucher->id,
-                'guest_name' => $voucher->booking->guest->full_name,
+                'guest_name' => $voucher->booking->guest?->full_name ?? 'N/A',
                 'room_code' => $voucher->booking->room?->code ?? $voucher->booking->room?->number ?? 'N/A',
                 'room_name' => $voucher->booking->room?->label ?? 'N/A',
                 'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
@@ -432,6 +444,7 @@ class VoucherController extends Controller
                 'check_out' => $voucher->booking->check_out->format('Y-m-d'),
                 'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
                 'facilities' => $facilityStatuses,
+                'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                 'history' => $history,
             ]
         ]);
@@ -473,7 +486,7 @@ class VoucherController extends Controller
             'success' => true,
             'message' => 'Facility redeemed successfully!',
             'data' => [
-                'guest' => $log->guest->full_name,
+                'guest' => $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
                 'facility' => $log->facilityTemplate->name,
                 'pax_used' => $log->pax_used,
                 'remaining_quota' => $log->remaining_quota,
@@ -530,13 +543,31 @@ class VoucherController extends Controller
     {
         $voucher = $this->findByPublicToken($token);
         $voucher->load(['booking.guest', 'booking.room', 'property']);
+
+        $this->vouchers->checkAndExpireIfNeeded($voucher);
+        $voucher->refresh();
+
         $today = Carbon::today($voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC');
         $facilityStatuses = $voucher->getFacilityStatuses($today);
+
+        $timezone = $voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC';
+        $now = Carbon::now($timezone);
+
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+            $voucherState = 'inactive';
+        } elseif ($voucher->category === 'temporary' && $voucher->expires_at && $now->gte($voucher->expires_at)) {
+            $voucherState = 'expired';
+        } elseif ($voucher->booking && $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
+            $voucherState = 'not_checked_in';
+        } else {
+            $voucherState = 'active';
+        }
 
         return view('vouchers.public', [
             'voucher' => $voucher,
             'qrImageUrl' => $this->qr->imageUrl($voucher),
             'facilityStatuses' => $facilityStatuses,
+            'voucherState' => $voucherState,
         ]);
     }
 
@@ -544,12 +575,24 @@ class VoucherController extends Controller
     {
         $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
-        return $this->qr->svgResponse($this->qr->payloadForVoucher($voucher));
+        return $this->qr->templateResponse($this->qr->payloadForVoucher($voucher));
     }
 
     public function qrImagePublic(string $token): Response
     {
         $voucher = $this->findByPublicToken($token);
+
+        // L-15: never serve QR images for vouchers that are no longer usable
+        $timezone = $voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC';
+        $now = Carbon::now($timezone);
+
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+            abort(410, 'Voucher is no longer active.');
+        }
+
+        if ($voucher->category === 'temporary' && $voucher->expires_at && $now->gte($voucher->expires_at)) {
+            abort(410, 'Voucher has expired.');
+        }
 
         return $this->qr->templateResponse($this->qr->payloadForVoucher($voucher));
     }
@@ -580,6 +623,8 @@ class VoucherController extends Controller
     public function resend(Booking $booking): RedirectResponse
     {
         abort_unless(auth()->user()?->can('vouchers.resend'), 403);
+
+        abort_unless($booking->guestVoucher, 404);
 
         try {
             $this->delivery->sendManual($booking);

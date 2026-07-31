@@ -13,16 +13,22 @@ use Illuminate\Support\Facades\Log;
 class VoucherDeliveryService
 {
     public function __construct(
-        private readonly WhatsAppService $whatsapp,
+        private readonly FonnteService $fonnte,
+        private readonly WhacenterService $whacenter,
         private readonly DeliveryLogRepository $logs,
         private readonly VoucherService $vouchers,
         private readonly QRStorageService $qrStorage,
         private readonly PublicUrlGeneratorService $urlGenerator,
     ) {}
 
+    private function sender(): FonnteService|WhacenterService
+    {
+        $provider = Setting::get('delivery.whatsapp_provider', 'Fonnte');
+        return strtolower($provider) === 'whacenter' ? $this->whacenter : $this->fonnte;
+    }
+
     public function sendImmediate(Booking $booking): DeliveryLog
     {
-        // Check if WhatsApp delivery is enabled
         if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
             throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
         }
@@ -63,7 +69,12 @@ class VoucherDeliveryService
 
         $log = $this->logs->createPending($booking, $message, $qrUrl);
 
-        $result = $this->whatsapp->send($booking->guest->phone ?? '', $message, $qrUrl);
+        $result = $this->sender()->send(
+            $booking->guest?->phone ?? '',
+            $message,
+            $qrUrl,
+            $booking->guest?->full_name ?? null
+        );
 
         if ($result['success']) {
             $this->logs->markSent($log->id, $result['response']);
@@ -76,7 +87,6 @@ class VoucherDeliveryService
 
     public function schedule(Booking $booking): DeliveryLog
     {
-        // Check if WhatsApp delivery is enabled
         if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
             throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
         }
@@ -127,7 +137,6 @@ class VoucherDeliveryService
 
     public function sendManual(Booking $booking): DeliveryLog
     {
-        // Check if WhatsApp delivery is enabled
         if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
             throw new \RuntimeException('WhatsApp delivery is currently disabled in settings.');
         }
@@ -168,7 +177,12 @@ class VoucherDeliveryService
         
         $log = $this->logs->createPending($booking, $message, $qrUrl);
 
-        $result = $this->whatsapp->send($booking->guest->phone ?? '', $message, $qrUrl);
+        $result = $this->sender()->send(
+            $booking->guest?->phone ?? '',
+            $message,
+            $qrUrl,
+            $booking->guest?->full_name ?? null
+        );
 
         if ($result['success']) {
             $this->logs->markSent($log->id, $result['response']);
@@ -181,13 +195,13 @@ class VoucherDeliveryService
 
     public function sendPendingLogs(): void
     {
-        // Check if WhatsApp delivery is enabled
         if (Setting::get('delivery.whatsapp_enabled', '1') !== '1') {
             Log::info('WhatsApp delivery is disabled. Skipping pending logs.');
             return;
         }
 
         $pendingLogs = DeliveryLog::query()
+            ->with('booking.guest')
             ->where('delivery_status', 'pending')
             ->where('scheduled_at', '<=', now())
             ->get();
@@ -201,23 +215,21 @@ class VoucherDeliveryService
                 }
 
                 try {
-                    if (empty($lockedLog->qr_path)) {
-                        throw new \RuntimeException("QR Path URL is empty.");
-                    }
-                    
-                    $this->urlGenerator->validateUrl($lockedLog->qr_path);
-                    
-                    $parsedUrl = parse_url($lockedLog->qr_path);
-                    $path = $parsedUrl['path'] ?? '';
-                    $filename = '';
-                    if (preg_match('/storage\/(qrcodes\/qr-[a-zA-Z0-9_-]+\.png)/', $path, $matches)) {
-                        $filename = $matches[1];
-                    } else {
-                        $filename = 'qrcodes/' . basename($path);
-                    }
-                    
-                    if (!$this->qrStorage->exists($filename)) {
-                        throw new \RuntimeException("QR image file '{$filename}' not found on disk.");
+                    if (!empty($lockedLog->qr_path)) {
+                        $this->urlGenerator->validateUrl($lockedLog->qr_path);
+
+                        $parsedUrl = parse_url($lockedLog->qr_path);
+                        $path = $parsedUrl['path'] ?? '';
+                        $filename = '';
+                        if (preg_match('/storage\/(qrcodes\/qr-[a-zA-Z0-9_-]+\.png)/', $path, $matches)) {
+                            $filename = $matches[1];
+                        } else {
+                            $filename = 'qrcodes/' . basename($path);
+                        }
+
+                        if (!$this->qrStorage->exists($filename)) {
+                            throw new \RuntimeException("QR image file '{$filename}' not found on disk.");
+                        }
                     }
                 } catch (\Throwable $e) {
                     Log::error("Validation failed for pending log ID {$lockedLog->id}: " . $e->getMessage());
@@ -225,10 +237,12 @@ class VoucherDeliveryService
                     return;
                 }
 
-                $result = $this->whatsapp->send(
+                $guestName = $lockedLog->booking?->guest?->full_name;
+                $result = $this->sender()->send(
                     $lockedLog->phone_number,
                     $lockedLog->message_content,
-                    $lockedLog->qr_path
+                    $lockedLog->qr_path,
+                    $guestName
                 );
 
                 if ($result['success']) {
@@ -247,7 +261,7 @@ class VoucherDeliveryService
             "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_code}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
         );
 
-        $guestName = $booking->guest->full_name;
+        $guestName = $booking->guest?->full_name ?? 'Guest';
         $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'N/A';
         $totalPax = $booking->total_pax + $booking->extra_beds;
         

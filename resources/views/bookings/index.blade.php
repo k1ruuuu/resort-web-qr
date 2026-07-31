@@ -40,10 +40,9 @@
                         <label class="form-label">Status</label>
                         <select name="status" class="form-select">
                             <option value="">All</option>
-                            <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
-                            <option value="checked_in" {{ request('status') === 'checked_in' ? 'selected' : '' }}>Checked In</option>
-                            <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Checked Out</option>
+                            <option value="expected_arrival" {{ request('status') === 'expected_arrival' ? 'selected' : '' }}>Expected Arrival</option>
+                            <option value="check_in" {{ request('status') === 'check_in' ? 'selected' : '' }}>Check In</option>
+                            <option value="expected_departure" {{ request('status') === 'expected_departure' ? 'selected' : '' }}>Expected Departure</option>
                             <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                         </select>
                     </div>
@@ -116,13 +115,13 @@
                     <tr>
                         <td><strong class="text-truncate d-inline-block" style="max-width: 100px;">{{ $booking->reference }}</strong></td>
                         <td>
-                            <div class="text-truncate" style="max-width: 150px;" title="{{ $booking->guest->full_name }}">
-                                {{ $booking->guest->full_name }}
+                            <div class="text-truncate" style="max-width: 150px;" title="{{ $booking->guest?->full_name ?? 'N/A' }}">
+                                {{ $booking->guest?->full_name ?? 'N/A' }}
                             </div>
                         </td>
                         <td class="d-none d-md-table-cell">
-                            <div class="text-truncate" style="max-width: 120px;" title="{{ $booking->property->name }}">
-                                {{ $booking->property->name }}
+                            <div class="text-truncate" style="max-width: 120px;" title="{{ $booking->property?->name ?? 'N/A' }}">
+                                {{ $booking->property?->name ?? 'N/A' }}
                             </div>
                         </td>
                         <td>
@@ -131,13 +130,17 @@
                             </span>
                         </td>
                         <td class="d-none d-lg-table-cell">
-                            <small>{{ $booking->check_in->format('M d') }} – {{ $booking->check_out->format('M d') }}</small>
+                            <small>{{ $booking->check_in?->format('M d') ?? 'N/A' }} – {{ $booking->check_out?->format('M d') ?? 'N/A' }}</small>
                         </td>
                         <td class="d-none d-sm-table-cell">{{ $booking->total_pax }}</td>
                         <td>
-                            <span class="badge bg-{{ $booking->status->value === 'pending' ? 'warning' : 'success' }} text-white">
-                                <span class="d-none d-sm-inline">{{ $booking->status->value }}</span>
-                                <span class="d-inline d-sm-none">{{ substr($booking->status->value, 0, 1) }}</span>
+                            @php
+                                $badgeMap = ['check_in' => 'success', 'expected_arrival' => 'info', 'expected_departure' => 'secondary', 'cancelled' => 'danger'];
+                                $labelMap = ['check_in' => 'Check In', 'expected_arrival' => 'Expected Arrival', 'expected_departure' => 'Expected Departure', 'cancelled' => 'Cancelled'];
+                            @endphp
+                            <span class="badge bg-{{ $badgeMap[$booking->status->value] ?? 'secondary' }} text-white">
+                                <span class="d-none d-sm-inline">{{ $labelMap[$booking->status->value] ?? $booking->status->value }}</span>
+                                <span class="d-inline d-sm-none">{{ substr($labelMap[$booking->status->value] ?? $booking->status->value, 0, 1) }}</span>
                             </span>
                         </td>
                         <td class="text-end">

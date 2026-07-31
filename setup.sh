@@ -181,62 +181,42 @@ else
     fi
 fi
 
-# Verify extensions are available
-# Map: PHP extension name → package suffix (empty = built-in, no package needed)
-declare -A EXT_MAP=(
-    [bcmath]="bcmath"
-    [ctype]=""
-    [curl]="curl"
-    [fileinfo]="fileinfo"
-    [gd]="gd"
-    [intl]="intl"
-    [json]=""
-    [mbstring]="mbstring"
-    [openssl]=""
-    [pdo]=""
-    [mysqli]="mysql"
-    [tokenizer]=""
-    [xml]="xml"
-    [zip]="zip"
-    [sockets]="sockets"
+# Install all required PHP extension packages (apt is idempotent)
+REQUIRED_PACKAGES=(
+    "$PHP_PREFIX-bcmath" "$PHP_PREFIX-curl" "$PHP_PREFIX-gd"
+    "$PHP_PREFIX-intl" "$PHP_PREFIX-mbstring" "$PHP_PREFIX-mysql"
+    "$PHP_PREFIX-xml" "$PHP_PREFIX-zip"
 )
-MISSING_PKGS=()
-for ext in "${!EXT_MAP[@]}"; do
-    pkg="${EXT_MAP[$ext]}"
-    if [[ -z "$pkg" ]]; then
-        continue  # built-in extension, no package needed
-    fi
-    if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
-        MISSING_PKGS+=("${PHP_PREFIX}-${pkg}")
-    fi
-done
+info "Installing PHP extension packages..."
+run "$INSTALL_CMD ${REQUIRED_PACKAGES[*]}"
 
-if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
-    info "Installing missing PHP extensions: ${MISSING_PKGS[*]}"
-    run "$INSTALL_CMD ${MISSING_PKGS[*]}"
-fi
-
-# Enable extensions and verify they're loaded
+# Enable extensions (Debian/Ubuntu specific)
 if command -v phpenmod &>/dev/null; then
     info "Enabling PHP extensions..."
-    run "phpenmod -v 8.2 bcmath curl gd intl mbstring mysql sockets xml zip 2>/dev/null || true"
+    run "phpenmod -v 8.2 bcmath curl gd intl mbstring mysqli xml zip 2>/dev/null || true"
 fi
 
+# Verify critical extensions
 info "Verifying critical PHP extensions..."
-CRITICAL_EXTS=(curl gd intl mbstring mysql xml zip)
+CRITICAL_MAP=(
+    curl:curl
+    gd:gd
+    intl:intl
+    mbstring:mbstring
+    mysqli:mysql
+    xml:xml
+    zip:zip
+)
 MISSING_AFTER=()
-for ext in "${CRITICAL_EXTS[@]}"; do
-    if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
+for entry in "${CRITICAL_MAP[@]}"; do
+    ext="${entry%%:*}"
+    if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
         MISSING_AFTER+=("$ext")
     fi
 done
 if [[ ${#MISSING_AFTER[@]} -gt 0 ]]; then
     warn "Still missing after install: ${MISSING_AFTER[*]}"
-    warn "Check PHP error log: php -i 2>/dev/null | grep 'Loaded Configuration File'"
-    if [[ " ${MISSING_AFTER[*]} " =~ " gd " ]]; then
-        warn "The GD extension is required for PhpSpreadsheet. Run manually:"
-        warn "  apt install php8.2-gd && phpenmod gd && systemctl restart php8.2-fpm"
-    fi
+    warn "Run: apt install ${MISSING_AFTER[*]/#/$PHP_PREFIX-}"
 fi
 
 # ===========================================================================
@@ -382,7 +362,7 @@ fi
 
 # 5f. Verify critical PHP extensions for Composer
 info "Checking PHP extensions required by Composer..."
-COMPOSER_REQUIRED=(gd curl mbstring xml zip intl)
+COMPOSER_REQUIRED=(gd curl mbstring mysqli xml zip intl)
 COMPOSER_MISSING=()
 for ext in "${COMPOSER_REQUIRED[@]}"; do
     if ! php -m 2>/dev/null | grep -qi "^$ext$"; then
@@ -390,7 +370,7 @@ for ext in "${COMPOSER_REQUIRED[@]}"; do
     fi
 done
 if [[ ${#COMPOSER_MISSING[@]} -gt 0 ]]; then
-    die "Required PHP extensions missing: ${COMPOSER_MISSING[*]}. Install them and re-run."
+    die "Required PHP extensions missing: ${COMPOSER_MISSING[*]}. Re-run setup.sh after installing them."
 fi
 
 # 5g. Composer install

@@ -159,17 +159,35 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label font-weight-bold">WhatsApp Provider</label>
-                                <input type="text" name="whatsapp_provider" class="form-control @error('whatsapp_provider') is-invalid @enderror" 
-                                       value="{{ old('whatsapp_provider', $settings['whatsapp_provider']) }}" required>
+                                <select name="whatsapp_provider" id="whatsappProvider" class="form-select @error('whatsapp_provider') is-invalid @enderror" required>
+                                    <option value="Fonnte" {{ old('whatsapp_provider', $settings['whatsapp_provider']) === 'Fonnte' ? 'selected' : '' }}>Fonnte</option>
+                                    <option value="Whacenter" {{ old('whatsapp_provider', $settings['whatsapp_provider']) === 'Whacenter' ? 'selected' : '' }}>Whacenter</option>
+                                </select>
                                 @error('whatsapp_provider')<span class="invalid-feedback">{{ $message }}</span>@enderror
                             </div>
+                        </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label font-weight-bold">Convia API Key</label>
-                                <input type="password" name="convia_api_key" class="form-control @error('convia_api_key') is-invalid @enderror" 
-                                       value="{{ old('convia_api_key', $settings['convia_api_key']) }}" placeholder="Enter Convia API key...">
-                                <div class="form-text">Leave blank or use MOCK_CONVIA_KEY for simulated local testing.</div>
-                                @error('convia_api_key')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                        <div id="fonnteSettings" class="mt-3">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label font-weight-bold">Fonnte API Key (Token)</label>
+                                    <input type="password" name="fonnte_api_key" class="form-control @error('fonnte_api_key') is-invalid @enderror" 
+                                           value="{{ old('fonnte_api_key', $settings['fonnte_api_key']) }}" placeholder="Enter Fonnte token...">
+                                    <div class="form-text">Leave blank or use MOCK_FONNTE_KEY for simulated local testing.</div>
+                                    @error('fonnte_api_key')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="whacenterSettings" class="mt-3" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label font-weight-bold">Whacenter Device ID</label>
+                                    <input type="password" name="whacenter_device_id" class="form-control @error('whacenter_device_id') is-invalid @enderror" 
+                                           value="{{ old('whacenter_device_id', $settings['whacenter_device_id']) }}" placeholder="Enter Whacenter device ID...">
+                                    <div class="form-text">Leave blank or use MOCK_WHACENTER_DEVICE for simulated local testing.</div>
+                                    @error('whacenter_device_id')<span class="invalid-feedback">{{ $message }}</span>@enderror
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -384,11 +402,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function updateProviderSettings() {
+        const provider = document.getElementById('whatsappProvider').value;
+        const fonnteSettings = document.getElementById('fonnteSettings');
+        const whacenterSettings = document.getElementById('whacenterSettings');
+        
+        if (provider === 'Whacenter') {
+            fonnteSettings.style.display = 'none';
+            whacenterSettings.style.display = 'block';
+        } else {
+            fonnteSettings.style.display = 'block';
+            whacenterSettings.style.display = 'none';
+        }
+    }
+    
     updateMethodInfo();
     updatePhoneFilterInfo();
+    updateProviderSettings();
     
     deliveryMethod.addEventListener('change', updateMethodInfo);
     phoneFilterMode.addEventListener('change', updatePhoneFilterInfo);
+    document.getElementById('whatsappProvider').addEventListener('change', updateProviderSettings);
 });
 </script>
 @endpush

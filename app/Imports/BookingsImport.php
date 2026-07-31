@@ -80,7 +80,6 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 'errors' => ['Guest information is required'],
                 'values' => $row,
             ];
-            $this->skipped++;
             return null;
         }
 
@@ -99,7 +98,6 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 'errors' => ['Property not found'],
                 'values' => $row,
             ];
-            $this->skipped++;
             return null;
         }
 
@@ -124,7 +122,6 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 'errors' => ['Invalid date format'],
                 'values' => $row,
             ];
-            $this->skipped++;
             return null;
         }
 
@@ -135,18 +132,17 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 'errors' => ['Check-in and check-out dates are required'],
                 'values' => $row,
             ];
-            $this->skipped++;
             return null;
         }
 
         // Calculate nights
-        $nights = $checkIn->diffInDays($checkOut);
+        $nights = $checkIn->copy()->startOfDay()->diffInDays($checkOut->copy()->startOfDay());
 
         // Parse status
-        $status = BookingStatus::Pending;
+        $status = BookingStatus::ExpectedArrival;
         if (!empty($row['status'])) {
             $statusValue = strtolower(str_replace(' ', '_', $row['status']));
-            $status = BookingStatus::tryFrom($statusValue) ?? BookingStatus::Pending;
+            $status = BookingStatus::tryFrom($statusValue) ?? BookingStatus::ExpectedArrival;
         }
 
         $this->imported++;
@@ -174,7 +170,7 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         ]);
 
         // Track checked-in bookings for voucher generation
-        if ($status === BookingStatus::CheckedIn) {
+                if ($status === BookingStatus::CheckIn) {
             $this->checkedInBookings[] = $booking;
         }
 
@@ -243,9 +239,9 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         if (empty($data['status']) && !empty($data['reservation_status'])) {
             $resStatus = trim($data['reservation_status']);
             if ($resStatus === '1' || strtolower($resStatus) === 'confirmed' || strtolower($resStatus) === 'checked in' || strtolower($resStatus) === 'checked_in') {
-                $data['status'] = 'checked_in';
+                $data['status'] = 'check_in';
             } else {
-                $data['status'] = 'pending';
+                $data['status'] = 'expected_arrival';
             }
         }
 

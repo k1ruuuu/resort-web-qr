@@ -30,6 +30,7 @@ class DeliveryLogController extends Controller
         $logs = DeliveryLog::query()
             ->with(['booking.guest', 'guest'])
             ->latest()
+            ->limit(10000)
             ->get();
 
         $filename = 'delivery-logs-' . now()->format('Y-m-d-His');
@@ -41,13 +42,4 @@ class DeliveryLogController extends Controller
         );
     }
 
-    private function getExcelType(string $format): string
-    {
-        return match ($format) {
-            'csv' => \Maatwebsite\Excel\Excel::CSV,
-            'xls' => \Maatwebsite\Excel\Excel::XLS,
-            'xlsx' => \Maatwebsite\Excel\Excel::XLSX,
-            default => \Maatwebsite\Excel\Excel::XLSX,
-        };
-    }
 }

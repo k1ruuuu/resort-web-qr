@@ -59,18 +59,29 @@ class ValidatePaginationParameters
         // Validate 'sort' parameter if present
         if ($request->has('sort')) {
             $sort = $request->input('sort');
-            
+
             // SECURITY: Only allow alphanumeric characters and underscores in sort field
             // Prevents SQL injection through ORDER BY clause
-            if (!preg_match('/^[a-zA-Z0-9_]+$/', $sort)) {
+            // L-03: additionally reject sensitive / non-displayable columns
+            $sensitiveColumns = [
+                'password', 'remember_token', 'secret', 'token', 'api_token',
+                'created_at', 'updated_at', 'deleted_at', 'ip_address',
+            ];
+
+            if (
+                !preg_match('/^[a-zA-Z0-9_]+$/', $sort)
+                || in_array(strtolower($sort), $sensitiveColumns, true)
+            ) {
                 \Log::warning('[SECURITY] Invalid sort parameter', [
                     'sort' => $sort,
                     'ip' => $request->ip(),
                     'url' => $request->fullUrl(),
                 ]);
-                
-                // Remove invalid sort parameter
+
+                // L-02: remove from both the POST and QUERY bags so GET listings
+                // cannot bypass the guard via raw query string.
                 $request->request->remove('sort');
+                $request->query->remove('sort');
             }
         }
         

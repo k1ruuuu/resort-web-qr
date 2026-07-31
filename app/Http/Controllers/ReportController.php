@@ -90,13 +90,4 @@ class ReportController extends Controller
         );
     }
 
-    private function getExcelType(string $format): string
-    {
-        return match ($format) {
-            'csv' => \Maatwebsite\Excel\Excel::CSV,
-            'xls' => \Maatwebsite\Excel\Excel::XLS,
-            'xlsx' => \Maatwebsite\Excel\Excel::XLSX,
-            default => \Maatwebsite\Excel\Excel::XLSX,
-        };
-    }
 }

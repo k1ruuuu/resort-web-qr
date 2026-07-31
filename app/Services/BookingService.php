@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\VoucherStatus;
 use App\Models\Booking;
 use App\Models\BookingFacility;
 use App\Models\FacilityTemplate;
@@ -23,7 +24,10 @@ class BookingService
     public function create(array $data, array $facilities = []): Booking
     {
         return DB::transaction(function () use ($data, $facilities) {
+            $data['status'] = BookingStatus::ExpectedArrival;
             $data = $this->enrichBookingData($data);
+
+            $this->assertRoomAvailable($data, null);
 
             $booking = Booking::query()->create($data);
             $quotaTotal = $this->quota->quotaForBooking($booking);
@@ -38,7 +42,7 @@ class BookingService
                     'facility_template_id' => $facility['facility_template_id'],
                     'start_date' => $facility['start_date'] ?? $booking->check_in,
                     'end_date' => $facility['end_date'] ?? $booking->check_out,
-                    'quota_total' => $facility['quota_total'] ?? $quotaTotal,
+                    'quota_total' => $quotaTotal,
                 ]);
             }
 
@@ -48,9 +52,54 @@ class BookingService
         });
     }
 
+    public function updateBooking(Booking $booking, array $data, array $facilities = []): Booking
+    {
+        return DB::transaction(function () use ($booking, $data, $facilities) {
+            $old = $booking->toArray();
+
+            $data = $this->enrichBookingData($data);
+
+            $this->assertRoomAvailable($data, $booking->id);
+
+            $booking->update($data);
+
+            if (! empty($facilities)) {
+                $booking->bookingFacilities()->delete();
+                $quotaTotal = $this->quota->quotaForBooking($booking);
+
+                foreach ($facilities as $facility) {
+                    if (empty($facility['facility_template_id'])) {
+                        continue;
+                    }
+
+                    BookingFacility::query()->create([
+                        'booking_id' => $booking->id,
+                        'facility_template_id' => $facility['facility_template_id'],
+                        'start_date' => $facility['start_date'] ?? $booking->check_in,
+                        'end_date' => $facility['end_date'] ?? $booking->check_out,
+                        'quota_total' => $quotaTotal,
+                    ]);
+                }
+            } elseif (
+                isset($data['adults']) || isset($data['children']) || isset($data['extra_beds'])
+            ) {
+                // M-13: pax changed without touching facilities -> keep quotas in sync
+                $newQuota = $this->quota->quotaForBooking($booking);
+                $booking->bookingFacilities()
+                    ->where('quota_total', '!=', $newQuota)
+                    ->update(['quota_total' => $newQuota]);
+            }
+
+            $this->audit->log('booking.updated', $booking, $old, $booking->toArray());
+            $this->cache->invalidateBooking($booking);
+
+            return $booking->fresh(['guest', 'property', 'room.roomType', 'bookingFacilities.facilityTemplate']);
+        });
+    }
+
     public function checkIn(Booking $booking, array $facilityTemplateIds = []): Booking
     {
-        if ($booking->status === BookingStatus::CheckedIn) {
+        if ($booking->status === BookingStatus::CheckIn) {
             return $booking;
         }
 
@@ -62,92 +111,144 @@ class BookingService
         }
 
         try {
-            if (!empty($facilityTemplateIds)) {
-                $booking->bookingFacilities()->delete();
-                $quotaTotal = $this->quota->quotaForBooking($booking);
+            // Re-verify status AFTER acquiring the lock to prevent TOCTOU
+            $booking = $booking->fresh();
 
-                foreach ($facilityTemplateIds as $facilityTemplateId) {
-                    $booking->bookingFacilities()->create([
-                        'facility_template_id' => $facilityTemplateId,
-                        'start_date' => $booking->check_in,
-                        'end_date' => $booking->check_out,
-                        'quota_total' => $quotaTotal,
-                    ]);
-                }
-            } else {
-                $this->syncDefaultFacilities($booking);
+            if ($booking->status === BookingStatus::CheckIn) {
+                return $booking;
             }
 
             $old = $booking->only(['status', 'checked_in_at']);
 
-            $booking->update([
-                'status' => BookingStatus::CheckedIn,
-                'checked_in_at' => now(),
-            ]);
+            // Status change, facility sync and voucher generation must be atomic:
+            // if voucher generation fails, the booking must NOT stay checked in.
+            DB::transaction(function () use ($booking, $facilityTemplateIds) {
+                if (!empty($facilityTemplateIds)) {
+                    $validIds = FacilityTemplate::query()
+                        ->where('property_id', $booking->property_id)
+                        ->where('is_active', true)
+                        ->whereIn('id', $facilityTemplateIds)
+                        ->pluck('id')
+                        ->all();
 
-            app(VoucherService::class)->generateForBooking($booking);
+                    if (count($validIds) !== count(array_unique($facilityTemplateIds))) {
+                        throw new \InvalidArgumentException('One or more selected facilities are not available for this property.');
+                    }
 
-            $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
-            $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
+                    $booking->bookingFacilities()->delete();
+                    $quotaTotal = $this->quota->quotaForBooking($booking);
 
-            // Both can be enabled simultaneously
-            if ($autoEnabled) {
-                try {
-                    app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
-                } catch (\Throwable $e) {
-                    \Log::error('Automatic delivery failed on check-in', [
-                        'booking_id' => $booking->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                    foreach ($validIds as $facilityTemplateId) {
+                        $booking->bookingFacilities()->create([
+                            'facility_template_id' => $facilityTemplateId,
+                            'start_date' => $booking->check_in,
+                            'end_date' => $booking->check_out,
+                            'quota_total' => $quotaTotal,
+                        ]);
+                    }
+                } else {
+                    $this->syncDefaultFacilities($booking);
                 }
-            }
-            
-            if ($schedEnabled) {
-                try {
-                    app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
-                } catch (\Throwable $e) {
-                    \Log::error('Scheduled delivery failed on check-in', [
-                        'booking_id' => $booking->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
+
+                $booking->status = BookingStatus::CheckIn;
+                $booking->checked_in_at = now();
+                $booking->save();
+
+                app(VoucherService::class)->generateForBooking($booking);
+            });
 
             $this->audit->log('booking.checked_in', $booking, $old, $booking->only(['status', 'checked_in_at']));
 
             // Cache the booking data
             $this->cache->cacheBooking($booking);
-
-            return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType', 'guestVoucher']);
         } finally {
             $lock->release();
         }
+
+        // M-11: Run deliveries OUTSIDE the lock so slow provider HTTP calls
+        // do not block concurrent check-ins of other bookings.
+        $autoEnabled = \App\Models\Setting::get('delivery.automatic_enabled', '1') === '1';
+        $schedEnabled = \App\Models\Setting::get('delivery.scheduled_enabled', '0') === '1';
+
+        // Both can be enabled simultaneously
+        if ($autoEnabled) {
+            try {
+                app(\App\Services\VoucherDeliveryService::class)->sendImmediate($booking);
+            } catch (\Throwable $e) {
+                \Log::error('Automatic delivery failed on check-in', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($schedEnabled) {
+            try {
+                app(\App\Services\VoucherDeliveryService::class)->schedule($booking);
+            } catch (\Throwable $e) {
+                \Log::error('Scheduled delivery failed on check-in', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $booking->fresh(['bookingFacilities.facilityTemplate', 'room.roomType', 'guestVoucher']);
     }
 
     public function checkOut(Booking $booking): Booking
     {
-        $old = $booking->only(['status', 'checked_out_at']);
-
-        $booking->update([
-            'status' => BookingStatus::CheckedOut,
-            'checked_out_at' => now(),
-        ]);
-
-        if ($booking->guestVoucher) {
-            $booking->guestVoucher->update([
-                'status' => \App\Enums\VoucherStatus::Expired,
-            ]);
-            
-            // Invalidate voucher cache
-            $this->cache->invalidateVoucher($booking->guestVoucher);
+        if ($booking->status !== BookingStatus::CheckIn) {
+            throw new \RuntimeException('Only checked-in bookings can be checked out.');
         }
 
-        $this->audit->log('booking.checked_out', $booking, $old, $booking->only(['status', 'checked_out_at']));
+        $old = $booking->only(['status', 'checked_out_at']);
+        $auditData = $booking->toArray();
 
-        // Invalidate booking cache
-        $this->cache->invalidateBooking($booking);
+        // M-10: Archive instead of delete — keep redemption/scan/delivery history and
+        // booking_facilities so reports and exports retain checked-out guests.
+        DB::transaction(function () use ($booking) {
+            $booking->status = BookingStatus::ExpectedDeparture;
+            $booking->checked_out_at = now();
+            $booking->save();
 
-        return $booking->fresh();
+            if ($booking->guestVoucher) {
+                $booking->guestVoucher->update(['status' => VoucherStatus::Expired]);
+            }
+
+            $this->cache->invalidateBooking($booking);
+        });
+
+        $this->audit->log('booking.expected_departure', $booking, $old, $auditData);
+
+        return $booking->fresh(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate', 'guestVoucher']);
+    }
+
+    /**
+     * M-18: prevent overlapping bookings on the same room (excludes archived/cancelled).
+     */
+    private function assertRoomAvailable(array $data, ?int $ignoreBookingId): void
+    {
+        if (empty($data['room_id']) || empty($data['check_in']) || empty($data['check_out'])) {
+            return;
+        }
+
+        $overlap = Booking::query()
+            ->where('room_id', $data['room_id'])
+            ->whereIn('status', [
+                BookingStatus::ExpectedArrival,
+                BookingStatus::CheckIn,
+            ])
+            ->where('check_in', '<', $data['check_out'])
+            ->where('check_out', '>', $data['check_in']);
+
+        if ($ignoreBookingId !== null) {
+            $overlap->where('id', '!=', $ignoreBookingId);
+        }
+
+        if ($overlap->exists()) {
+            throw new \InvalidArgumentException('This room is already booked for the selected dates.');
+        }
     }
 
     public function syncDefaultFacilities(Booking $booking): void
@@ -179,8 +280,10 @@ class BookingService
     private function enrichBookingData(array $data): array
     {
         $data['reference'] ??= strtoupper(Str::random(8));
-        $data['total_pax'] ??= ($data['adults'] ?? 1) + ($data['children'] ?? 0);
-        $data['status'] ??= BookingStatus::ConfirmedReservation;
+
+        if (array_key_exists('adults', $data)) {
+            $data['total_pax'] = ($data['adults'] ?? 1) + ($data['children'] ?? 0);
+        }
 
         if (! empty($data['room_id']) && empty($data['room_label'])) {
             $room = Room::query()->with('roomType')->find($data['room_id']);
@@ -192,7 +295,7 @@ class BookingService
         if (! empty($data['check_in']) && ! empty($data['check_out'])) {
             $checkIn = Carbon::parse($data['check_in']);
             $checkOut = Carbon::parse($data['check_out']);
-            $data['nights'] ??= max(1, $checkIn->diffInDays($checkOut));
+            $data['nights'] = max(1, $checkIn->copy()->startOfDay()->diffInDays($checkOut->copy()->startOfDay()));
             $data['expected_arrival'] ??= $data['check_in'];
             $data['expected_departure'] ??= $data['check_out'];
         }

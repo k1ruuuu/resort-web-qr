@@ -8,23 +8,23 @@
             @csrf
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">Property</label>
-                    <select name="property_id" class="form-select" required>
+                    <label class="form-label" for="property_id">Property</label>
+                    <select name="property_id" id="property_id" class="form-select" required>
                         @foreach($properties as $property)
                             <option value="{{ $property->id }}">{{ $property->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Guest</label>
-                    <select name="guest_id" class="form-select" required>
+                    <label class="form-label" for="guest_id">Guest</label>
+                    <select name="guest_id" id="guest_id" class="form-select" required>
                         @foreach($guests as $guest)
                             <option value="{{ $guest->id }}">{{ $guest->full_name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Room</label>
+                    <label class="form-label" for="room_id">Room</label>
                     <select name="room_id" class="form-select @error('room_id') is-invalid @enderror">
                         <option value="">Select room...</option>
                         @foreach($rooms as $room)
@@ -36,28 +36,28 @@
                     @error('room_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Arrangement Code (optional)</label>
-                    <input type="text" name="arrangement_code" class="form-control" placeholder="e.g. RPCGLP26" value="{{ old('arrangement_code') }}">
+                    <label class="form-label" for="arrangement_code">Arrangement Code (optional)</label>
+                    <input type="text" name="arrangement_code" id="arrangement_code" class="form-control" placeholder="e.g. RPCGLP26" value="{{ old('arrangement_code') }}">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Check-in</label>
-                    <input type="date" name="check_in" class="form-control" required>
+                    <label class="form-label" for="check_in">Check-in</label>
+                    <input type="date" name="check_in" id="check_in" class="form-control" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Check-out</label>
-                    <input type="date" name="check_out" class="form-control" required>
+                    <label class="form-label" for="check_out">Check-out</label>
+                    <input type="date" name="check_out" id="check_out" class="form-control" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Adults</label>
-                    <input type="number" name="adults" value="1" min="1" class="form-control" required>
+                    <label class="form-label" for="adults">Adults</label>
+                    <input type="number" name="adults" id="adults" value="1" min="1" class="form-control" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Children</label>
-                    <input type="number" name="children" value="0" min="0" class="form-control">
+                    <label class="form-label" for="children">Children</label>
+                    <input type="number" name="children" id="children" value="0" min="0" class="form-control">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Extra beds</label>
-                    <input type="number" name="extra_beds" value="0" min="0" class="form-control">
+                    <label class="form-label" for="extra_beds">Extra beds</label>
+                    <input type="number" name="extra_beds" id="extra_beds" value="0" min="0" class="form-control">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Facilities (optional)</label>

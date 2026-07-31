@@ -13,7 +13,7 @@ class OutletApiController extends ApiController
     {
         $this->authorizePermission('facilities.manage');
 
-        $outlets = Outlet::query()
+        $outlets = $this->applyPropertyScope(Outlet::query())
             ->with(['property', 'facilityTemplates'])
             ->orderBy('name')
             ->paginate(request()->integer('per_page', 20));

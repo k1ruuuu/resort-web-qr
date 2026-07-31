@@ -22,7 +22,7 @@ class PmsBookingImportService
         [$firstName, $lastName] = $this->splitName($guestName);
 
         $guest = Guest::query()->firstOrCreate(
-            ['first_name' => $firstName, 'last_name' => $lastName],
+            ['first_name' => $firstName, 'last_name' => $lastName, 'phone' => $row['whatsapp'] ?? ''],
             ['whatsapp' => $row['whatsapp'] ?? null]
         );
 
@@ -48,7 +48,7 @@ class PmsBookingImportService
             'adults' => $adults,
             'children' => $children,
             'total_pax' => $adults + $children,
-            'nights' => max(1, Carbon::parse($checkIn)->diffInDays(Carbon::parse($checkOut))),
+            'nights' => max(1, Carbon::parse($checkIn)->startOfDay()->diffInDays(Carbon::parse($checkOut)->startOfDay())),
             'status' => $status,
             'checked_in_at' => $this->parseDateTime($row['check_in'] ?? $row['Check In'] ?? null),
             'pms_voucher_ref' => $this->normalizeVoucherRef($row['voucher'] ?? $row['Voucher'] ?? null),
@@ -75,10 +75,10 @@ class PmsBookingImportService
     private function mapStatus(string $status): BookingStatus
     {
         return match (strtolower($status)) {
-            'check in', 'checked in' => BookingStatus::CheckedIn,
-            'check out', 'checked out' => BookingStatus::CheckedOut,
+            'check in', 'checked in', 'check_in', 'checked_in' => BookingStatus::CheckIn,
+            'check out', 'checked out', 'check_out', 'checked_out', 'expected_departure' => BookingStatus::ExpectedDeparture,
             'cancelled', 'canceled' => BookingStatus::Cancelled,
-            default => BookingStatus::ConfirmedReservation,
+            default => BookingStatus::ExpectedArrival,
         };
     }
 
@@ -135,7 +135,13 @@ class PmsBookingImportService
             return null;
         }
 
-        return (string) (int) ((float) $code);
+        $code = trim((string) $code);
+
+        if (is_numeric($code)) {
+            return (string) (int) ((float) $code);
+        }
+
+        return $code;
     }
 
     private function normalizeVoucherRef(mixed $ref): ?string
@@ -144,6 +150,12 @@ class PmsBookingImportService
             return null;
         }
 
-        return (string) (int) ((float) $ref);
+        $ref = trim((string) $ref);
+
+        if (is_numeric($ref)) {
+            return (string) (int) ((float) $ref);
+        }
+
+        return $ref;
     }
 }
