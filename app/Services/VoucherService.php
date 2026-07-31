@@ -348,7 +348,7 @@ class VoucherService
                     $quotaRemaining = max(0, $paxLimit - $totalUsedToday);
                     
                     if ($quotaRemaining <= 0) {
-                        throw VoucherException::expired();
+                        throw VoucherException::quotaExhausted();
                     }
 
                     if ($paxUsed > $quotaRemaining) {
@@ -375,8 +375,6 @@ class VoucherService
                     $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
                     $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
                     $this->cache->invalidateVoucher($voucher);
-
-                    $this->updateVoucherStatusIfFullyRedeemed($voucher);
 
                     return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
                 }
@@ -482,7 +480,7 @@ class VoucherService
                 $quotaRemaining = max(0, $facilityQuota - $totalUsedToday);
                 
                 if ($quotaRemaining <= 0) {
-                    throw VoucherException::expired();
+                    throw VoucherException::quotaExhausted();
                 }
 
                 if ($paxUsed > $quotaRemaining) {
@@ -514,9 +512,6 @@ class VoucherService
 
                 // Invalidate cache for this voucher
                 $this->cache->invalidateVoucher($voucher);
-
-                // Check if all facilities are fully redeemed
-                $this->updateVoucherStatusIfFullyRedeemed($voucher);
 
                 return $log->load(['guestVoucher', 'guest', 'booking', 'facilityTemplate', 'outlet', 'user']);
             });
@@ -560,32 +555,28 @@ class VoucherService
             str_contains($message, 'not linked') => 'facility_not_linked',
             str_contains($message, 'not valid today') => 'invalid_date',
             str_contains($message, 'quota exceeded') => 'quota_exceeded',
+            str_contains($message, 'fully used') => 'quota_exceeded',
             str_contains($message, 'Another redemption is in progress') => 'lock_failed',
             default => 'validation_error',
         };
     }
 
-    private function updateVoucherStatusIfFullyRedeemed(GuestVoucher $voucher): void
-    {
-        $timezone = $voucher->property?->timezone
-            ?? $voucher->booking?->property?->timezone
-            ?? 'UTC';
-        $today = Carbon::today($timezone);
-        $statuses = $voucher->getFacilityStatuses($today);
-
-        // Check if all available facilities for today are fully redeemed
-        $allFullyRedeemed = $statuses
-            ->filter(fn($status) => $status->is_available)
-            ->every(fn($status) => $status->quota_remaining === 0);
-
-        if ($allFullyRedeemed && $statuses->where('is_available', true)->isNotEmpty()) {
-            $voucher->update(['status' => VoucherStatus::Redeemed]);
-            $this->audit->log('voucher.status_changed', $voucher, ['status' => VoucherStatus::Active->value], ['status' => VoucherStatus::Redeemed->value]);
-        }
-    }
-
     public function checkAndExpireIfNeeded(GuestVoucher $voucher): bool
     {
+        // Repair legacy vouchers that were auto-marked 'redeemed' when all of
+        // today's facilities were used up. Quota resets daily, so the voucher
+        // stays usable until the real expiry (checkout / temporary expiry).
+        if ($voucher->status === VoucherStatus::Redeemed) {
+            $voucher->update(['status' => VoucherStatus::Active]);
+            $this->audit->log(
+                'voucher.status_changed',
+                $voucher,
+                ['status' => VoucherStatus::Redeemed->value],
+                ['status' => VoucherStatus::Active->value]
+            );
+            $voucher->refresh();
+        }
+
         if ($voucher->status !== VoucherStatus::Active) {
             return false;
         }

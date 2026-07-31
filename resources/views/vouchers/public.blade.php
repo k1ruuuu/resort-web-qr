@@ -48,13 +48,15 @@
                 <div class="mb-3 p-3 border rounded-3 bg-white shadow-sm">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="font-weight-bold text-dark">{{ $facility->name }}</span>
-                        @if($facility->is_available)
+                        @if($facility->status === 'available')
                             <span class="badge bg-info px-2 py-1">Available today</span>
+                        @elseif($facility->status === 'used')
+                            <span class="badge bg-warning px-2 py-1">Quota used today</span>
                         @else
                             <span class="badge bg-secondary px-2 py-1">Not available today</span>
                         @endif
                     </div>
-                    @if($facility->is_available)
+                    @if($facility->status === 'available')
                         <div class="progress mb-2" style="height: 8px; border-radius: 4px;">
                             @php
                                 $usedPercent = $facility->quota_total > 0 ? ($facility->quota_used / $facility->quota_total) * 100 : 0;
@@ -64,6 +66,11 @@
                         </div>
                         <div class="d-flex justify-content-between small text-muted">
                             <span>Remaining: <strong>{{ $facility->quota_remaining }}</strong></span>
+                            <span>Used: {{ $facility->quota_used }} / {{ $facility->quota_total }}</span>
+                        </div>
+                    @elseif($facility->status === 'used')
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Remaining: <strong>0</strong></span>
                             <span>Used: {{ $facility->quota_used }} / {{ $facility->quota_total }}</span>
                         </div>
                     @else

@@ -327,6 +327,11 @@ class VoucherApiController extends ApiController
             ->with(['booking.guest', 'booking.room', 'property'])
             ->firstOrFail();
 
+        // Keep voucher state in sync (auto-expire after checkout, repair legacy
+        // 'redeemed' statuses that should stay active within the stay period)
+        $this->vouchers->checkAndExpireIfNeeded($voucher);
+        $voucher->refresh();
+
         $today = Carbon::today($voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC');
         $facilityStatuses = $voucher->getFacilityStatuses($today);
 

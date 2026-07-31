@@ -31,6 +31,11 @@ class VoucherException extends Exception
         return new self('Voucher quota exceeded.', 422);
     }
 
+    public static function quotaExhausted(): self
+    {
+        return new self('Facility quota for today is fully used.', 422);
+    }
+
     public static function bookingNotCheckedIn(): self
     {
         return new self('Booking must be checked in before generating vouchers.', 422);

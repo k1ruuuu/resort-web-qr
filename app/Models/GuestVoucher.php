@@ -101,12 +101,14 @@ class GuestVoucher extends Model
                 $quota = $basePax + $add;
                 $used = (int) ($redemptions[$facility->id] ?? 0);
                 $remaining = max(0, $quota - $used);
+                $status = $isExpired ? 'unavailable' : ($remaining > 0 ? 'available' : 'used');
 
                 return (object) [
                     'facility_template_id' => $facility->id,
                     'name' => $facility->name,
                     'code' => $facility->code,
                     'is_available' => !$isExpired && $remaining > 0,
+                    'status' => $status,
                     'is_one_time' => false,
                     'quota_total' => $quota,
                     'quota_used' => $used,
@@ -164,24 +166,27 @@ class GuestVoucher extends Model
 
             if ($isOneTimeFacility && !($facilityAdd > 0)) {
                 $neverRedeemed = !isset($oneTimeRedemptions[$bf->facility_template_id]);
-                $isAvailable = ($dateString === $start) && $neverRedeemed;
-                $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
-                $remaining = $isAvailable ? max(0, $facilityQuota - $used) : 0;
+                $inPeriod = $dateString === $start;
+                $isAvailable = $inPeriod && $neverRedeemed;
             } else {
-                $isAvailable = ($dateString >= $start && $dateString <= $end);
-                $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
-                $remaining = $isAvailable ? max(0, $facilityQuota - $used) : 0;
+                $inPeriod = $dateString >= $start && $dateString <= $end;
+                $isAvailable = $inPeriod;
             }
+
+            $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
+            $remaining = max(0, $facilityQuota - $used);
+            $status = !$inPeriod ? 'unavailable' : ($isAvailable && $remaining > 0 ? 'available' : 'used');
 
             return (object) [
                 'facility_template_id' => $bf->facility_template_id,
                 'name' => $bf->facilityTemplate->name,
                 'code' => $facilityCode,
                 'is_available' => $isAvailable,
+                'status' => $status,
                 'is_one_time' => $isOneTimeFacility,
-                'quota_total' => $isAvailable ? $facilityQuota : 0,
+                'quota_total' => $inPeriod ? $facilityQuota : 0,
                 'quota_used' => $used,
-                'quota_remaining' => $isAvailable ? $remaining : 0,
+                'quota_remaining' => $inPeriod ? $remaining : 0,
                 'start_date' => $bf->start_date,
                 'end_date' => $bf->end_date,
             ];

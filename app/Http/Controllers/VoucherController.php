@@ -586,6 +586,11 @@ class VoucherController extends Controller
         $timezone = $voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC';
         $now = Carbon::now($timezone);
 
+        // Repair legacy 'redeemed' vouchers (quota used up on a past day) so the
+        // QR image stays alive for the rest of the stay
+        $this->vouchers->checkAndExpireIfNeeded($voucher);
+        $voucher->refresh();
+
         if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
             abort(410, 'Voucher is no longer active.');
         }
