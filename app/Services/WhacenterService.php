@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\Log;
 
 class WhacenterService
 {
-    private const API_URL = 'https://app.whacenter.com/api/send';
+    private const API_URL = 'https://api.whacenter.com/api/send';
 
-    public function send(string $phone, string $message, ?string $qrUrl, ?string $customerName = null): array
+    public function send(string $phone, string $message, ?string $qrUrl, ?string $customerName = null, ?string $qrLocalPath = null): array
     {
         $deviceId = Setting::get('delivery.whacenter_device_id');
 

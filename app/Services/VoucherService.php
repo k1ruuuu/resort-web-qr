@@ -40,6 +40,7 @@ class VoucherService
     {
         $property = Property::query()->findOrFail($data['property_id']);
         $guestName = trim((string) ($data['guest_name'] ?? 'Temporary Guest'));
+        $phone = $data['phone'] ?? null;
         $category = (string) ($data['category'] ?? 'temporary');
         
         // Handle facility selection logic
@@ -70,7 +71,7 @@ class VoucherService
             $qrCode = $this->buildQrCode($guestName, 'TEMP', 'TEMP', $expiresAt->format('Y-m-d-H-i'));
             $secureToken = (string) Str::random(32);
 
-            return DB::transaction(function () use ($guestName, $category, $expiresAt, $property, $qrCode, $secureToken, $facilityTemplateIds, $paxLimit) {
+            return DB::transaction(function () use ($guestName, $phone, $category, $expiresAt, $property, $qrCode, $secureToken, $facilityTemplateIds, $paxLimit) {
                 $voucher = GuestVoucher::query()->create([
                     'booking_id' => null,
                     'guest_id' => null,
@@ -78,6 +79,7 @@ class VoucherService
                     'facility_template_id' => $facilityTemplateIds ? implode(',', $facilityTemplateIds) : null,
                     'pax_limit' => $paxLimit,
                     'guest_name' => $guestName,
+                    'phone' => $phone,
                     'qr_code' => $qrCode,
                     'secure_token' => $secureToken,
                     'status' => VoucherStatus::Active,
@@ -149,6 +151,9 @@ class VoucherService
                     'addition_map' => $additionMap,
                     'addition' => $additionTotal,
                     'addition_facility_ids' => $additionFacilityIds ? implode(',', $additionFacilityIds) : null,
+                    'addition_date' => $additionMap
+                        ? Carbon::today($voucher->property?->timezone ?? 'UTC')->toDateString()
+                        : null,
                 ])->save();
 
                 // L-07: keep the cached voucher data in sync
@@ -344,6 +349,10 @@ class VoucherService
                         : [];
                     $basePax = $voucher->pax_limit ?? 1;
                     $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
+                    // Addition only applies on the day it was granted (one-time boost)
+                    if ($todayString !== ($voucher->addition_date?->toDateString())) {
+                        $add = 0;
+                    }
                     $paxLimit = $basePax + $add;
                     $quotaRemaining = max(0, $paxLimit - $totalUsedToday);
                     
@@ -372,7 +381,7 @@ class VoucherService
                         'ip_address' => request()->ip(),
                     ]);
 
-                    $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
+                    $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId);
                     $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
                     $this->cache->invalidateVoucher($voucher);
 
@@ -429,8 +438,6 @@ class VoucherService
                 $additionIds = $voucher->addition_facility_ids
                     ? array_map('intval', explode(',', $voucher->addition_facility_ids))
                     : [];
-                $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
-                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds + $add);
                 
                 if ($voucher->facility_template_id) {
                     $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
@@ -458,13 +465,20 @@ class VoucherService
                 $isOneTimeFacility = $bookingFacility->facilityTemplate->is_one_time
                     ?? in_array($facilityCode, $oneTimeFacilityCodes);
                 
-                if ($isOneTimeFacility && !($add > 0)) {
-                    if ($todayString !== $start) {
-                        throw new VoucherException('This facility is only available on check-in date.', 422);
+                if ($isOneTimeFacility) {
+                    // One-time facilities: usable any day within the stay period, once per stay
+                    if ($todayString < $start || $todayString > $end) {
+                        throw new VoucherException('This facility is not valid today.', 422);
                     }
 
-                    if ($totalUsedToday > 0) {
-                        throw VoucherException::expired();
+                    $everUsed = DB::table('redemption_logs')
+                        ->where('guest_voucher_id', $voucher->id)
+                        ->where('facility_template_id', $facilityTemplateId)
+                        ->lockForUpdate()
+                        ->sum('pax_used');
+
+                    if ($everUsed > 0) {
+                        throw VoucherException::alreadyUsedForStay();
                     }
                 } else {
                     // Daily facilities: available within date range, quota resets daily
@@ -473,11 +487,21 @@ class VoucherService
                     }
                 }
 
+                $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
+                // Addition boosts quota once per stay for one-time facilities; for daily
+                // facilities it only applies on the day it was granted (extra beds are
+                // already part of the base pax and apply every day)
+                if (!$isOneTimeFacility && $todayString !== ($voucher->addition_date?->toDateString())) {
+                    $add = 0;
+                }
+                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds + $add);
+
                 $facilityQuota = $bookingFacility->quota_total ?? $totalQuota;
                 if ($bookingFacility->quota_total !== null) {
                     $facilityQuota += $add;
                 }
-                $quotaRemaining = max(0, $facilityQuota - $totalUsedToday);
+                $usageSum = $isOneTimeFacility ? $everUsed : $totalUsedToday;
+                $quotaRemaining = max(0, $facilityQuota - $usageSum);
                 
                 if ($quotaRemaining <= 0) {
                     throw VoucherException::quotaExhausted();
@@ -504,7 +528,7 @@ class VoucherService
                     'ip_address' => request()->ip(),
                 ]);
 
-                $this->logScan($qrCode, $voucher, $outlet, $user, 'success');
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId);
                 $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
 
                 // Increment analytics counter
@@ -518,12 +542,12 @@ class VoucherService
         } catch (VoucherException $e) {
             // Log the failed scan attempt outside the transaction
             $result = $this->mapExceptionToScanResult($e, $voucher);
-            $this->logScan($qrCode, $voucher, $outlet, $user, $result);
+            $this->logScan($qrCode, $voucher, $outlet, $user, $result, $facilityTemplateId);
 
             throw $e;
         } catch (\Exception $e) {
             // Log unexpected errors
-            $this->logScan($qrCode, $voucher, $outlet, $user, 'system_error');
+            $this->logScan($qrCode, $voucher, $outlet, $user, 'system_error', $facilityTemplateId);
 
             throw $e;
         } finally {
@@ -595,6 +619,7 @@ class VoucherService
                         ['status' => VoucherStatus::Active->value],
                         ['status' => VoucherStatus::Expired->value]
                     );
+                    $voucher->refresh();
                     return true;
                 }
             }
@@ -621,6 +646,7 @@ class VoucherService
                 ['status' => VoucherStatus::Active->value],
                 ['status' => VoucherStatus::Expired->value]
             );
+            $voucher->refresh();
             return true;
         }
 
@@ -651,6 +677,7 @@ class VoucherService
     private function resolveTemporaryExpiry(array $data, Property $property): Carbon
     {
         $timezone = $property->timezone ?? 'UTC';
+        $appTimezone = config('app.timezone', 'UTC');
         $expirationType = (string) ($data['expiration_type'] ?? 'date');
         $value = $data['expiration_value'] ?? null;
 
@@ -660,7 +687,7 @@ class VoucherService
                 throw new VoucherException('Temporary vouchers require a positive hour value.', 422);
             }
 
-            return Carbon::now($timezone)->addHours($hours);
+            return Carbon::now($timezone)->addHours($hours)->setTimezone($appTimezone);
         }
 
         $date = Carbon::parse($value ?? now($timezone)->toDateString(), $timezone);
@@ -668,7 +695,7 @@ class VoucherService
             throw new VoucherException('Temporary voucher expiration date must be in the future.', 422);
         }
 
-        return $date->endOfDay();
+        return $date->endOfDay()->setTimezone($appTimezone);
     }
 
     public function logScan(
@@ -677,11 +704,13 @@ class VoucherService
         ?Outlet $outlet,
         User $user,
         string $result,
+        ?int $facilityTemplateId = null,
     ): void {
         QrScanLog::query()->create([
             'qr_code' => $qrCode,
             'secure_token' => $voucher?->secure_token,
             'guest_voucher_id' => $voucher?->id,
+            'facility_template_id' => $facilityTemplateId,
             'outlet_id' => $outlet?->id,
             'user_id' => $user->id,
             'scan_result' => $result,

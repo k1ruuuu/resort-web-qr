@@ -160,6 +160,13 @@
                     <small class="form-text text-muted">Full name of the temporary guest</small>
                 </div>
 
+                <!-- Phone Number -->
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">WhatsApp Phone Number</label>
+                    <input type="text" name="phone" class="form-control" placeholder="e.g. 081234567890">
+                    <small class="form-text text-muted">Required to send the voucher via WhatsApp</small>
+                </div>
+
                 <!-- Pax Limit -->
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Pax Limit <span class="text-danger">*</span></label>
@@ -256,7 +263,7 @@
                             @if($voucher->booking)
                                 {{ $voucher->booking->check_in->format('Y-m-d') }} – {{ $voucher->booking->check_out->format('Y-m-d') }}
                             @else
-                                <strong>Expires:</strong> {{ $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i') : 'N/A' }}
+                                <strong>Expires:</strong> {{ $voucher->expires_at_local ? $voucher->expires_at_local->format('Y-m-d H:i') : 'N/A' }}
                             @endif
                         </td>
                         <td><code class="text-mono small">{{ substr($voucher->qr_code, 0, 12) }}{{ strlen($voucher->qr_code) > 12 ? '...' : '' }}</code></td>

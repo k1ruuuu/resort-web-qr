@@ -94,6 +94,7 @@ Route::middleware(['auth', 'ip.whitelist'])->group(function () {
     Route::post('settings/delivery/toggle-whatsapp', [DeliverySettingsController::class, 'toggleWhatsApp'])->name('settings.delivery.toggle-whatsapp');
 
     Route::post('bookings/{booking}/resend', [VoucherController::class, 'resend'])->name('bookings.resend');
+    Route::post('vouchers/{voucher}/resend', [VoucherController::class, 'resendVoucher'])->name('vouchers.resend');
 
     Route::resource('users', UserController::class);
     Route::resource('roles', RoleController::class);

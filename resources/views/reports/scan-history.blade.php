@@ -101,6 +101,7 @@
                                 <th>Guest Name</th>
                                 <th>Room</th>
                                 <th>Outlet</th>
+                                <th>Facility</th>
                                 <th>Scanned By</th>
                                 <th>Result</th>
                                 <th>IP Address</th>
@@ -110,8 +111,8 @@
                             @forelse($logs as $log)
                                 <tr>
                                     <td>
-                                        <small>{{ $log->scanned_at->format('Y-m-d') }}</small><br>
-                                        <small class="text-muted">{{ $log->scanned_at->format('H:i:s') }}</small>
+                                        <small>{{ $log->scanned_at_local->format('Y-m-d') }}</small><br>
+                                        <small class="text-muted">{{ $log->scanned_at_local->format('H:i:s') }}</small>
                                     </td>
                                     <td>
                                         <code class="text-sm">{{ Str::limit($log->qr_code, 20) }}</code>
@@ -131,6 +132,13 @@
                                         @endif
                                     </td>
                                     <td>{{ $log->outlet->name ?? '-' }}</td>
+                                    <td>
+                                        @if($log->facilityTemplate)
+                                            {{ $log->facilityTemplate->name }} <small class="text-muted">({{ $log->facilityTemplate->code }})</small>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $log->user->name ?? '-' }}</td>
                                     <td>
                                         @php
@@ -165,7 +173,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">
+                                    <td colspan="9" class="text-center text-muted py-4">
                                         <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                                         <p>No scan logs found</p>
                                     </td>

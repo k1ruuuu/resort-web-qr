@@ -26,7 +26,7 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Stay Dates</b> 
-                        <span>{{ $voucher->booking ? $voucher->booking->check_in->format('d M Y') . ' – ' . $voucher->booking->check_out->format('d M Y') : ($voucher->expires_at ? $voucher->expires_at->format('d M Y H:i') : 'N/A') }}</span>
+                        <span>{{ $voucher->booking ? $voucher->booking->check_in->format('d M Y') . ' – ' . $voucher->booking->check_out->format('d M Y') : ($voucher->expires_at_local ? $voucher->expires_at_local->format('d M Y H:i') : 'N/A') }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Total Pax</b> 
@@ -58,6 +58,13 @@
                     @csrf
                     <button type="submit" class="btn btn-warning btn-block">
                         <i class="fab fa-whatsapp"></i> Resend Voucher via WhatsApp
+                    </button>
+                </form>
+                @elseif($voucher->phone)
+                <form method="POST" action="{{ route('vouchers.resend', $voucher) }}" class="mt-2">
+                    @csrf
+                    <button type="submit" class="btn btn-warning btn-block">
+                        <i class="fab fa-whatsapp"></i> Send Voucher via WhatsApp
                     </button>
                 </form>
                 @endif

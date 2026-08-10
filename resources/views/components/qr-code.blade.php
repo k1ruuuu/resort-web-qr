@@ -3,8 +3,8 @@
 <img
     src="{{ $url }}"
     alt="{{ $alt }}"
-    width="400"
-    height="565"
-    class="d-block mx-auto border bg-white p-1"
+    width="{{ $size }}"
+    height="{{ (int) round($size * 1.4125) }}"
+    class="img-fluid d-block mx-auto border bg-white p-1"
     {{ $attributes }}
 >

@@ -85,6 +85,13 @@ class VoucherController extends Controller
 
         $vouchers = $query->paginate(20)->withQueryString();
 
+        // Lazy expiry: keep admin list statuses fresh even without cron/scheduler
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status === \App\Enums\VoucherStatus::Active) {
+                $this->vouchers->checkAndExpireIfNeeded($voucher);
+            }
+        }
+
         $properties = Property::query()->orderBy('name')->get();
         $facilityTemplates = \App\Models\FacilityTemplate::query()
             ->where('is_active', true)
@@ -130,6 +137,8 @@ class VoucherController extends Controller
         $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
         $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities']);
+
+        $this->vouchers->checkAndExpireIfNeeded($voucher);
 
         $facilityTemplates = FacilityTemplate::query()
             ->where('property_id', $voucher->property_id)
@@ -332,6 +341,16 @@ class VoucherController extends Controller
             if ($outlet) {
                 $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
                 $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+
+                if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+                    if ($user) {
+                        $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
+                    }
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This voucher has no remaining quota for the selected outlet\'s facility.',
+                    ], 422);
+                }
             }
 
             $history = RedemptionLog::query()
@@ -361,7 +380,9 @@ class VoucherController extends Controller
                     'booking_code' => null,
                     'check_in' => null,
                     'check_out' => null,
-                    'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
+                    'total_pax' => $voucher->additionAppliesOn($today->toDateString())
+                        ? ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0)
+                        : ($voucher->pax_limit ?? 1),
                     'facilities' => $facilityStatuses,
                     'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                     'history' => $history,
@@ -413,6 +434,16 @@ class VoucherController extends Controller
         if ($outlet) {
             $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
             $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+
+            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+                if ($user) {
+                    $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This voucher has no remaining quota for the selected outlet\'s facility.',
+                ], 422);
+            }
         }
 
         $history = RedemptionLog::query()
@@ -442,7 +473,9 @@ class VoucherController extends Controller
                 'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
                 'check_in' => $voucher->booking->check_in->format('Y-m-d'),
                 'check_out' => $voucher->booking->check_out->format('Y-m-d'),
-                'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
+                'total_pax' => $voucher->additionAppliesOn($today->toDateString())
+                    ? $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0)
+                    : $voucher->booking->total_pax + $voucher->booking->extra_beds,
                 'facilities' => $facilityStatuses,
                 'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                 'history' => $history,
@@ -638,5 +671,20 @@ class VoucherController extends Controller
         }
 
         return back()->with('success', 'Stay pass sent via WhatsApp successfully.');
+    }
+
+    public function resendVoucher(GuestVoucher $voucher): RedirectResponse
+    {
+        abort_unless(auth()->user()?->can('vouchers.resend'), 403);
+
+        $this->authorizeVoucherAccess($voucher, 'vouchers.resend');
+
+        try {
+            $this->delivery->sendVoucherImmediate($voucher);
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Failed to send WhatsApp message: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Voucher sent via WhatsApp successfully.');
     }
 }

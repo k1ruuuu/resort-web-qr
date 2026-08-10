@@ -14,7 +14,7 @@ class QrScanLogController extends Controller
         abort_unless(auth()->user()?->can('reports.view'), 403);
 
         $query = QrScanLog::query()
-            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'outlet', 'user'])
+            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'guestVoucher.property', 'outlet.property', 'user', 'facilityTemplate'])
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {
@@ -58,7 +58,7 @@ class QrScanLogController extends Controller
 
         // Build the same query as index
         $query = QrScanLog::query()
-            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'outlet', 'user'])
+            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'guestVoucher.property', 'outlet.property', 'user', 'facilityTemplate'])
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {

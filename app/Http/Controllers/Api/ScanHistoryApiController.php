@@ -14,7 +14,7 @@ class ScanHistoryApiController extends ApiController
         $this->authorizePermission('reports.view');
 
         $query = QrScanLog::query()
-            ->with(['guestVoucher', 'outlet', 'user'])
+            ->with(['guestVoucher.property', 'outlet.property', 'user', 'facilityTemplate'])
             ->latest('scanned_at');
 
         if ($request->filled('search')) {

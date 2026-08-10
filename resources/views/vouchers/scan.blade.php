@@ -375,7 +375,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showRedemptionError('Your session has expired. Please refresh the page and log in again.');
                     return;
                 }
-                throw new Error(res.message || 'Verification failed');
+                showRedemptionError(res.message || 'Verification failed');
+                return;
             }
 
             if (res.success) {
@@ -534,7 +535,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     showRedemptionError('Your session has expired. Please refresh the page and log in again.');
                     return;
                 }
-                throw new Error(res.message || 'Redemption failed');
+                showRedemptionError(res.message || 'Redemption failed');
+                return;
             }
 
             if (res.success) {

@@ -43,7 +43,7 @@
                         @else
                         <div class="col-md-6">
                             <p class="mb-1"><strong>Expires At:</strong></p>
-                            <p class="text-muted">{{ $voucher->expires_at ? $voucher->expires_at->format('Y-m-d H:i') : 'N/A' }}</p>
+                            <p class="text-muted">{{ $voucher->expires_at_local ? $voucher->expires_at_local->format('Y-m-d H:i') : 'N/A' }}</p>
                         </div>
                         @endif
                         <div class="col-md-6">

@@ -10,7 +10,7 @@ class FonnteService
 {
     private const API_URL = 'https://api.fonnte.com/send';
 
-    public function send(string $phone, string $message, ?string $qrUrl, ?string $customerName = null): array
+    public function send(string $phone, string $message, ?string $qrUrl, ?string $customerName = null, ?string $qrLocalPath = null): array
     {
         $apiKey = Setting::get('delivery.fonnte_api_key');
 
@@ -53,26 +53,44 @@ class FonnteService
         }
 
         try {
-            $payload = [
-                'target' => $rawPhone,
-                'message' => $message,
-                'countryCode' => '62',
-            ];
+            if ($qrLocalPath && is_file($qrLocalPath)) {
+                Log::info("Fonnte Request (file upload)", [
+                    'url' => self::API_URL,
+                    'target_masked' => $this->maskPhone($rawPhone),
+                    'message_hash' => md5($message),
+                    'file' => basename($qrLocalPath),
+                ]);
 
-            if ($qrUrl) {
-                $payload['url'] = $qrUrl;
+                $response = Http::withHeaders([
+                    'Authorization' => $apiKey,
+                ])->asMultipart()->post(self::API_URL, [
+                    ['name' => 'target', 'contents' => $rawPhone],
+                    ['name' => 'message', 'contents' => $message],
+                    ['name' => 'countryCode', 'contents' => '62'],
+                    ['name' => 'file', 'contents' => fopen($qrLocalPath, 'r'), 'filename' => 'qr-voucher.png'],
+                ]);
+            } else {
+                $payload = [
+                    'target' => $rawPhone,
+                    'message' => $message,
+                    'countryCode' => '62',
+                ];
+
+                if ($qrUrl) {
+                    $payload['url'] = $qrUrl;
+                }
+
+                Log::info("Fonnte Request", [
+                    'url' => self::API_URL,
+                    'target_masked' => $this->maskPhone($rawPhone),
+                    'message_hash' => md5($message),
+                    'has_image' => !empty($qrUrl),
+                ]);
+
+                $response = Http::withHeaders([
+                    'Authorization' => $apiKey,
+                ])->asForm()->post(self::API_URL, $payload);
             }
-
-            Log::info("Fonnte Request", [
-                'url' => self::API_URL,
-                'target_masked' => $this->maskPhone($rawPhone),
-                'message_hash' => md5($message),
-                'has_image' => !empty($qrUrl),
-            ]);
-
-            $response = Http::withHeaders([
-                'Authorization' => $apiKey,
-            ])->asForm()->post(self::API_URL, $payload);
 
             $body = $response->body();
             $data = $response->json();

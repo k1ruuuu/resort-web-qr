@@ -60,29 +60,7 @@ class QrCodeService
             abort(500, 'Failed to generate QR code image.');
         }
 
-        $templatePaths = [
-            public_path('img/Barcode-Chanaya.jpg'),
-            public_path('img/Barcode-Chanaya.png'),
-            public_path('Barcode-Chanaya.png'),
-            public_path('Barcode-Chanaya.jpg'),
-        ];
-
-        $templateImage = null;
-        $loadedPath = null;
-        foreach ($templatePaths as $path) {
-            if (file_exists($path)) {
-                $loadedPath = $path;
-                $lower = strtolower($path);
-                if (str_ends_with($lower, '.jpg') || str_ends_with($lower, '.jpeg')) {
-                    $templateImage = @imagecreatefromjpeg($path);
-                } else {
-                    $templateImage = @imagecreatefrompng($path);
-                }
-                if ($templateImage !== false) {
-                    break;
-                }
-            }
-        }
+        $templateImage = $this->loadTemplateImage();
 
         if ($templateImage === null) {
             imagedestroy($qrImage);
@@ -134,6 +112,84 @@ class QrCodeService
             'Cache-Control' => 'public, max-age=3600',
             'Content-Length' => strlen($finalImage),
         ]);
+    }
+
+    public function templateImageBytes(string $payload): string
+    {
+        $options = new QROptions([
+            'outputType'   => QRCode::OUTPUT_IMAGE_PNG,
+            'outputBase64' => false,
+            'eccLevel'     => QRCode::ECC_L,
+            'scale'        => 12,
+            'margin'       => 2,
+        ]);
+
+        $qrRawData = (new QRCode($options))->render($payload);
+        $qrImage = imagecreatefromstring($qrRawData);
+
+        if ($qrImage === false) {
+            throw new \RuntimeException('Failed to generate QR code image.');
+        }
+
+        $templateImage = $this->loadTemplateImage();
+
+        if ($templateImage === null) {
+            imagedestroy($qrImage);
+
+            return $qrRawData;
+        }
+
+        $templateWidth = imagesx($templateImage);
+        $templateHeight = imagesy($templateImage);
+        $qrWidth = imagesx($qrImage);
+        $qrHeight = imagesy($qrImage);
+
+        $posX = (int) (($templateWidth - $qrWidth) / 2);
+        $posY = (int) ($templateHeight * 0.48);
+
+        if ($posX < 0 || $posY < 0) {
+            imagedestroy($templateImage);
+            imagedestroy($qrImage);
+            throw new \RuntimeException('QR code is too large for the template.');
+        }
+
+        imagecopy($templateImage, $qrImage, $posX, $posY, 0, 0, $qrWidth, $qrHeight);
+
+        ob_start();
+        imagepng($templateImage, null, 9);
+        $pngData = ob_get_clean();
+
+        imagedestroy($templateImage);
+        imagedestroy($qrImage);
+
+        return $pngData;
+    }
+
+    private function loadTemplateImage(): \GdImage|null
+    {
+        $templatePaths = [
+            public_path('img/Barcode-Chanaya.jpg'),
+            public_path('img/Barcode-Chanaya.png'),
+            public_path('Barcode-Chanaya.png'),
+            public_path('Barcode-Chanaya.jpg'),
+        ];
+
+        foreach ($templatePaths as $path) {
+            if (!file_exists($path)) {
+                continue;
+            }
+
+            $lower = strtolower($path);
+            $templateImage = str_ends_with($lower, '.jpg') || str_ends_with($lower, '.jpeg')
+                ? @imagecreatefromjpeg($path)
+                : @imagecreatefrompng($path);
+
+            if ($templateImage !== false) {
+                return $templateImage;
+            }
+        }
+
+        return null;
     }
 
     public function payloadForVoucher(GuestVoucher $voucher): string

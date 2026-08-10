@@ -72,7 +72,16 @@ class VoucherApiController extends ApiController
             $query->whereDate('generated_at', '<=', $request->string('date_to'));
         }
 
-        return $this->respondPaginated($query->paginate($request->integer('per_page', 20)));
+        $vouchers = $query->paginate($request->integer('per_page', 20));
+
+        // Lazy expiry: keep API list statuses fresh even without cron/scheduler
+        foreach ($vouchers as $voucher) {
+            if ($voucher->status === \App\Enums\VoucherStatus::Active) {
+                $this->vouchers->checkAndExpireIfNeeded($voucher);
+            }
+        }
+
+        return $this->respondPaginated($vouchers);
     }
 
     public function show(GuestVoucher $voucher): JsonResponse
@@ -80,6 +89,8 @@ class VoucherApiController extends ApiController
         $this->authorizeVoucherAccess($voucher, 'vouchers.view');
 
         $voucher->load(['booking.guest', 'booking.room', 'booking.bookingFacilities', 'property']);
+
+        $this->vouchers->checkAndExpireIfNeeded($voucher);
 
         return $this->respond($voucher);
     }
@@ -185,6 +196,13 @@ class VoucherApiController extends ApiController
             if ($outlet) {
                 $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
                 $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+
+                if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+                    if ($user) {
+                        $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
+                    }
+                    return $this->respondError('This voucher has no remaining quota for the selected outlet\'s facility.', 422);
+                }
             }
 
             $history = RedemptionLog::query()
@@ -210,7 +228,9 @@ class VoucherApiController extends ApiController
                 'booking_code' => null,
                 'check_in' => null,
                 'check_out' => null,
-                'total_pax' => ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0),
+                'total_pax' => $voucher->additionAppliesOn($today->toDateString())
+                    ? ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0)
+                    : ($voucher->pax_limit ?? 1),
                 'facilities' => $facilityStatuses,
                 'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                 'history' => $history,
@@ -250,6 +270,13 @@ class VoucherApiController extends ApiController
         if ($outlet) {
             $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
             $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
+
+            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+                if ($user) {
+                    $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
+                }
+                return $this->respondError('This voucher has no remaining quota for the selected outlet\'s facility.', 422);
+            }
         }
 
         $history = RedemptionLog::query()
@@ -275,7 +302,9 @@ class VoucherApiController extends ApiController
             'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
             'check_in' => $voucher->booking->check_in->format('Y-m-d'),
             'check_out' => $voucher->booking->check_out->format('Y-m-d'),
-            'total_pax' => $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0),
+            'total_pax' => $voucher->additionAppliesOn($today->toDateString())
+                ? $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0)
+                : $voucher->booking->total_pax + $voucher->booking->extra_beds,
             'facilities' => $facilityStatuses,
             'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
             'history' => $history,

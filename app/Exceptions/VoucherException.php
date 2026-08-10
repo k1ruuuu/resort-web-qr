@@ -21,6 +21,11 @@ class VoucherException extends Exception
         return new self('Voucher is expired or not valid today.', 422);
     }
 
+    public static function alreadyUsedForStay(): self
+    {
+        return new self('This facility has already been used for this stay.', 422);
+    }
+
     public static function invalidOutlet(): self
     {
         return new self('Outlet cannot redeem this facility.', 403);

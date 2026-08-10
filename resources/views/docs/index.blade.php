@@ -28,8 +28,10 @@
                     <a class="nav-link py-1 px-2 small" href="#reports"><i class="fas fa-chart-bar me-2"></i>Laporan</a>
                     <a class="nav-link py-1 px-2 small" href="#delivery-logs"><i class="fas fa-paper-plane me-2"></i>Log Kirim</a>
                     <a class="nav-link py-1 px-2 small" href="#scan-history"><i class="fas fa-history me-2"></i>Riwayat Scan</a>
+                    <a class="nav-link py-1 px-2 small" href="#import-logs"><i class="fas fa-file-import me-2"></i>Log Import</a>
                     <a class="nav-link py-1 px-2 small" href="#delivery-settings"><i class="fas fa-cog me-2"></i>Pengaturan Kirim</a>
                     <a class="nav-link py-1 px-2 small" href="#users"><i class="fas fa-user-cog me-2"></i>Pengguna</a>
+                    <a class="nav-link py-1 px-2 small" href="#roles"><i class="fas fa-user-shield me-2"></i>Role</a>
                     <a class="nav-link py-1 px-2 small" href="#public-card"><i class="fas fa-external-link-alt me-2"></i>Kartu Publik</a>
                 </nav>
             </div>
@@ -61,6 +63,8 @@
                     <li>Tabel aktivitas redeem terbaru hari ini dengan informasi tamu, fasilitas, pax, outlet, dan staf.</li>
                     <li>Daftar fasilitas terpopuler berdasarkan total pemakaian.</li>
                 </ul>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Dashboard.png" />
             </div>
         </div>
 
@@ -75,6 +79,11 @@
                     <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Klik ikon <i class="fas fa-edit text-warning"></i> pada baris properti. Ubah data yang diperlukan lalu simpan.</td></tr>
                     <tr><td><span class="badge bg-danger">Delete</span></td><td>Klik ikon <i class="fas fa-trash text-danger"></i>. Properti yang memiliki relasi tidak dapat dihapus (foreign key constraint).</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Properties.png" />
+                <x-docs-screenshot src="Properties-add.png" />
+                <x-docs-screenshot src="Properties-edit.png" />
+                <x-docs-screenshot src="Properties-view.png" />
             </div>
         </div>
 
@@ -95,6 +104,12 @@
                     <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Klik ikon <i class="fas fa-edit text-warning"></i>. Ubah data kamar seperti tipe, kapasitas, atau status.</td></tr>
                     <tr><td><span class="badge bg-danger">Delete</span></td><td>Klik ikon <i class="fas fa-trash text-danger"></i>. Hapus kamar yang sudah tidak digunakan.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Rooms.png" />
+                <x-docs-screenshot src="Rooms-add.png" />
+                <x-docs-screenshot src="Rooms-import.png" />
+                <x-docs-screenshot src="Rooms-view.png" />
+                <x-docs-screenshot src="Room-view.png" />
             </div>
         </div>
 
@@ -115,6 +130,12 @@
                     <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Klik ikon <i class="fas fa-edit text-warning"></i> untuk mengubah data tamu.</td></tr>
                     <tr><td><span class="badge bg-danger">Delete</span></td><td>Klik ikon <i class="fas fa-trash text-danger"></i> untuk menghapus data tamu.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Guests.png" />
+                <x-docs-screenshot src="Guests-add.png" />
+                <x-docs-screenshot src="Guests-edit.png" />
+                <x-docs-screenshot src="Guests-import.png" />
+                <x-docs-screenshot src="Guests-view.png" />
             </div>
         </div>
 
@@ -139,6 +160,12 @@
                     <li>Voucher dapat dikirim ke WhatsApp tamu (jika fitur pengiriman aktif).</li>
                 </ol>
                 <div class="callout callout-warning py-2 small"><i class="fas fa-exclamation-triangle me-1"></i>Reservasi harus berstatus <strong>Checked In</strong> agar voucher dapat digunakan untuk redeem fasilitas.</div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Bookings.png" />
+                <x-docs-screenshot src="Bookings-add.png" />
+                <x-docs-screenshot src="Bookings-edit.png" />
+                <x-docs-screenshot src="Bookings-import.png" />
+                <x-docs-screenshot src="Bookings-view.png" />
             </div>
         </div>
 
@@ -159,6 +186,10 @@
                     <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Ubah data fasilitas, termasuk nama, kode, atau urutan tampilan.</td></tr>
                     <tr><td><span class="badge bg-danger">Delete</span></td><td>Hapus fasilitas. Data reservasi yang sudah menggunakan fasilitas ini tetap tersimpan.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Facilities.png" />
+                <x-docs-screenshot src="Facilities-add.png" />
+                <x-docs-screenshot src="Facilities-edit.png" />
             </div>
         </div>
 
@@ -174,6 +205,10 @@
                     <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Ubah data outlet, termasuk mengganti atau menambah fasilitas.</td></tr>
                     <tr><td><span class="badge bg-danger">Delete</span></td><td>Hapus outlet. Data redeem yang sudah tercatat tetap tersimpan.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Outlets.png" />
+                <x-docs-screenshot src="Outlets-add.png" />
+                <x-docs-screenshot src="Outlets-edit.png" />
             </div>
         </div>
 
@@ -201,6 +236,9 @@
                     <tr><td><span class="badge bg-secondary">Redeemed</span></td><td>Semua fasilitas sudah digunakan habis.</td></tr>
                     <tr><td><span class="badge bg-danger">Expired</span></td><td>Voucher sudah kedaluwarsa.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Vouchers.png" />
+                <x-docs-screenshot src="Voucher-temporary.png" />
             </div>
         </div>
 
@@ -221,6 +259,8 @@
                     <li>QR Code tidak valid ditolak. Outlet hanya bisa redeem properti yang sama.</li>
                     <li>Voucher expired/fully redeemed tidak dapat digunakan. Rate limiting &amp; riwayat scan.</li>
                 </ul>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Vouchers-scan.png" />
             </div>
         </div>
 
@@ -234,6 +274,8 @@
                     <li>Klik <strong>Verify Voucher</strong>.</li>
                     <li>Pilih fasilitas &amp; pax, klik <strong>Confirm Redemption</strong>.</li>
                 </ol>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Vouchers-redeem.png" />
             </div>
         </div>
 
@@ -250,6 +292,8 @@
                 </ul>
                 <h6 class="fw-bold mt-3"><i class="fas fa-download text-primary me-1"></i>Ekspor</h6>
                 <p>Klik <strong>Export</strong> → XLSX, XLS, CSV. Data mengikuti filter aktif. Perlu permission <code>reports.export</code>.</p>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Reports.png" />
             </div>
         </div>
 
@@ -261,6 +305,11 @@
                     <li>Nama tamu, nomor tujuan, status (<span class="badge bg-success">Terkirim</span> / <span class="badge bg-danger">Gagal</span> / <span class="badge bg-warning text-dark">Tertunda</span>).</li>
                     <li>Waktu pengiriman, respons provider, konten pesan. Ekspor ke Excel/CSV.</li>
                 </ul>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Delivery#1.png" />
+                <x-docs-screenshot src="Delivery#2.png" />
+                <x-docs-screenshot src="Delivery#3.png" />
+                <x-docs-screenshot src="Delivery-logs.png" />
             </div>
         </div>
 
@@ -272,6 +321,21 @@
                     <li>Filter: hasil scan, outlet, tanggal.</li>
                     <li>Data: timestamp, kode QR, tamu, kamar, outlet, staf, hasil, IP. Ekspor ke Excel/CSV.</li>
                 </ul>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Scan-history.png" />
+            </div>
+        </div>
+
+        <div id="import-logs" class="card card-primary card-outline">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-file-import me-2"></i>Log Import</h3></div>
+            <div class="card-body">
+                <p>Riwayat setiap proses import data massal (kamar, tamu, dan reservasi).</p>
+                <ul>
+                    <li>Status proses (<span class="badge bg-success">Berhasil</span> / <span class="badge bg-warning text-dark">Dengan Peringatan</span> / <span class="badge bg-danger">Gagal</span>), pengguna yang melakukan, waktu import, dan jumlah baris.</li>
+                    <li>Klik baris untuk melihat rincian baris yang dilewati beserta alasannya.</li>
+                </ul>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Import-logs.png" />
             </div>
         </div>
 
@@ -333,6 +397,30 @@
                     <tr><td><span class="badge bg-primary">admin</span></td><td>Sebagian besar permission manajemen.</td></tr>
                     <tr><td><span class="badge bg-info">*-staff</span></td><td>Staff per fasilitas. Hanya lihat voucher &amp; redeem.</td></tr>
                 </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Users.png" />
+                <x-docs-screenshot src="Users-add#1.png" />
+                <x-docs-screenshot src="Users-add#2.png" />
+                <x-docs-screenshot src="Users-edit#1.png" />
+                <x-docs-screenshot src="Users-edit#2.png" />
+                <x-docs-screenshot src="Users-edit#3.png" />
+            </div>
+        </div>
+
+        <div id="roles" class="card card-primary card-outline">
+            <div class="card-header"><h3 class="card-title"><i class="fas fa-user-shield me-2"></i>Manajemen Role</h3></div>
+            <div class="card-body">
+                <p>Mengelola role dan permission yang menentukan hak akses pengguna.</p>
+                <div class="table-responsive"><table class="table table-sm table-bordered"><thead class="table-light"><tr><th style="width:100px;">Aksi</th><th>Deskripsi</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="badge bg-success">Create</span></td><td>Klik <strong>+ Add Role</strong>. Isi nama role dan centang permission yang diberikan.</td></tr>
+                    <tr><td><span class="badge bg-warning text-dark">Update</span></td><td>Ubah nama role atau susunan permission kapan saja.</td></tr>
+                    <tr><td><span class="badge bg-danger">Delete</span></td><td>Hapus role. Role yang masih dipakai pengguna tidak dapat dihapus.</td></tr>
+                </tbody></table></div>
+                <h6 class="fw-bold mt-3"><i class="fas fa-image text-primary me-1"></i>Tangkapan Layar</h6>
+                <x-docs-screenshot src="Roles.png" />
+                <x-docs-screenshot src="Roles-add.png" />
+                <x-docs-screenshot src="Roles-edit.png" />
             </div>
         </div>
 
@@ -362,6 +450,9 @@
     .card-header h3 { font-size:1.1rem; font-weight:600; }
     .card-body { font-size:0.92rem; }
     .card-body p { color:#475569; }
+    .docs-screenshot { margin-bottom:1rem; }
+    .docs-screenshot img { max-height:420px; object-fit:contain; }
+    .docs-screenshot a:hover img { border-color:#2196f3 !important; }
     @media(max-width:991px) { .sticky-top { position:static !important; } }
 </style>
 @endpush

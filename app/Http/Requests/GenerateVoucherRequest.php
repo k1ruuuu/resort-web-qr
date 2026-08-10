@@ -17,6 +17,7 @@ class GenerateVoucherRequest extends FormRequest
             'booking_id' => ['nullable', 'exists:bookings,id'],
             'property_id' => ['required_without:booking_id', 'exists:properties,id'],
             'guest_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'category' => ['nullable', 'in:temporary,standard'],
             'expiration_type' => ['nullable', 'in:hour,date'],
             'expiration_value' => ['nullable', 'string'],

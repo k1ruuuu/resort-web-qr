@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\VoucherStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,7 @@ class GuestVoucher extends Model
         'facility_template_id',
         'pax_limit',
         'guest_name',
+        'phone',
         'qr_code',
         'secure_token',
         'status',
@@ -25,6 +27,7 @@ class GuestVoucher extends Model
         'generated_at',
         'expires_at',
         'addition_map',
+        'addition_date',
     ];
 
 
@@ -36,6 +39,7 @@ class GuestVoucher extends Model
             'expires_at' => 'datetime',
             'addition' => 'integer',
             'addition_map' => 'array',
+            'addition_date' => 'date',
         ];
     }
 
@@ -62,6 +66,36 @@ class GuestVoucher extends Model
     public function qrScanLogs(): HasMany
     {
         return $this->hasMany(QrScanLog::class);
+    }
+
+    protected function expiresAtLocal(): Attribute
+    {
+        return Attribute::get(fn() => $this->expires_at
+            ? $this->expires_at->copy()->setTimezone(
+                $this->property?->timezone ?? $this->booking?->property?->timezone ?? 'UTC'
+            )
+            : null);
+    }
+
+    public function additionAppliesOn(string $dateString): bool
+    {
+        if ($dateString === $this->addition_date?->toDateString()) {
+            return true;
+        }
+
+        if (!$this->addition_facility_ids) {
+            return false;
+        }
+
+        $additionIds = array_map('intval', explode(',', $this->addition_facility_ids));
+        $oneTimeCodes = ['SNACK', 'JOURNAL', 'FEED'];
+
+        // Addition granted to a one-time facility stays valid for the whole stay
+        return $this->booking?->bookingFacilities->contains(function ($bf) use ($additionIds, $oneTimeCodes) {
+            return $bf->facilityTemplate
+                && in_array($bf->facility_template_id, $additionIds, true)
+                && ($bf->facilityTemplate->is_one_time ?? in_array($bf->facilityTemplate->code, $oneTimeCodes, true));
+        }) ?? false;
     }
 
     public function getFacilityStatuses(?Carbon $date = null): Collection
@@ -149,7 +183,14 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('first_redeemed_date', 'facility_template_id');
 
-        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $oneTimeRedemptions, $oneTimeFacilityCodes, $timezone) {
+        // Total usage per facility across the whole stay (used for one-time facilities)
+        $everUsedByFacility = RedemptionLog::query()
+            ->where('guest_voucher_id', $this->id)
+            ->selectRaw('facility_template_id, SUM(pax_used) as total_used')
+            ->groupBy('facility_template_id')
+            ->pluck('total_used', 'facility_template_id');
+
+        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $oneTimeRedemptions, $everUsedByFacility, $oneTimeFacilityCodes, $timezone) {
             if (!$bf->facilityTemplate) {
                 return null;
             }
@@ -159,21 +200,28 @@ class GuestVoucher extends Model
             $end = $bf->end_date?->setTimezone($timezone)->toDateString() ?? $dateString;
             $facilityCode = $bf->facilityTemplate->code;
             $facilityAdd = $additionMap[$bf->facility_template_id] ?? (in_array($bf->facility_template_id, $additionFacilityIds) ? $addition : 0);
-            $facilityQuota = (int) (($bf->quota_total ?? $baseQuota) + $facilityAdd);
 
             $isOneTimeFacility = $bf->facilityTemplate->is_one_time
                 ?? in_array($facilityCode, $oneTimeFacilityCodes);
 
-            if ($isOneTimeFacility && !($facilityAdd > 0)) {
+            // Addition boosts quota once per stay for one-time facilities; for daily
+            // facilities it only applies on the day it was granted (extra beds are
+            // already part of the base pax and apply every day)
+            $additionApplies = $isOneTimeFacility || $dateString === $this->addition_date?->toDateString();
+            $facilityQuota = (int) (($bf->quota_total ?? $baseQuota) + ($additionApplies ? $facilityAdd : 0));
+
+            if ($isOneTimeFacility) {
+                // One-time facilities: usable any day within the period, once per stay
                 $neverRedeemed = !isset($oneTimeRedemptions[$bf->facility_template_id]);
-                $inPeriod = $dateString === $start;
+                $inPeriod = $dateString >= $start && $dateString <= $end;
                 $isAvailable = $inPeriod && $neverRedeemed;
             } else {
+                // Daily facilities: available within date range, quota resets daily
                 $inPeriod = $dateString >= $start && $dateString <= $end;
                 $isAvailable = $inPeriod;
             }
 
-            $used = (int) ($redemptions[$bf->facility_template_id] ?? 0);
+            $used = (int) (($isOneTimeFacility ? $everUsedByFacility : $redemptions)[$bf->facility_template_id] ?? 0);
             $remaining = max(0, $facilityQuota - $used);
             $status = !$inPeriod ? 'unavailable' : ($isAvailable && $remaining > 0 ? 'available' : 'used');
 

@@ -40,8 +40,8 @@
                                 @endif
                             </td>
                             <td>
-                                <strong>{{ $log->guest->full_name }}</strong>
-                                <span class="d-block small text-muted">Booking: {{ $log->booking->booking_code ?? $log->booking->reference }}</span>
+                                <strong>{{ $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'N/A' }}</strong>
+                                <span class="d-block small text-muted">Booking: {{ $log->booking ? ($log->booking->booking_code ?? $log->booking->reference) : ($log->guest_voucher_id ? 'Temporary Voucher' : 'N/A') }}</span>
                             </td>
                             <td><code class="text-dark">{{ $log->phone_number }}</code></td>
                             <td>

@@ -10,6 +10,7 @@ class DeliveryLog extends Model
     protected $fillable = [
         'booking_id',
         'guest_id',
+        'guest_voucher_id',
         'phone_number',
         'message_content',
         'qr_path',
@@ -35,5 +36,10 @@ class DeliveryLog extends Model
     public function guest(): BelongsTo
     {
         return $this->belongsTo(Guest::class);
+    }
+
+    public function guestVoucher(): BelongsTo
+    {
+        return $this->belongsTo(GuestVoucher::class);
     }
 }
