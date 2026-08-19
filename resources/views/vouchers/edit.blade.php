@@ -67,7 +67,8 @@
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text">+</span>
                                         <input type="number" name="addition_map[{{ $facility->id }}]"
-                                               class="form-control @error('addition_map.{{ $facility->id }}') is-invalid @enderror"
+                                               data-facility="{{ $facility->id }}"
+                                               class="form-control addition-input @error('addition_map.{{ $facility->id }}') is-invalid @enderror"
                                                value="{{ old('addition_map.' . $facility->id, $additionMap[$facility->id] ?? 0) }}"
                                                min="0" max="50" {{ !$isGranted ? 'disabled' : '' }}>
                                         <span class="input-group-text">pax</span>
@@ -93,17 +94,19 @@
                                     <div class="border rounded p-2 h-100">
                                         <div class="fw-bold small mb-1">{{ $facility->name }}</div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
+                                            <input class="form-check-input facility-radio" type="radio"
                                                    name="facility_status[{{ $facility->id }}]"
                                                    value="granted"
+                                                   data-facility="{{ $facility->id }}"
                                                    id="facility_{{ $facility->id }}_granted"
                                                    {{ $isGranted ? 'checked' : '' }}>
                                             <label class="form-check-label small text-success" for="facility_{{ $facility->id }}_granted">Granted</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
+                                            <input class="form-check-input facility-radio" type="radio"
                                                    name="facility_status[{{ $facility->id }}]"
                                                    value="not_granted"
+                                                   data-facility="{{ $facility->id }}"
                                                    id="facility_{{ $facility->id }}_not_granted"
                                                    {{ !$isGranted ? 'checked' : '' }}>
                                             <label class="form-check-label small text-muted" for="facility_{{ $facility->id }}_not_granted">Not Granted</label>
@@ -131,4 +134,21 @@
 </div>
 @endsection
 
+@push('scripts')
+<script>
+document.querySelectorAll('.facility-radio').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+        var facilityId = this.dataset.facility;
+        var addition = document.querySelector('.addition-input[data-facility="' + facilityId + '"]');
+        if (!addition) { return; }
+        if (this.value === 'granted') {
+            addition.disabled = false;
+        } else {
+            addition.disabled = true;
+            addition.value = 0;
+        }
+    });
+});
+</script>
+@endpush
 

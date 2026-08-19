@@ -100,6 +100,7 @@
                                 <th>QR Code</th>
                                 <th>Guest Name</th>
                                 <th>Room</th>
+                                <th>Total Pax</th>
                                 <th>Outlet</th>
                                 <th>Facility</th>
                                 <th>Scanned By</th>
@@ -127,6 +128,19 @@
                                     <td>
                                         @if($log->guestVoucher && $log->guestVoucher->booking && $log->guestVoucher->booking->room)
                                             {{ $log->guestVoucher->booking->room->label ?? $log->guestVoucher->booking->room->number }}
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $booking = $log->guestVoucher?->booking;
+                                            $voucher = $log->guestVoucher;
+                                        @endphp
+                                        @if($booking)
+                                            {{ $booking->total_pax + $booking->extra_beds }}<small class="text-muted"> pax</small>
+                                        @elseif($voucher)
+                                            {{ $voucher->pax_limit ?? 1 }}<small class="text-muted"> pax</small>
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif

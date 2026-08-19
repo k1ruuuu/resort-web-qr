@@ -18,7 +18,7 @@
                 @endif
             </div>
             <h1 class="fw-bold text-dark mb-1" style="font-size: 1.5rem;">{{ $voucher->guest_name ?? ($voucher->booking?->guest?->full_name ?? 'Temporary Guest') }}</h1>
-            <p class="text-muted small mb-0">Room: <strong>{{ $voucher->booking?->room?->code ?? 'TEMP' }} - {{ $voucher->booking?->room?->label ?? $voucher->booking?->room_label ?? 'Temporary' }}</strong></p>
+            <p class="text-muted small mb-0">Room: <strong>{{ $voucher->booking?->room?->label ?? $voucher->booking?->room_label ?? 'Temporary' }}</strong></p>
         </div>
     </div>
 
@@ -26,9 +26,8 @@
     <div class="text-center position-relative overflow-hidden rounded-4" style="background: linear-gradient(135deg, var(--bs-primary-dark) 0%, var(--bs-primary) 50%, var(--bs-primary-light) 100%); padding: 2rem 1.5rem;">
         <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 60%);"></div>
         <div class="position-relative">
-            <div class="d-inline-flex align-items-center gap-2 mb-2 px-3 py-1 rounded-pill" style="background: rgba(255,255,255,0.12); backdrop-filter: blur(4px);">
-                <i class="fas fa-tree" style="font-size: 0.65rem; color: rgba(255,255,255,0.7);"></i>
-                <span class="text-uppercase" style="font-size: 0.6rem; letter-spacing: 2px; color: rgba(255,255,255,0.7); font-weight: 500;">{{ $voucher->property?->name ?? 'Chanaya' }}</span>
+            <div class="d-inline-flex align-items-center mb-2 px-3 py-1 rounded-pill" style="background: rgba(255,255,255,0.12); backdrop-filter: blur(4px);">
+                <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" style="height: 26px; width: auto;">
             </div>
             <h2 class="fw-bold text-white mb-0" style="font-size: 1.35rem; letter-spacing: 0.3px; text-shadow: 0 1px 3px rgba(0,0,0,0.15);">
                 Welcome to {{ $voucher->property?->name ?? 'Chanaya' }}
@@ -72,6 +71,30 @@
         </h3>
 
         <div>
+            @php
+            // tempat & jam penukaran per facility (kode template)
+            $redeemInfo = [
+                'SNACK' => [
+                    ['place' => 'Soeji Dining', 'time' => 'Dari check in sampai sebelum checkout'],
+                ],
+                'TEA' => [
+                    ['place' => 'Teras Hutan Bambu', 'time' => 'Check in sampai check out · 3:00 PM - 5:00 PM'],
+                ],
+                'DINNER' => [
+                    ['place' => 'Teras Hutan Bambu (Dinner BBQ)', 'time' => '6:30 PM - 8:30 PM'],
+                    ['place' => 'Soeji or Rumpun (Dinner 100K)', 'time' => '6:30 PM - 8:30 PM'],
+                ],
+                'BREAKFAST' => [
+                    ['place' => 'Soeji Dining', 'time' => '7:00 AM - 10:00 AM'],
+                ],
+                'JOURNAL' => [
+                    ['place' => 'Rumah Seni', 'time' => '2:00 PM - 5:00 PM'],
+                ],
+                'FEED' => [
+                    ['place' => 'Rumpun Area', 'time' => 'Check in sampai checkout (one time) · 10:00 - 11:45 atau 13:15 - 16:45 (tergantung cuaca)'],
+                ],
+            ];
+            @endphp
             @forelse($facilityStatuses as $facility)
                 <div class="mb-3 p-3 rounded-3 border bg-white shadow-sm" style="border-color: var(--forest-border) !important;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -84,6 +107,16 @@
                             <span class="badge bg-secondary px-2 py-1 rounded-pill" style="font-size: 0.7rem;">Not available today</span>
                         @endif
                     </div>
+                    @foreach($redeemInfo[strtoupper($facility->code)] ?? [] as $info)
+                        <div class="d-flex align-items-center gap-2 mb-1" style="font-size: 0.8rem;">
+                            <i class="fa-solid fa-location-dot text-muted" style="font-size: 0.7rem;"></i>
+                            <span class="text-muted">{{ $info['place'] }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-2" style="font-size: 0.8rem;">
+                            <i class="fa-regular fa-clock text-muted" style="font-size: 0.7rem;"></i>
+                            <span class="text-danger">{{ $info['time'] }}</span>
+                        </div>
+                    @endforeach
                     @if($facility->status === 'available')
                         @php
                             $usedPercent = $facility->quota_total > 0 ? ($facility->quota_used / $facility->quota_total) * 100 : 0;
@@ -112,7 +145,7 @@
     </div>
 
     <div class="mt-2 mb-3 text-center px-3">
-        <x-qr-code :url="$qrImageUrl" :size="500" class="rounded-3" />
+        <x-qr-code :url="$qrImageUrl" :size="800" square class="rounded-3" />
     </div>
 
 </div>

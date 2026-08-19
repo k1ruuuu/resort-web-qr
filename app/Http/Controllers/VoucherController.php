@@ -632,7 +632,8 @@ class VoucherController extends Controller
             abort(410, 'Voucher has expired.');
         }
 
-        return $this->qr->templateResponse($this->qr->payloadForVoucher($voucher));
+        // public guest page: plain QR only (no branded template), sized for display
+        return $this->qr->svgResponse($this->qr->payloadForVoucher($voucher), 800);
     }
 
     private function authorizeVoucherAccess(GuestVoucher $voucher, string $permission): void

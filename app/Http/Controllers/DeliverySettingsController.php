@@ -26,7 +26,7 @@ class DeliverySettingsController extends Controller
             'phone_filter_mode' => Setting::get('delivery.phone_filter_mode', 'global'),
             'message_template' => Setting::get(
                 'delivery.message_template',
-                "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_code}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
+                "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_name}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
             ),
         ];
 

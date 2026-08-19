@@ -107,18 +107,18 @@ class VoucherService
                 }
             }
         }
-        if (empty($facilityTemplateIds)) {
-            throw new VoucherException('At least one facility must be selected for the voucher.', 422);
-        }
+        // Allow revoking ALL facilities: keep the empty array instead of
+        // throwing, so Not Granted works on every row.
+        if (!empty($facilityTemplateIds)) {
+            $validFacilityCount = FacilityTemplate::query()
+                ->where('property_id', $voucher->property_id)
+                ->where('is_active', true)
+                ->whereIn('id', $facilityTemplateIds)
+                ->count();
 
-        $validFacilityCount = FacilityTemplate::query()
-            ->where('property_id', $voucher->property_id)
-            ->where('is_active', true)
-            ->whereIn('id', $facilityTemplateIds)
-            ->count();
-
-        if ($validFacilityCount !== count($facilityTemplateIds)) {
-            throw new VoucherException('One or more selected facilities are invalid for this voucher.', 422);
+            if ($validFacilityCount !== count($facilityTemplateIds)) {
+                throw new VoucherException('One or more selected facilities are invalid for this voucher.', 422);
+            }
         }
 
         $additionMap = null;

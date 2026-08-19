@@ -6,6 +6,7 @@
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">QR Code</th>
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Guest Name</th>
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Room</th>
+            <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Total Pax</th>
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Outlet</th>
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Facility</th>
             <th style="font-weight: bold; background-color: #4472C4; color: #FFFFFF;">Scanned By</th>
@@ -22,6 +23,13 @@
             <td>{{ $log->qr_code }}</td>
             <td>{{ $log->guestVoucher?->guest?->full_name ?? 'N/A' }}</td>
             <td>{{ $log->guestVoucher?->booking?->room?->code ?? $log->guestVoucher?->booking?->room?->number ?? 'N/A' }}</td>
+            <td>
+                @php
+                    $paxBooking = $log->guestVoucher?->booking;
+                    $paxVoucher = $log->guestVoucher;
+                @endphp
+                {{ $paxBooking ? ($paxBooking->total_pax + $paxBooking->extra_beds) : ($paxVoucher ? ($paxVoucher->pax_limit ?? 1) : 'N/A') }}
+            </td>
             <td>{{ $log->outlet?->name ?? 'N/A' }}</td>
             <td>{{ $log->facilityTemplate?->name ?? 'N/A' }}</td>
             <td>{{ $log->user?->name ?? 'System' }}</td>

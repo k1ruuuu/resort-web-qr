@@ -274,16 +274,20 @@ class VoucherDeliveryService
     {
         $template = Setting::get(
             'delivery.message_template',
-            "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_code}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
+            "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_name}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
         );
 
         $guestName = $voucher->guest_name ?? 'Guest';
+        $roomName = $voucher->booking?->room_label
+            ?? $voucher->booking?->room?->label
+            ?? $voucher->booking?->room?->number
+            ?? 'TEMP';
         $totalPax = ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0);
         $voucherLink = route('vouchers.public', ['token' => $voucher->secure_token]);
 
         return str_replace(
-            ['{guest_name}', '{room_code}', '{total_pax}', '{voucher_link}'],
-            [$guestName, 'TEMP', $totalPax, $voucherLink],
+            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}'],
+            [$guestName, $voucher->booking?->room?->code ?? 'TEMP', $roomName, $totalPax, $voucherLink],
             $template
         );
     }
@@ -356,19 +360,20 @@ class VoucherDeliveryService
     {
         $template = Setting::get(
             'delivery.message_template',
-            "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_code}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
+            "Halo {guest_name},\n\nVoucher Digital Anda telah aktif.\n\nRoom:\n{room_name}\n\nTotal Pax:\n{total_pax}\n\nSilakan tunjukkan QR berikut saat menggunakan fasilitas resort.\n\nTerima kasih."
         );
 
         $guestName = $booking->guest?->full_name ?? 'Guest';
         $roomCode = $booking->room?->code ?? $booking->room?->number ?? 'N/A';
+        $roomName = $booking->room_label ?? $booking->room?->label ?? $roomCode;
         $totalPax = $booking->total_pax + $booking->extra_beds;
-        
+
         $voucher = $booking->guestVoucher;
         $voucherLink = $voucher ? route('vouchers.public', ['token' => $voucher->secure_token]) : '';
 
         return str_replace(
-            ['{guest_name}', '{room_code}', '{total_pax}', '{voucher_link}'],
-            [$guestName, $roomCode, $totalPax, $voucherLink],
+            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}'],
+            [$guestName, $roomCode, $roomName, $totalPax, $voucherLink],
             $template
         );
     }
