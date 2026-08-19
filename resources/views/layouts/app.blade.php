@@ -9,91 +9,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/adminlte/adminlte.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
     <link rel="stylesheet" href="{{ asset('css/theme-forest.css') }}">
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition layout-navbar-fixed">
 <div class="wrapper">
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-        </ul>
-        <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-                <form method="POST" action="{{ route('logout') }}" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-link nav-link">Logout</button>
-                </form>
-            </li>
-        </ul>
-    </nav>
+    <nav class="main-header navbar navbar-expand-lg navbar-white navbar-light border-bottom">
+        <div class="container-fluid">
+            <a href="{{ route('dashboard') }}" class="navbar-brand">
+                <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image" style="opacity: .9; max-height: 40px; width: auto;">
+                <span class="brand-text font-weight-light ms-2" style="font-size: 1.1rem;">E-Voucher</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link @if(request()->routeIs('dashboard')) active @endif" href="{{ route('dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @if(request()->routeIs('docs')) active @endif" href="{{ route('docs') }}">
+                            <i class="fas fa-book me-1"></i> Dokumentasi
+                        </a>
+                    </li>
 
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="{{ route('dashboard') }}" class="brand-link">
-            <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image" style="opacity: .9; max-height: 52px; width: auto;">
-            <span class="brand-text font-weight-light ms-2" style="font-size: 1.1rem;">E-Voucher</span>
-        </a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" role="menu">
-                    <li class="nav-item">
-                        <a href="{{ route('dashboard') }}" class="nav-link @if(request()->routeIs('dashboard')) active @endif">
-                            <i class="nav-icon fas fa-tachometer-alt"></i>
-                            <p>Dashboard</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('docs') }}" class="nav-link @if(request()->routeIs('docs')) active @endif">
-                            <i class="nav-icon fas fa-book"></i>
-                            <p>Dokumentasi</p>
-                        </a>
-                    </li>
                     {{-- Property Management --}}
-                    @canany(['properties.manage', 'rooms.manage', 'facilities.manage'])
-                    @php $propertyActive = request()->routeIs('properties.*') || request()->routeIs('rooms.*') || request()->routeIs('facilities.*') || request()->routeIs('outlets.*'); @endphp
-                    <li class="nav-item has-treeview @if($propertyActive) menu-is-opening menu-open @endif">
-                        <a href="#" class="nav-link @if($propertyActive) active @endif">
-                            <i class="nav-icon fas fa-hotel"></i>
-                            <p>
-                                Property
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
+                    @canany(['properties.manage', 'rooms.manage', 'facilities.manage', 'outlets.manage'])
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @if(request()->routeIs('properties.*') || request()->routeIs('rooms.*') || request()->routeIs('facilities.*') || request()->routeIs('outlets.*')) active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-hotel me-1"></i> Property
                         </a>
-                        <ul class="nav nav-treeview" style="display: @if($propertyActive) block @else none @endif;">
+                        <ul class="dropdown-menu">
                             @can('properties.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('properties.index') }}" class="nav-link @if(request()->routeIs('properties.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Properties</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('properties.*')) active @endif" href="{{ route('properties.index') }}"><i class="far fa-circle me-2"></i> Properties</a></li>
                             @endcan
                             @can('rooms.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('rooms.index') }}" class="nav-link @if(request()->routeIs('rooms.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Rooms</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('rooms.*')) active @endif" href="{{ route('rooms.index') }}"><i class="far fa-circle me-2"></i> Rooms</a></li>
                             @endcan
                             @can('facilities.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('facilities.index') }}" class="nav-link @if(request()->routeIs('facilities.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Facilities</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('outlets.index') }}" class="nav-link @if(request()->routeIs('outlets.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Outlets</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('facilities.*')) active @endif" href="{{ route('facilities.index') }}"><i class="far fa-circle me-2"></i> Facilities</a></li>
+                            <li><a class="dropdown-item @if(request()->routeIs('outlets.*')) active @endif" href="{{ route('outlets.index') }}"><i class="far fa-circle me-2"></i> Outlets</a></li>
                             @endcan
                         </ul>
                     </li>
@@ -101,31 +62,16 @@
 
                     {{-- Guest & Booking --}}
                     @canany(['guests.manage', 'bookings.view'])
-                    @php $guestBookingActive = request()->routeIs('guests.*') || request()->routeIs('bookings.*'); @endphp
-                    <li class="nav-item has-treeview @if($guestBookingActive) menu-is-opening menu-open @endif">
-                        <a href="#" class="nav-link @if($guestBookingActive) active @endif">
-                            <i class="nav-icon fas fa-users"></i>
-                            <p>
-                                Guest & Booking
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @if(request()->routeIs('guests.*') || request()->routeIs('bookings.*')) active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-users me-1"></i> Guest & Booking
                         </a>
-                        <ul class="nav nav-treeview" style="display: @if($guestBookingActive) block @else none @endif;">
+                        <ul class="dropdown-menu">
                             @can('guests.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('guests.index') }}" class="nav-link @if(request()->routeIs('guests.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Guests</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('guests.*')) active @endif" href="{{ route('guests.index') }}"><i class="far fa-circle me-2"></i> Guests</a></li>
                             @endcan
                             @can('bookings.view')
-                            <li class="nav-item">
-                                <a href="{{ route('bookings.index') }}" class="nav-link @if(request()->routeIs('bookings.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Bookings</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('bookings.*')) active @endif" href="{{ route('bookings.index') }}"><i class="far fa-circle me-2"></i> Bookings</a></li>
                             @endcan
                         </ul>
                     </li>
@@ -133,37 +79,17 @@
 
                     {{-- Voucher Management --}}
                     @canany(['vouchers.view', 'vouchers.redeem'])
-                    @php $voucherActive = request()->routeIs('vouchers.*') && !request()->routeIs('vouchers.public*'); @endphp
-                    <li class="nav-item has-treeview @if($voucherActive) menu-is-opening menu-open @endif">
-                        <a href="#" class="nav-link @if($voucherActive) active @endif">
-                            <i class="nav-icon fas fa-qrcode"></i>
-                            <p>
-                                Voucher
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @if(request()->routeIs('vouchers.*') && !request()->routeIs('vouchers.public*')) active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-qrcode me-1"></i> Voucher
                         </a>
-                        <ul class="nav nav-treeview" style="display: @if($voucherActive) block @else none @endif;">
+                        <ul class="dropdown-menu">
                             @can('vouchers.view')
-                            <li class="nav-item">
-                                <a href="{{ route('vouchers.index') }}" class="nav-link @if(request()->routeIs('vouchers.index') || request()->routeIs('vouchers.show') || request()->routeIs('vouchers.edit')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Vouchers</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('vouchers.index') || request()->routeIs('vouchers.show') || request()->routeIs('vouchers.edit')) active @endif" href="{{ route('vouchers.index') }}"><i class="far fa-circle me-2"></i> Vouchers</a></li>
                             @endcan
                             @can('vouchers.redeem')
-                            <li class="nav-item">
-                                <a href="{{ route('vouchers.redeem.form') }}" class="nav-link @if(request()->routeIs('vouchers.redeem.form')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Redeem QR (Manual)</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('vouchers.scan.form') }}" class="nav-link @if(request()->routeIs('vouchers.scan.form')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Scan QR Code</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('vouchers.redeem.form')) active @endif" href="{{ route('vouchers.redeem.form') }}"><i class="far fa-circle me-2"></i> Redeem QR (Manual)</a></li>
+                            <li><a class="dropdown-item @if(request()->routeIs('vouchers.scan.form')) active @endif" href="{{ route('vouchers.scan.form') }}"><i class="far fa-circle me-2"></i> Scan QR Code</a></li>
                             @endcan
                         </ul>
                     </li>
@@ -171,45 +97,20 @@
 
                     {{-- Reports --}}
                     @canany(['reports.view', 'delivery_logs.view', 'import_logs.view'])
-                    @php $reportsActive = request()->routeIs('reports.*') || request()->routeIs('import-logs.*'); @endphp
-                    <li class="nav-item has-treeview @if($reportsActive) menu-is-opening menu-open @endif">
-                        <a href="#" class="nav-link @if($reportsActive) active @endif">
-                            <i class="nav-icon fas fa-chart-bar"></i>
-                            <p>
-                                Reports
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @if(request()->routeIs('reports.*') || request()->routeIs('import-logs.*')) active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-chart-bar me-1"></i> Reports
                         </a>
-                        <ul class="nav nav-treeview" style="display: @if($reportsActive) block @else none @endif;">
+                        <ul class="dropdown-menu">
                             @can('reports.view')
-                            <li class="nav-item">
-                                <a href="{{ route('reports.index') }}" class="nav-link @if(request()->routeIs('reports.index')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Reports</p>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('reports.scan-history') }}" class="nav-link @if(request()->routeIs('reports.scan-history')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Scan History</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('reports.index')) active @endif" href="{{ route('reports.index') }}"><i class="far fa-circle me-2"></i> Reports</a></li>
+                            <li><a class="dropdown-item @if(request()->routeIs('reports.scan-history')) active @endif" href="{{ route('reports.scan-history') }}"><i class="far fa-circle me-2"></i> Scan History</a></li>
                             @endcan
                             @can('delivery_logs.view')
-                            <li class="nav-item">
-                                <a href="{{ route('reports.delivery-logs') }}" class="nav-link @if(request()->routeIs('reports.delivery-logs')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Delivery Logs</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('reports.delivery-logs')) active @endif" href="{{ route('reports.delivery-logs') }}"><i class="far fa-circle me-2"></i> Delivery Logs</a></li>
                             @endcan
                             @can('import_logs.view')
-                            <li class="nav-item">
-                                <a href="{{ route('import-logs.index') }}" class="nav-link @if(request()->routeIs('import-logs.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Import Logs</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('import-logs.*')) active @endif" href="{{ route('import-logs.index') }}"><i class="far fa-circle me-2"></i> Import Logs</a></li>
                             @endcan
                         </ul>
                     </li>
@@ -217,45 +118,40 @@
 
                     @can('delivery_settings.manage')
                     <li class="nav-item">
-                        <a href="{{ route('settings.delivery') }}" class="nav-link @if(request()->routeIs('settings.delivery')) active @endif">
-                            <i class="nav-icon fas fa-cog"></i>
-                            <p>Delivery Settings</p>
+                        <a class="nav-link @if(request()->routeIs('settings.delivery')) active @endif" href="{{ route('settings.delivery') }}">
+                            <i class="fas fa-cog me-1"></i> Delivery Settings
                         </a>
                     </li>
                     @endcan
+
                     @if(auth()->user()?->can('users.manage') || auth()->user()?->can('roles.manage'))
-                    <li class="nav-item has-treeview @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) menu-is-opening menu-open @endif">
-                        <a href="#" class="nav-link @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) active @endif">
-                            <i class="nav-icon fas fa-user-cog"></i>
-                            <p>
-                                User Management
-                                <i class="right fas fa-angle-left"></i>
-                            </p>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) active @endif" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-cog me-1"></i> User Management
                         </a>
-                        <ul class="nav nav-treeview" style="display: @if(request()->routeIs('users.*') || request()->routeIs('roles.*')) block @else none @endif;">
+                        <ul class="dropdown-menu">
                             @can('users.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('users.index') }}" class="nav-link @if(request()->routeIs('users.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Users</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('users.*')) active @endif" href="{{ route('users.index') }}"><i class="far fa-circle me-2"></i> Users</a></li>
                             @endcan
                             @can('roles.manage')
-                            <li class="nav-item">
-                                <a href="{{ route('roles.index') }}" class="nav-link @if(request()->routeIs('roles.*')) active @endif">
-                                    <i class="far fa-circle nav-icon"></i>
-                                    <p>Roles</p>
-                                </a>
-                            </li>
+                            <li><a class="dropdown-item @if(request()->routeIs('roles.*')) active @endif" href="{{ route('roles.index') }}"><i class="far fa-circle me-2"></i> Roles</a></li>
                             @endcan
                         </ul>
                     </li>
                     @endif
                 </ul>
-            </nav>
+
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-link nav-link">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </aside>
+    </nav>
 
     <div class="content-wrapper">
         <section class="content-header">
@@ -276,34 +172,9 @@
         </section>
     </div>
 </div>
-<script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
-<script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ asset('vendor/adminlte/adminlte.min.js') }}"></script>
-<script nonce="{{ $cspNonce }}">
-$(document).ready(function() {
-    $('[data-widget="treeview"]').Treeview('init');
-    
-    $('.nav-sidebar .has-treeview > a').on('click', function(e) {
-        e.preventDefault();
-        
-        var $parent = $(this).parent();
-        var $treeview = $parent.find('> .nav-treeview');
-        
-        $('.nav-sidebar .has-treeview').not($parent).removeClass('menu-is-opening menu-open');
-        $('.nav-sidebar .nav-treeview').not($treeview).slideUp(300);
-        
-        if ($parent.hasClass('menu-open')) {
-            $parent.removeClass('menu-is-opening menu-open');
-            $treeview.slideUp(300);
-        } else {
-            $parent.addClass('menu-is-opening menu-open');
-            $treeview.slideDown(300, function() {
-                $parent.removeClass('menu-is-opening');
-            });
-        }
-    });
-});
-</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
 @stack('scripts')
 </body>
 </html>

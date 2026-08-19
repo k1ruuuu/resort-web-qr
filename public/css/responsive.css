@@ -29,14 +29,6 @@
     margin-left: 0 !important;
   }
 
-  .main-sidebar {
-    transform: translateX(-250px);
-  }
-
-  .sidebar-open .main-sidebar {
-    transform: translateX(0);
-  }
-
   .content-header h1 {
     font-size: 1.35rem;
   }
@@ -44,6 +36,21 @@
   .content > .container-fluid {
     padding-left: 10px;
     padding-right: 10px;
+  }
+}
+
+/* Mobile navbar adjustments */
+@media (max-width: 575.98px) {
+  .navbar-brand .brand-text {
+    display: none;
+  }
+
+  .navbar-nav .nav-link i {
+    margin-right: 0;
+  }
+
+  .navbar-nav .nav-link span {
+    display: none;
   }
 }
 
@@ -163,37 +170,6 @@
   }
 }
 
-/* --- Docs Sidebar --- */
-@media (max-width: 991.98px) {
-  .docs-sidebar .sticky-top {
-    position: relative !important;
-    top: 0 !important;
-  }
-
-  .docs-sidebar .card {
-    margin-bottom: 0.5rem;
-  }
-
-  .docs-sidebar .nav {
-    flex-direction: row !important;
-    flex-wrap: wrap;
-    gap: 0.15rem;
-  }
-
-  .docs-sidebar .nav-link {
-    font-size: 0.75rem !important;
-    padding: 0.2rem 0.45rem !important;
-  }
-
-  .docs-sidebar .nav-link i {
-    display: none;
-  }
-
-  .docs-sidebar .card-header h6 {
-    font-size: 0.85rem;
-  }
-}
-
 /* --- Form Layouts --- */
 @media (max-width: 575.98px) {
   .form-row-responsive .row > [class*="col-"] {
@@ -286,10 +262,10 @@
   }
 }
 
-/* --- Nav sidebar text on mini mode --- */
+/* --- Navbar brand text on mobile --- */
 @media (max-width: 575.98px) {
-  .brand-text {
-    font-size: 0.85rem;
+  .navbar-brand .brand-text {
+    display: none;
   }
 }
 

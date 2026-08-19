@@ -26,22 +26,35 @@ body.bg-cream {
   background-color: var(--forest-cream-dark);
 }
 
-/* --- AdminLTE sidebar forest tint --- */
-.main-sidebar {
-  background-color: var(--bs-primary-dark);
+/* --- Navbar forest tint --- */
+.navbar-white.navbar-light {
+  background-color: var(--forest-cream);
+  border-color: var(--forest-border);
 }
 
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active,
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+.navbar-brand .brand-text {
+  color: var(--bs-primary-dark);
+}
+
+.navbar-light .navbar-nav .nav-link {
+  color: var(--bs-primary-dark);
+}
+
+.navbar-light .navbar-nav .nav-link:hover,
+.navbar-light .navbar-nav .nav-link.active {
+  color: var(--bs-primary);
+  background-color: rgba(45, 106, 79, 0.1);
+}
+
+.dropdown-menu {
+  border-color: var(--forest-border);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
   background-color: var(--bs-primary-light);
-}
-
-.sidebar-brand {
-  background-color: var(--bs-primary-dark);
-}
-
-.brand-link {
-  background-color: var(--bs-primary-dark);
+  color: white;
 }
 
 /* --- Buttons --- */
