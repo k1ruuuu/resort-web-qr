@@ -163,13 +163,35 @@ class GuestVoucher extends Model
         $booking = $this->booking;
         $baseQuota = (int) ($booking->total_pax + $booking->extra_beds);
 
-        $bookingFacilities = $booking->bookingFacilities;
+        // Source of truth = voucher's granted facility IDs. The booking snapshot only
+        // contributes quota/dates for facilities that were granted at booking time;
+        // facilities granted later (e.g. Dinner 100K) have no snapshot row and are
+        // synthesized from the template so they appear on the guest page too.
+        // Revoking every facility (empty list) shows nothing.
+        $bookingFacilitiesById = $booking->bookingFacilities->keyBy('facility_template_id');
+        $grantedTemplates = \App\Models\FacilityTemplate::query()
+            ->whereIn('id', $allowedFacilityIds)
+            ->get()
+            ->keyBy('id');
 
-        // Filter by voucher's granted facility IDs so removed facilities don't show
-        if ($allowedFacilityIds) {
-            $bookingFacilities = $bookingFacilities->filter(fn($bf) =>
-                in_array($bf->facility_template_id, $allowedFacilityIds)
-            );
+        $bookingFacilities = collect();
+        foreach ($allowedFacilityIds as $facilityId) {
+            $bf = $bookingFacilitiesById->get($facilityId);
+            if (!$bf) {
+                $template = $grantedTemplates->get($facilityId);
+                if (!$template) {
+                    continue;
+                }
+                $bf = new \App\Models\BookingFacility([
+                    'booking_id' => $booking->id,
+                    'facility_template_id' => $facilityId,
+                    'start_date' => $booking->check_in,
+                    'end_date' => $booking->check_out,
+                    'quota_total' => null,
+                ]);
+                $bf->setRelation('facilityTemplate', $template);
+            }
+            $bookingFacilities->push($bf);
         }
 
         // Get redemption dates for one-time facilities (to track if already used)

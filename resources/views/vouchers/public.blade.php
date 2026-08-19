@@ -23,13 +23,14 @@
     </div>
 
     {{-- Welcome Banner --}}
-    <div class="text-center position-relative overflow-hidden rounded-4" style="background: linear-gradient(135deg, var(--bs-primary-dark) 0%, var(--bs-primary) 50%, var(--bs-primary-light) 100%); padding: 2rem 1.5rem;">
+    <div class="voucher-banner position-relative overflow-hidden rounded-4 text-center" style="background: linear-gradient(135deg, var(--bs-primary-dark) 0%, var(--bs-primary) 50%, var(--bs-primary-light) 100%); padding: 1.5rem 1.25rem;">
         <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 60%);"></div>
+        <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" class="voucher-banner-logo position-absolute top-50 start-0 translate-middle-y ms-3" style="height: 64px; width: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));">
         <div class="position-relative">
-            <div class="d-inline-flex align-items-center mb-2 px-3 py-1 rounded-pill" style="background: rgba(255,255,255,0.12); backdrop-filter: blur(4px);">
-                <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" style="height: 26px; width: auto;">
-            </div>
-            <h2 class="fw-bold text-white mb-0" style="font-size: 1.35rem; letter-spacing: 0.3px; text-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+            <h2 class="fw-bold text-white mb-1" style="font-size: 1.45rem; letter-spacing: 0.4px; text-shadow: 0 2px 4px rgba(0,0,0,0.25);">
+                Dear Dreamers,
+            </h2>
+            <h2 class="fw-bold text-white mb-0" style="font-size: 1.35rem; letter-spacing: 0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.25);">
                 Welcome to {{ $voucher->property?->name ?? 'Chanaya' }}
             </h2>
         </div>
@@ -145,7 +146,92 @@
     </div>
 
     <div class="mt-2 mb-3 text-center px-3">
-        <x-qr-code :url="$qrImageUrl" :size="800" square class="rounded-3" />
+        <div class="qr-card d-inline-block">
+            <div class="qr-card__label">
+                <i class="fa-solid fa-qrcode"></i>
+                <span>Scan to Redeem</span>
+            </div>
+            <div class="qr-card__frame">
+                <x-qr-code :url="$qrImageUrl" :size="400" square />
+            </div>
+            <p class="qr-card__instruction">
+                Please present your barcode to redeem your voucher.
+            </p>
+        </div>
+        <style>
+            .qr-card {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: center;
+                background: #ffffff;
+                border: 1px solid var(--forest-border, #e7e1d6);
+                border-radius: 20px;
+                padding: 22px 26px 20px;
+                box-shadow: 0 10px 30px rgba(45, 58, 42, 0.10);
+                max-width: 100%;
+            }
+                        .qr-card__label {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--bs-primary, #2d6a4f);
+                margin-bottom: 16px;
+            }
+            .qr-card__label i {
+                font-size: 0.85rem;
+            }
+            .qr-card__frame {
+                background: #ffffff;
+                border-radius: 12px;
+                padding: 12px;
+                line-height: 0;
+                box-shadow: inset 0 0 0 1px rgba(45, 58, 42, 0.06);
+            }
+            .qr-card__frame img {
+                display: block;
+                width: min(220px, 64vw);
+                height: auto;
+                aspect-ratio: 1;
+                border-radius: 4px;
+            }
+            .qr-card__instruction {
+                margin: 16px 0 0;
+                max-width: 250px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                color: #5b6b58;
+                line-height: 1.45;
+            }
+            @media (prefers-color-scheme: dark) {
+                .qr-card {
+                    background: #18221a;
+                    border-color: rgba(255,255,255,0.08);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+                }
+                .qr-card__frame {
+                    background: #ffffff;
+                    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+                }
+                .qr-card__instruction {
+                    color: #b9c4b5;
+                }
+            }
+            @media (max-width: 575.98px) {
+                .voucher-banner {
+                    padding: 1.1rem 0.9rem !important;
+                }
+                .voucher-banner .voucher-banner-logo {
+                    height: 44px !important;
+                }
+                .voucher-banner h2 {
+                    font-size: 1.15rem !important;
+                }
+            }
+        </style>
     </div>
 
 </div>

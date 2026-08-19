@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" integrity="sha384-PPIZEGYM1v8zp5Py7UjFb79S58UeqCL9pYVnVPURKEqvioPROaVAJKKLzvH2rDnI" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/theme-forest.css') }}">
 </head>
-<body class="bg-cream" style="background-color: #f5f0e1;">
+<body class="bg-cream">
     <main class="container py-5">
         @yield('content')
     </main>

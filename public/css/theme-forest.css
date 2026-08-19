@@ -1,0 +1,89 @@
+/* =========================================================
+   theme-forest.css — Chanaya Forest Theme
+   Palette: hijau hutan + cream hangat (resort aesthetic)
+   ========================================================= */
+
+:root {
+  /* Brand greens */
+  --bs-primary: #2d6a4f;
+  --bs-primary-dark: #1b4332;
+  --bs-primary-light: #40916c;
+  --bs-success: #2d6a4f;
+  --bs-info: #52b788;
+
+  /* Forest surface tones */
+  --forest-cream: #faf5e9;
+  --forest-cream-dark: #f5f0e1;
+  --forest-border: #e7e1d6;
+}
+
+body {
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+}
+
+/* --- Guest voucher page --- */
+body.bg-cream {
+  background-color: var(--forest-cream-dark);
+}
+
+/* --- AdminLTE sidebar forest tint --- */
+.main-sidebar {
+  background-color: var(--bs-primary-dark);
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active,
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link:hover {
+  background-color: var(--bs-primary-light);
+}
+
+.sidebar-brand {
+  background-color: var(--bs-primary-dark);
+}
+
+.brand-link {
+  background-color: var(--bs-primary-dark);
+}
+
+/* --- Buttons --- */
+.btn-primary {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--bs-primary-dark);
+  border-color: var(--bs-primary-dark);
+}
+
+/* --- Links --- */
+a {
+  color: var(--bs-primary);
+}
+
+a:hover {
+  color: var(--bs-primary-dark);
+}
+
+/* --- Cards --- */
+.card {
+  border-color: var(--forest-border);
+}
+
+/* --- Top navbar --- */
+.main-header.navbar-white {
+  background-color: #ffffff;
+  border-bottom-color: var(--forest-border);
+}
+
+/* --- Tables header tint --- */
+.table thead th {
+  background-color: var(--forest-cream);
+  border-bottom-color: var(--forest-border);
+}
+
+/* --- Page header titles --- */
+.content-header h1 {
+  color: var(--bs-primary-dark);
+}

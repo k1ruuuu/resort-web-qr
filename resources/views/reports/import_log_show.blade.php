@@ -53,19 +53,19 @@
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="fs-3 fw-bold">{{ $log->total_rows }}</div>
                         <div class="small text-muted">Total Rows</div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="fs-3 fw-bold text-success">{{ $log->imported }}</div>
                         <div class="small text-muted">Imported</div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="fs-3 fw-bold text-warning">{{ $log->skipped }}</div>
                         <div class="small text-muted">Skipped</div>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-md-3">
                         <div class="fs-3 fw-bold text-danger">{{ $log->failed }}</div>
                         <div class="small text-muted">Failed</div>
                     </div>

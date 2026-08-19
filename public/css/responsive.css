@@ -3,6 +3,25 @@
    Targets: Mobile (<576px), Tablet (576–991px), Desktop (992px+)
    ========================================================= */
 
+/* --- Utility helpers --- */
+.mb-responsive {
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 992px) {
+  .mb-responsive {
+    margin-bottom: 0;
+  }
+}
+
+/* Mobile tables: horizontal scroll (apply to any table container) */
+@media (max-width: 575.98px) {
+  .overflow-auto-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* --- Layout Overrides --- */
 @media (max-width: 575.98px) {
   .content-wrapper,
@@ -317,6 +336,26 @@
 
   .gap-3 {
     gap: 0.5rem !important;
+  }
+}
+
+/* --- Cards used across index pages --- */
+.card-responsive {
+  overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+  .card-responsive .card-header {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+}
+
+/* --- Filter forms: buttons full width on mobile --- */
+@media (max-width: 575.98px) {
+  .filter-group .btn,
+  .filter-actions .btn {
+    width: 100%;
   }
 }
 

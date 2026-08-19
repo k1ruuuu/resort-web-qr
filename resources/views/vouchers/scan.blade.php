@@ -24,7 +24,7 @@
                         </select>
                     </div>
 
-                    <div class="mb-3 text-center">
+                    <div class="mb-3 text-center d-flex flex-wrap justify-content-center gap-2">
                         <button type="button" class="btn btn-primary" id="start-camera-btn">
                             <i class="fas fa-camera"></i> Start Camera
                         </button>
