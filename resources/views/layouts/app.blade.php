@@ -10,13 +10,20 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
     <link rel="stylesheet" href="{{ asset('css/theme-forest.css') }}">
 </head>
-<body class="hold-transition layout-navbar-fixed">
+<body>
 <div class="wrapper">
+    <style>
+        body { padding-top: 0; }
+        .content-wrapper { padding-top: 1rem; }
+        @media (max-width: 575.98px) {
+            .content-wrapper { padding-top: 0.5rem; }
+            .navbar-brand img { max-height: 32px !important; }
+        }
+    </style>
     <nav class="main-header navbar navbar-expand-lg navbar-white navbar-light border-bottom">
         <div class="container-fluid">
             <a href="{{ route('dashboard') }}" class="navbar-brand">
@@ -174,7 +181,6 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js" crossorigin="anonymous"></script>
 @stack('scripts')
 </body>
 </html>
