@@ -16,14 +16,14 @@
 </head>
 <body>
 <div class="wrapper">
-    <nav class="navbar navbar-expand-lg" style="background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%); border-bottom: 3px solid #d4a373; padding: 0.6rem 1rem;">
+    <nav class="main-header navbar navbar-expand-lg">
         <div class="container-fluid">
-            <a href="{{ route('dashboard') }}" class="navbar-brand d-flex align-items-center gap-2">
-                <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" style="background: white; padding: 4px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-height: 38px; width: auto;">
-                <span class="brand-text fw-bold text-white" style="font-size: 1.15rem; letter-spacing: -0.02em;">E-Voucher</span>
+            <a href="{{ route('dashboard') }}" class="navbar-brand">
+                <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image">
+                <span class="brand-text">E-Voucher</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation" style="border-color: rgba(255,255,255,0.3); padding: 0.4rem 0.6rem;">
-                <span class="navbar-toggler-icon" style="filter: brightness(0) invert(1);"></span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
