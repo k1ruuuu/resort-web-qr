@@ -27,10 +27,10 @@
         <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 60%);"></div>
         <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" class="voucher-banner-logo position-absolute top-50 start-0 translate-middle-y ms-3" style="height: 64px; width: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));">
         <div class="position-relative">
-            <h2 class="fw-bold text-white mb-1" style="font-size: 1.45rem; letter-spacing: 0.4px; text-shadow: 0 2px 4px rgba(0,0,0,0.25);">
+            <h2 class="fw-bold text-white mb-1" style="font-size: clamp(1.05rem, 4.2vw, 1.45rem); letter-spacing: 0.4px; text-shadow: 0 2px 4px rgba(0,0,0,0.25); overflow-wrap: anywhere;">
                 Dear Dreamers,
             </h2>
-            <h2 class="fw-bold text-white mb-0" style="font-size: 1.35rem; letter-spacing: 0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.25);">
+            <h2 class="fw-bold text-white mb-0" style="font-size: clamp(0.95rem, 3.8vw, 1.35rem); letter-spacing: 0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.25); overflow-wrap: anywhere;">
                 Welcome to {{ $voucher->property?->name ?? 'Chanaya' }}
             </h2>
         </div>
@@ -225,10 +225,11 @@
                     padding: 1.1rem 0.9rem !important;
                 }
                 .voucher-banner .voucher-banner-logo {
-                    height: 44px !important;
-                }
-                .voucher-banner h2 {
-                    font-size: 1.15rem !important;
+                    position: static !important;
+                    display: block;
+                    margin: 0 auto 10px !important;
+                    height: 48px !important;
+                    transform: none !important;
                 }
             }
         </style>
