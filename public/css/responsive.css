@@ -1,5 +1,5 @@
 /* =========================================================
-   Responsive.css — Mobile-first overrides for AdminLTE + Bootstrap 5
+   Responsive.css — Mobile-first overrides for Bootstrap 5
    Targets: Mobile (<576px), Tablet (576–991px), Desktop (992px+)
    ========================================================= */
 
@@ -14,7 +14,7 @@
   }
 }
 
-/* Mobile tables: horizontal scroll (apply to any table container) */
+/* Mobile tables: horizontal scroll */
 @media (max-width: 575.98px) {
   .overflow-auto-mobile {
     overflow-x: auto;
@@ -22,7 +22,7 @@
   }
 }
 
-/* --- Layout Overrides --- */
+/* --- Layout --- */
 @media (max-width: 575.98px) {
   .content-wrapper,
   .main-footer {
@@ -30,7 +30,7 @@
   }
 
   .content-header h1 {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
   }
 
   .content > .container-fluid {
@@ -39,7 +39,7 @@
   }
 }
 
-/* Mobile navbar adjustments */
+/* Mobile navbar */
 @media (max-width: 575.98px) {
   .navbar-brand .brand-text {
     display: none;
@@ -49,7 +49,7 @@
     margin-right: 0;
   }
 
-  .navbar-nav .nav-link span {
+  .navbar-nav .nav-link span:not(.nav-icon) {
     display: none;
   }
 }
@@ -57,16 +57,16 @@
 /* --- Cards --- */
 @media (max-width: 575.98px) {
   .card-body {
-    padding: 0.75rem;
+    padding: 0.85rem;
   }
 
   .card-header {
-    padding: 0.6rem 0.75rem;
+    padding: 0.65rem 0.85rem;
   }
 
   .card-header h3,
   .card-header h5 {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 }
 
@@ -86,87 +86,6 @@
 @media (max-width: 767.98px) {
   .table-col-hide-sm {
     display: none !important;
-  }
-}
-
-@media (max-width: 991.98px) {
-  .table-col-hide-md {
-    display: none !important;
-  }
-}
-
-/* --- Action Button Groups --- */
-@media (max-width: 575.98px) {
-  .btn-group-action {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 2px;
-  }
-
-  .btn-group-action .btn {
-    padding: 0.2rem 0.4rem;
-    font-size: 0.75rem;
-  }
-
-  .btn-group-action .btn i {
-    font-size: 0.75rem;
-  }
-}
-
-/* --- Responsive Buttons --- */
-.btn-responsive {
-  font-size: 0.85rem;
-  padding: 0.3rem 0.6rem;
-  white-space: nowrap;
-}
-
-@media (max-width: 575.98px) {
-  .btn-responsive {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-}
-
-/* --- Filter Panel Collapse --- */
-.filter-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-@media (max-width: 575.98px) {
-  .filter-toggle .filter-label {
-    display: none;
-  }
-}
-
-/* --- Info Boxes --- */
-@media (max-width: 575.98px) {
-  .info-box {
-    min-height: 60px;
-  }
-
-  .info-box-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 1.2rem;
-    line-height: 50px;
-  }
-
-  .info-box-content {
-    margin-left: 60px;
-    padding: 3px 8px;
-  }
-
-  .info-box-text {
-    font-size: 0.75rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .info-box-number {
-    font-size: 1.1rem;
   }
 }
 
@@ -235,38 +154,6 @@
   .card-tools {
     margin-top: 0.35rem;
   }
-
-  .card-tools .btn {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.4rem;
-  }
-
-  .card-tools form {
-    display: inline;
-  }
-}
-
-/* --- Reports Filter --- */
-@media (max-width: 575.98px) {
-  .report-filter-toggle {
-    width: 100%;
-  }
-}
-
-/* --- Guest Card butons on show page --- */
-@media (max-width: 575.98px) {
-  .card-header .card-tools {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-}
-
-/* --- Navbar brand text on mobile --- */
-@media (max-width: 575.98px) {
-  .navbar-brand .brand-text {
-    display: none;
-  }
 }
 
 /* --- Table cell min-width helpers --- */
@@ -307,64 +194,6 @@
   }
 
   .gap-2 {
-    gap: 0.35rem !important;
-  }
-
-  .gap-3 {
     gap: 0.5rem !important;
-  }
-}
-
-/* --- Cards used across index pages --- */
-.card-responsive {
-  overflow: hidden;
-}
-
-@media (max-width: 575.98px) {
-  .card-responsive .card-header {
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-}
-
-/* --- Filter forms: buttons full width on mobile --- */
-@media (max-width: 575.98px) {
-  .filter-group .btn,
-  .filter-actions .btn {
-    width: 100%;
-  }
-}
-
-/* --- Show page detail table responsive --- */
-.detail-table-responsive {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.detail-table-responsive table {
-  width: 100%;
-}
-
-@media (max-width: 575.98px) {
-  .detail-table-responsive table td {
-    padding: 0.3rem 0.4rem;
-    font-size: 0.85rem;
-  }
-
-  .detail-table-responsive table td:first-child {
-    width: 35%;
-    white-space: nowrap;
-  }
-}
-
-/* --- Scrollable table container for reports --- */
-.table-scrollable {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-@media (max-width: 575.98px) {
-  .table-scrollable {
-    max-height: 300px;
   }
 }

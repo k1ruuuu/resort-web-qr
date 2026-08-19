@@ -16,15 +16,7 @@
 </head>
 <body>
 <div class="wrapper">
-    <style>
-        body { padding-top: 0; }
-        .content-wrapper { padding-top: 1rem; }
-        @media (max-width: 575.98px) {
-            .content-wrapper { padding-top: 0.5rem; }
-            .navbar-brand img { max-height: 32px !important; }
-        }
-    </style>
-    <nav class="main-header navbar navbar-expand-lg navbar-white navbar-light border-bottom">
+    <nav class="main-header navbar navbar-expand-lg bg-transparent">
         <div class="container-fluid">
             <a href="{{ route('dashboard') }}" class="navbar-brand">
                 <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image" style="opacity: .9; max-height: 40px; width: auto;">

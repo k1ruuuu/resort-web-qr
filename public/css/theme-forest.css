@@ -1,102 +1,432 @@
 /* =========================================================
    theme-forest.css — Chanaya Forest Theme
-   Palette: hijau hutan + cream hangat (resort aesthetic)
+   Resort aesthetic: deep greens, warm cream, sand accent
    ========================================================= */
 
 :root {
   /* Brand greens */
-  --bs-primary: #2d6a4f;
-  --bs-primary-dark: #1b4332;
-  --bs-primary-light: #40916c;
-  --bs-success: #2d6a4f;
-  --bs-info: #52b788;
+  --forest-900: #1b4332;
+  --forest-800: #2d6a4f;
+  --forest-700: #40916c;
+  --forest-600: #52b788;
+  --forest-200: #d8f3dc;
+  --forest-100: #b7e4c7;
 
-  /* Forest surface tones */
-  --forest-cream: #faf5e9;
-  --forest-cream-dark: #f5f0e1;
-  --forest-border: #e7e1d6;
+  /* Surface tones */
+  --cream: #faf5e9;
+  --cream-dark: #f5f0e1;
+  --sand: #d4a373;
+  --border: #e7e1d6;
 }
 
 body {
   font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  background: var(--cream);
+  color: #2c3e2c;
 }
 
-/* --- Guest voucher page --- */
-body.bg-cream {
-  background-color: var(--forest-cream-dark);
+/* --- Navbar --- */
+.main-header {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
+  border-bottom: 3px solid var(--sand);
+  padding: 0.6rem 1rem;
 }
 
-/* --- Navbar forest tint --- */
-.navbar-white.navbar-light {
-  background-color: var(--forest-cream);
-  border-color: var(--forest-border);
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0;
 }
 
-.navbar-brand .brand-text {
-  color: var(--bs-primary-dark);
+.brand-image {
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.navbar-light .navbar-nav .nav-link {
-  color: var(--bs-primary-dark);
+.brand-text {
+  color: white !important;
+  font-weight: 700 !important;
+  font-size: 1.2rem !important;
+  letter-spacing: -0.02em;
 }
 
-.navbar-light .navbar-nav .nav-link:hover,
-.navbar-light .navbar-nav .nav-link.active {
-  color: var(--bs-primary);
-  background-color: rgba(45, 106, 79, 0.1);
+.navbar-toggler {
+  border-color: rgba(255,255,255,0.3);
+  padding: 0.4rem 0.6rem;
+}
+
+.navbar-toggler-icon {
+  filter: brightness(0) invert(1);
+}
+
+.navbar-nav .nav-link {
+  color: rgba(255,255,255,0.85) !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.85rem !important;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+  color: white !important;
+  background: rgba(255,255,255,0.15);
+}
+
+.navbar-nav .nav-link i {
+  width: 18px;
+  text-align: center;
+  margin-right: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.9;
 }
 
 .dropdown-menu {
-  border-color: var(--forest-border);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(27, 67, 50, 0.15);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  background: white;
 }
 
-.dropdown-item:hover,
+.dropdown-item {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.55rem 1rem;
+  color: var(--forest-800);
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: var(--forest-200);
+  color: var(--forest-900);
+}
+
 .dropdown-item.active {
-  background-color: var(--bs-primary-light);
+  background: var(--forest-800);
   color: white;
 }
 
-/* --- Buttons --- */
-.btn-primary {
-  background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
+.dropdown-item i {
+  width: 16px;
+  text-align: center;
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
-.btn-primary:hover,
-.btn-primary:focus,
-.btn-primary:active {
-  background-color: var(--bs-primary-dark);
-  border-color: var(--bs-primary-dark);
+/* --- Logout button --- */
+.btn-link.nav-link {
+  color: rgba(255,255,255,0.85) !important;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.5rem 0.85rem !important;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
-/* --- Links --- */
-a {
-  color: var(--bs-primary);
+.btn-link.nav-link:hover {
+  color: white !important;
+  background: rgba(220, 38, 38, 0.2);
 }
 
-a:hover {
-  color: var(--bs-primary-dark);
+/* --- Content area --- */
+.content-wrapper {
+  background: var(--cream);
+  min-height: calc(100vh - 60px);
+}
+
+.content-header {
+  background: white;
+  padding: 1.25rem 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--forest-200);
+}
+
+.content-header h1 {
+  color: var(--forest-900);
+  font-weight: 800;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.content {
+  padding-bottom: 3rem;
 }
 
 /* --- Cards --- */
 .card {
-  border-color: var(--forest-border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.06);
+  margin-bottom: 1.25rem;
+  background: white;
 }
 
-/* --- Top navbar --- */
-.main-header.navbar-white {
-  background-color: #ffffff;
-  border-bottom-color: var(--forest-border);
+.card-header {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+  color: white;
+  font-weight: 700;
+  border-radius: 12px 12px 0 0 !important;
+  padding: 0.9rem 1.25rem;
 }
 
-/* --- Tables header tint --- */
+.card-header h3,
+.card-header h5 {
+  margin: 0;
+  font-weight: 700;
+}
+
+.card-body {
+  padding: 1.25rem;
+}
+
+/* --- Buttons --- */
+.btn-primary {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+  border: none;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27, 67, 50, 0.25);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--forest-700) 0%, var(--forest-600) 100%);
+  border: none;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+}
+
+.btn-outline-primary {
+  color: var(--forest-800);
+  border-color: var(--forest-800);
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.btn-outline-primary:hover {
+  background: var(--forest-800);
+  color: white;
+}
+
+/* --- Tables --- */
+.table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .table thead th {
-  background-color: var(--forest-cream);
-  border-bottom-color: var(--forest-border);
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
+  color: white;
+  font-weight: 700;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-/* --- Page header titles --- */
-.content-header h1 {
-  color: var(--bs-primary-dark);
+.table tbody td {
+  padding: 0.75rem 1rem;
+  border-color: var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: var(--forest-200);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background: var(--cream);
+}
+
+/* --- Forms --- */
+.form-control {
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--forest-600);
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+}
+
+.form-label {
+  font-weight: 700;
+  color: var(--forest-900);
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+/* --- Alerts --- */
+.alert-success {
+  background: var(--forest-200);
+  color: var(--forest-900);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.alert-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.alert-info {
+  background: #f0fdf4;
+  color: var(--forest-900);
+  border: none;
+  border-radius: 10px;
+}
+
+/* --- Links --- */
+a {
+  color: var(--forest-800);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--forest-900);
+}
+
+/* --- Badges --- */
+.badge {
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+}
+
+.bg-primary {
+  background: var(--forest-800) !important;
+}
+
+/* --- Pagination --- */
+.pagination .page-link {
+  color: var(--forest-800);
+  border: none;
+  font-weight: 600;
+  margin: 0 2px;
+  border-radius: 6px;
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--forest-800);
+  border-color: var(--forest-800);
+}
+
+.pagination .page-link:hover {
+  background: var(--forest-200);
+  color: var(--forest-900);
+}
+
+/* --- Info boxes (dashboard) --- */
+.info-box {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.08);
+  border: 1px solid var(--border);
+}
+
+.info-box-icon {
+  border-radius: 12px 0 0 12px;
+}
+
+/* --- Login page --- */
+body.bg-cream {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 50%, var(--forest-700) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.bg-cream .card {
+  border: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+body.bg-cream .card-body {
+  padding: 2.5rem;
+}
+
+body.bg-cream h1 {
+  color: var(--forest-900);
+}
+
+body.bg-cream .form-label {
+  color: #4a6741;
+}
+
+body.bg-cream .btn-primary {
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--forest-600);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--forest-800);
+}
+
+/* --- Responsive --- */
+@media (max-width: 575.98px) {
+  .content-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .card-header {
+    padding: 0.7rem 1rem;
+  }
+
+  .navbar-brand .brand-text {
+    font-size: 1rem !important;
+  }
+
+  .navbar-nav .nav-link {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .content-wrapper {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
