@@ -353,7 +353,95 @@ a:hover {
   border-radius: 12px 0 0 12px;
 }
 
-/* --- Login page --- */
+/* --- Small boxes (dashboard stat cards) --- */
+.small-box {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.08);
+  position: relative;
+  display: block;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  color: white;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.small-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(27, 67, 50, 0.18);
+}
+
+.small-box .inner {
+  padding: 1.25rem 1.5rem;
+}
+
+.small-box .inner h3 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.small-box .inner p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  opacity: 0.95;
+}
+
+.small-box .icon {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 3.5rem;
+  opacity: 0.25;
+}
+
+.small-box .small-box-footer {
+  display: block;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255,255,255,0.9);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.small-box .small-box-footer:hover {
+  background: rgba(0, 0, 0, 0.25);
+  color: white;
+}
+
+.bg-info { background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%) !important; }
+.bg-success { background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%) !important; }
+.bg-warning { background: linear-gradient(135deg, #d4a373 0%, #c2874f 100%) !important; }
+.bg-danger { background: linear-gradient(135deg, #9d4e4e 0%, #7d3a3a 100%) !important; }
+.bg-primary { background: linear-gradient(135deg, #40916c 0%, #52b788 100%) !important; }
+
+/* Product list (top facilities) */
+.product-list-in-card {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.product-list-in-card .item {
+  border-bottom: 1px solid var(--border);
+}
+
+.product-list-in-card .item:last-child {
+  border-bottom: none;
+}
+
+.product-title {
+  font-size: 0.9rem;
+  color: var(--forest-900);
+}
+
+.card-tools {
+  float: right;
+}
+
+/* Login page */
 body.bg-cream {
   background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 50%, var(--forest-700) 100%);
   min-height: 100vh;
