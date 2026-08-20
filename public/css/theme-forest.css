@@ -37,15 +37,18 @@ body {
 
 .brand-link .brand-image {
   background: white;
-  padding: 4px;
+  padding: 3px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  max-height: 33px;
+  width: auto;
 }
 
 .brand-link .brand-text {
   color: white;
   font-weight: 700;
   letter-spacing: -0.02em;
+  font-size: 1.1rem;
 }
 
 .sidebar .nav-sidebar > .nav-item > .nav-link {

@@ -35,8 +35,8 @@
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('dashboard') }}" class="brand-link">
-            <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image" style="opacity: .9; max-height: 52px; width: auto;">
-            <span class="brand-text font-weight-light ms-2" style="font-size: 1.1rem;">E-Voucher</span>
+            <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image">
+            <span class="brand-text">E-Voucher</span>
         </a>
         <div class="sidebar">
             <nav class="mt-2">
