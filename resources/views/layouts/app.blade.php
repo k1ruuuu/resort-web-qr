@@ -33,7 +33,7 @@
         </ul>
     </nav>
 
-    <aside class="main-sidebar sidebar-light-primary elevation-4">
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('dashboard') }}" class="brand-link">
             <img src="{{ asset('img/chanaya-logo.png') }}" alt="Logo" class="brand-image">
             <span class="brand-text">E-Voucher</span>
