@@ -1,0 +1,504 @@
+/* =========================================================
+   theme-forest.css — Chanaya Forest Theme
+   Resort aesthetic: deep greens, warm cream, sand accent
+   ========================================================= */
+
+:root {
+  /* Brand greens */
+  --forest-900: #1b4332;
+  --forest-800: #2d6a4f;
+  --forest-700: #40916c;
+  --forest-600: #52b788;
+  --forest-200: #d8f3dc;
+  --forest-100: #b7e4c7;
+
+  /* Surface tones */
+  --cream: #faf5e9;
+  --cream-dark: #f5f0e1;
+  --sand: #d4a373;
+  --border: #e7e1d6;
+}
+
+body {
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+  background: var(--cream);
+  color: #2c3e2c;
+}
+
+/* --- Sidebar (left, full width) --- */
+.main-sidebar {
+  background: linear-gradient(180deg, var(--forest-900) 0%, var(--forest-800) 100%);
+}
+
+.brand-link {
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brand-link .brand-image {
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.brand-link .brand-text {
+  color: white;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sidebar .nav-sidebar > .nav-item > .nav-link {
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  margin: 2px 8px;
+  transition: all 0.2s ease;
+}
+
+.sidebar .nav-sidebar > .nav-item > .nav-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.sidebar .nav-sidebar > .nav-item > .nav-link.active {
+  background: var(--forest-700);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.nav-sidebar .nav-item > .nav-link .right {
+  transition: transform 0.3s ease;
+}
+
+.nav-sidebar .nav-item.menu-open > .nav-link .right {
+  transform: rotate(-90deg);
+}
+
+.nav-sidebar .nav-treeview {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  margin: 2px 8px;
+  padding: 6px 0;
+}
+
+.nav-sidebar .nav-treeview .nav-link {
+  color: rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
+  padding-left: 2rem;
+  font-size: 0.9rem;
+}
+
+.nav-sidebar .nav-treeview .nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.nav-sidebar .nav-treeview .nav-link.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  font-weight: 700;
+}
+
+.sidebar .nav-link i.nav-icon {
+  font-size: 0.9rem;
+}
+
+/* --- Top navbar --- */
+.navbar-white {
+  background: white !important;
+  border-bottom: 2px solid var(--forest-200);
+}
+
+.navbar-white .nav-link {
+  color: var(--forest-800) !important;
+  font-weight: 600;
+}
+
+.navbar-white .nav-link:hover {
+  color: var(--forest-900) !important;
+}
+
+/* --- Content area --- */
+.content-wrapper {
+  background: var(--cream);
+  min-height: calc(100vh - 57px);
+}
+
+.content-header {
+  background: white;
+  padding: 1.25rem 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--forest-200);
+}
+
+.content-header h1 {
+  color: var(--forest-900);
+  font-weight: 800;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.content {
+  padding-bottom: 3rem;
+}
+
+/* --- Cards --- */
+.card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.06);
+  margin-bottom: 1.25rem;
+  background: white;
+}
+
+.card-header {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+  color: white;
+  font-weight: 700;
+  border-radius: 12px 12px 0 0 !important;
+  padding: 0.9rem 1.25rem;
+}
+
+.card-header h3,
+.card-header h5 {
+  margin: 0;
+  font-weight: 700;
+}
+
+.card-body {
+  padding: 1.25rem;
+}
+
+/* --- Buttons --- */
+.btn-primary {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+  border: none;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(27, 67, 50, 0.25);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--forest-700) 0%, var(--forest-600) 100%);
+  border: none;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, var(--forest-800) 0%, var(--forest-700) 100%);
+}
+
+.btn-outline-primary {
+  color: var(--forest-800);
+  border-color: var(--forest-800);
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.btn-outline-primary:hover {
+  background: var(--forest-800);
+  color: white;
+}
+
+/* --- Tables --- */
+.table {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table thead th {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
+  color: white;
+  font-weight: 700;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table tbody td {
+  padding: 0.75rem 1rem;
+  border-color: var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: var(--forest-200);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background: var(--cream);
+}
+
+/* --- Forms --- */
+.form-control {
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: var(--forest-600);
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+}
+
+.form-label {
+  font-weight: 700;
+  color: var(--forest-900);
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+/* --- Alerts --- */
+.alert-success {
+  background: var(--forest-200);
+  color: var(--forest-900);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.alert-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.alert-info {
+  background: #f0fdf4;
+  color: var(--forest-900);
+  border: none;
+  border-radius: 10px;
+}
+
+/* --- Links --- */
+a {
+  color: var(--forest-800);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--forest-900);
+}
+
+/* --- Badges --- */
+.badge {
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+}
+
+/* --- Pagination --- */
+.pagination .page-link {
+  color: var(--forest-800);
+  border: none;
+  font-weight: 600;
+  margin: 0 2px;
+  border-radius: 6px;
+}
+
+.pagination .page-item.active .page-link {
+  background: var(--forest-800);
+  border-color: var(--forest-800);
+}
+
+.pagination .page-link:hover {
+  background: var(--forest-200);
+  color: var(--forest-900);
+}
+
+/* --- Info boxes (dashboard) --- */
+.info-box {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.08);
+  border: 1px solid var(--border);
+}
+
+.info-box-icon {
+  border-radius: 12px 0 0 12px;
+}
+
+/* --- Small boxes (dashboard stat cards) --- */
+.small-box {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.08);
+  position: relative;
+  display: block;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  color: white;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.small-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(27, 67, 50, 0.18);
+}
+
+.small-box .inner {
+  padding: 1.25rem 1.5rem;
+}
+
+.small-box .inner h3 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.small-box .inner p {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  opacity: 0.95;
+}
+
+.small-box .icon {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 3.5rem;
+  opacity: 0.25;
+}
+
+.small-box .small-box-footer {
+  display: block;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255,255,255,0.9);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.small-box .small-box-footer:hover {
+  background: rgba(0, 0, 0, 0.25);
+  color: white;
+}
+
+.bg-info { background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%) !important; }
+.bg-success { background: linear-gradient(135deg, #2d6a4f 0%, #40916c 100%) !important; }
+.bg-warning { background: linear-gradient(135deg, #d4a373 0%, #c2874f 100%) !important; }
+.bg-danger { background: linear-gradient(135deg, #9d4e4e 0%, #7d3a3a 100%) !important; }
+.bg-primary { background: linear-gradient(135deg, #40916c 0%, #52b788 100%) !important; }
+
+/* Product list (top facilities) */
+.product-list-in-card {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.product-list-in-card .item {
+  border-bottom: 1px solid var(--border);
+}
+
+.product-list-in-card .item:last-child {
+  border-bottom: none;
+}
+
+.product-title {
+  font-size: 0.9rem;
+  color: var(--forest-900);
+}
+
+.card-tools {
+  float: right;
+}
+
+/* Login page */
+body.bg-cream {
+  background: linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 50%, var(--forest-700) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.bg-cream .card {
+  border: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+body.bg-cream .card-body {
+  padding: 2.5rem;
+}
+
+body.bg-cream h1 {
+  color: var(--forest-900);
+}
+
+body.bg-cream .form-label {
+  color: #4a6741;
+}
+
+body.bg-cream .btn-primary {
+  padding: 0.75rem;
+  font-size: 1rem;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--forest-600);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--forest-800);
+}
+
+/* --- Responsive --- */
+@media (max-width: 991.98px) {
+  .main-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  body.sidebar-open .main-sidebar {
+    transform: translateX(0);
+  }
+
+  .content-wrapper {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .content-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .card-header {
+    padding: 0.7rem 1rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .content-wrapper {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}

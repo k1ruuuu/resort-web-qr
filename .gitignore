@@ -155,7 +155,8 @@ desktop.ini
 # Compiled & Build Files
 # ================================
 *.compiled
-/public/css/
+/public/css/*
+!/public/css/theme-forest.css
 /public/js/
 /public/mix-manifest.json
 
