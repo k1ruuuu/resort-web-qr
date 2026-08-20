@@ -83,10 +83,9 @@
                 $groupId = 'cg-' . Str::slug($group['label']);
             @endphp
 
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ $isActive ? 'active' : '' }}"
-                   href="#"
-                   role="button"
+            <li class="nav-item">
+                <button type="button"
+                   class="nav-link nav-group-trigger {{ $isActive ? 'active' : '' }}"
                    data-bs-toggle="collapse"
                    data-bs-target="#{{ $groupId }}"
                    aria-expanded="{{ ($open || $isActive) ? 'true' : 'false' }}"
@@ -94,12 +93,12 @@
                     @isset($group['icon'])
                         <i class="{{ $group['icon'] }}"></i>
                     @endisset
-                    {{ $group['label'] }}
+                    <span class="nav-group-label">{{ $group['label'] }}</span>
                     <i class="fas fa-chevron-right nav-chevron {{ ($open || $isActive) ? 'open' : '' }}"></i>
-                </a>
+                </button>
 
                 <div id="{{ $groupId }}" class="collapse nav-collapse {{ ($open || $isActive) ? 'show' : '' }}">
-                    <ul class="nav flex-column">
+                    <ul class="nav flex-column sub-nav">
                         @foreach ($visibleItems as $item)
                             @if (isset($item['permission']) && !auth()->user()?->can($item['permission']))
                                 @continue
