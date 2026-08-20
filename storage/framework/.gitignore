@@ -10,5 +10,12 @@ services.json
 !
 # Runtime caches — never commit (stale compiled views cause bugs after deploy)
 /cache/data/*
+/cache/laravel-excel/*
 /sessions/*
 /views/*
+
+# Keep the directories themselves in git (empty dirs can't be tracked)
+!/cache/data/.gitkeep
+!/cache/laravel-excel/.gitkeep
+!/sessions/.gitkeep
+!/views/.gitkeep
