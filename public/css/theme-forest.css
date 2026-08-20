@@ -121,6 +121,85 @@ body {
   opacity: 0.7;
 }
 
+/* --- Collapsible nav (navbar dropdown groups) --- */
+.nav-chevron {
+  transition: transform 0.2s ease;
+  font-size: 0.7rem;
+  margin-left: 0.35rem;
+  opacity: 0.8;
+}
+
+.nav-chevron.open {
+  transform: rotate(90deg);
+}
+
+/* Group panel: dropdown-like card on desktop, inline on mobile */
+.nav-collapse {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  min-width: 220px;
+  background: #ffffff;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 24px rgba(27, 67, 50, 0.18);
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.nav-collapse .nav-link {
+  font-size: 0.85rem;
+  padding: 0.55rem 0.85rem !important;
+  border-radius: 6px;
+  color: var(--forest-800);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-collapse .nav-link:hover {
+  background: var(--forest-200);
+  color: var(--forest-900);
+}
+
+.nav-collapse .nav-link.active {
+  background: var(--forest-800);
+  color: white;
+}
+
+.nav-collapse .nav-link i {
+  width: 18px;
+  text-align: center;
+  margin-right: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* In the expanded mobile navbar, panels flow inline */
+@media (max-width: 991.98px) {
+  .nav-collapse {
+    position: static;
+    top: auto;
+    left: auto;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(255, 255, 255, 0.35);
+    border-radius: 0 0 8px 8px;
+    margin: 0.25rem 0.4rem 0.4rem;
+    padding: 0.35rem 0.25rem 0.35rem 1.25rem;
+  }
+
+  .nav-collapse .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    white-space: normal;
+  }
+
+  .nav-collapse .nav-link:hover,
+  .nav-collapse .nav-link.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+  }
+}
+
 /* --- Logout button --- */
 .btn-link.nav-link {
   color: rgba(255,255,255,0.85) !important;
