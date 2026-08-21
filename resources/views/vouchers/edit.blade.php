@@ -135,7 +135,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 document.querySelectorAll('.facility-radio').forEach(function (radio) {
     radio.addEventListener('change', function () {
         var facilityId = this.dataset.facility;
