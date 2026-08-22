@@ -51,8 +51,10 @@ class DeliverySettingsController extends Controller
         ]);
 
         // WhatsApp enabled/disabled toggle - handle checkbox absence
-        $whatsappEnabled = $request->has('whatsapp_enabled') ? '1' : '0';
-        Setting::set('delivery.whatsapp_enabled', $whatsappEnabled);
+        if ($request->has('whatsapp_enabled_form_submit')) {
+            $whatsappEnabled = $request->has('whatsapp_enabled') ? '1' : '0';
+            Setting::set('delivery.whatsapp_enabled', $whatsappEnabled);
+        }
 
         Setting::set('delivery.delivery_method', $validated['delivery_method']);
         Setting::set('delivery.automatic_enabled', $validated['automatic_enabled']);

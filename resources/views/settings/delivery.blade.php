@@ -256,77 +256,82 @@
 
 @push('scripts')
 <script nonce="{{ $cspNonce }}">
-function saveWhatsAppToggle(checkbox) {
-    const isEnabled = checkbox.checked;
-    const spinner = document.getElementById('toggleSpinner');
-    const successAlert = document.getElementById('toggleSuccess');
-    const successMessage = document.getElementById('toggleSuccessMessage');
-    const errorAlert = document.getElementById('toggleError');
-    const errorMessage = document.getElementById('toggleErrorMessage');
-    
-    // Show spinner
-    spinner.style.display = 'inline-block';
-    checkbox.disabled = true;
-    
-    // Hide previous messages
-    successAlert.style.display = 'none';
-    errorAlert.style.display = 'none';
-    
-    // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    
-    // Send AJAX request
-    fetch('{{ route("settings.delivery.toggle-whatsapp") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-            enabled: isEnabled ? 1 : 0
+    // Make function globally accessible so inline onchange="saveWhatsAppToggle(this)" can find it
+    window.saveWhatsAppToggle = function(checkbox) {
+        const isEnabled = checkbox.checked;
+        const spinner = document.getElementById('toggleSpinner');
+        const successAlert = document.getElementById('toggleSuccess');
+        const successMessage = document.getElementById('toggleSuccessMessage');
+        const errorAlert = document.getElementById('toggleError');
+        const errorMessage = document.getElementById('toggleErrorMessage');
+
+        // Show spinner
+        spinner.style.display = 'inline-block';
+        checkbox.disabled = true;
+
+        // Hide previous messages
+        successAlert.style.display = 'none';
+        errorAlert.style.display = 'none';
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        // Send AJAX request
+        fetch('{{ route("settings.delivery.toggle-whatsapp") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                enabled: isEnabled ? 1 : 0
+            })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        spinner.style.display = 'none';
-        checkbox.disabled = false;
-        
-        if (data.success) {
-            // Update UI
-            toggleWhatsAppSettings(isEnabled);
-            
-            // Show success message
-            successMessage.textContent = data.message;
-            successAlert.style.display = 'block';
-            
-            // Hide success message after 3 seconds
-            setTimeout(() => {
-                successAlert.style.display = 'none';
-            }, 3000);
-        } else {
+        .then(response => response.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            checkbox.disabled = false;
+
+            if (data.success) {
+                // Update UI
+                toggleWhatsAppSettings(isEnabled);
+
+                // Show success message
+                successMessage.textContent = data.message;
+                successAlert.style.display = 'block';
+
+                // Update label dynamically based on state
+                const label = document.getElementById('toggleLabel');
+                label.textContent = isEnabled ? 'Active' : 'Inactive';
+
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    successAlert.style.display = 'none';
+                }, 3000);
+            } else {
+                // Revert checkbox
+                checkbox.checked = !isEnabled;
+
+                // Show error message
+                errorMessage.textContent = data.message || 'Failed to save toggle state.';
+                errorAlert.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            checkbox.disabled = false;
+
             // Revert checkbox
             checkbox.checked = !isEnabled;
-            
+
             // Show error message
-            errorMessage.textContent = data.message || 'Failed to save toggle state.';
+            errorMessage.textContent = 'Network error. Please try again.';
             errorAlert.style.display = 'block';
-        }
-    })
-    .catch(error => {
-        spinner.style.display = 'none';
-        checkbox.disabled = false;
-        
-        // Revert checkbox
-        checkbox.checked = !isEnabled;
-        
-        // Show error message
-        errorMessage.textContent = 'Network error. Please try again.';
-        errorAlert.style.display = 'block';
-        
-        console.error('Error:', error);
-    });
-}
+
+            console.error('Error:', error);
+        });
+    }
 
 function toggleWhatsAppSettings(isEnabled) {
     const container = document.getElementById('whatsappSettingsContainer');
