@@ -4,7 +4,7 @@
 <div class="voucher-public">
 
     {{-- Guest Info Card --}}
-    <div class="card border-0 shadow-sm mb-0 rounded-4 overflow-hidden" style="background: var(--forest-cream);">
+    <div class="card border-0 shadow-sm mb-0 rounded-4 overflow-hidden" style="background: var(--cream);">
         <div class="card-body text-center px-4 pt-4 pb-3">
             <div class="mb-3">
                 @if($voucherState === 'active')
@@ -33,7 +33,7 @@
     </div>
 
     {{-- Stay Info --}}
-    <div class="mx-3 my-3 p-3 rounded-3 border" style="border-color: var(--forest-border) !important; background: #fff;">
+    <div class="mx-3 my-3 p-3 rounded-3 border" style="border-color: var(--border) !important; background: #fff;">
         <div class="row text-center">
             <div class="col-6">
                 <div class="text-muted small mb-1">Stay Dates</div>
@@ -63,7 +63,7 @@
 
     {{-- Facility Statuses --}}
     <div class="mx-3 mb-3">
-        <h3 class="text-center fw-semibold text-dark border-bottom pb-2 mb-3" style="font-size: 0.95rem; border-color: var(--forest-border) !important;">
+        <h3 class="text-center fw-semibold text-dark border-bottom pb-2 mb-3" style="font-size: 0.95rem; border-color: var(--border) !important;">
             Today's Facility Statuses
         </h3>
 
@@ -93,7 +93,7 @@
             ];
             @endphp
             @forelse($facilityStatuses as $facility)
-                <div class="mb-3 p-3 rounded-3 border bg-white shadow-sm" style="border-color: var(--forest-border) !important;">
+                <div class="mb-3 p-3 rounded-3 border bg-white shadow-sm" style="border-color: var(--border) !important;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-semibold text-dark" style="font-size: 0.9rem;">{{ $facility->name }}</span>
                         @if($facility->status === 'available')
@@ -160,7 +160,7 @@
                 flex-direction: column;
                 align-items: center;
                 background: #ffffff;
-                border: 1px solid var(--forest-border, #e7e1d6);
+                border: 1px solid var(--border, #e7e1d6);
                 border-radius: 20px;
                 padding: 22px 26px 20px;
                 box-shadow: 0 10px 30px rgba(45, 58, 42, 0.10);
@@ -174,7 +174,7 @@
                 font-weight: 700;
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
-                color: var(--bs-primary, #2d6a4f);
+                color: var(--forest-500, #3d8b64);
                 margin-bottom: 16px;
             }
             .qr-card__label i {
