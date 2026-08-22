@@ -9,9 +9,9 @@
   /* Brand Forest Palette — Extracted from Chanaya Resort Dashboard */
   --forest-900: #0f2419;
   --forest-800: #153324;
-  --forest-700: #1c3f2d; /* Primary Sidebar Background */
-  --forest-600: #2c5e43; /* Sidebar Active Item */
-  --forest-500: #3a8b66; /* Main Green Accent / Active Guests Card */
+  --forest-700: #30191e; /* Primary Sidebar Background (Brand Dark) */
+  --forest-600: #4f3439; /* Sidebar Active Item */
+  --forest-500: #3d8b64; /* Main Green Accent / Active Guests Card */
   --forest-400: #51a37c;
   --forest-300: #88c4a5;
   --forest-200: #c2e5d3;
@@ -19,32 +19,32 @@
   --forest-50:  #f4faf6;
 
   /* Dashboard Stat Card Color Palette (Exact Match) */
-  --card-teal:   #2e8b87; /* Total Guests */
-  --card-green:  #3a8b66; /* Active Guests, Sent Today, Success Rate */
-  --card-yellow: #d9a01b; /* Redeemed Today, Pending */
-  --card-red:    #c84b4b; /* Remaining Today, Failed */
+  --card-teal:   #3a9c8c; /* Total Guests */
+  --card-green:  #3d8b64; /* Active Guests, Sent Today, Success Rate */
+  --card-yellow: #d4a017; /* Redeemed Today, Pending */
+  --card-red:    #c04040; /* Remaining Today, Failed */
 
   /* Sidebar Specific Colors */
-  --sidebar-bg: #1c3f2d;
-  --sidebar-bg-deep: #153324;
-  --sidebar-active: #2c5e43;
+  --sidebar-bg: #30191e;
+  --sidebar-bg-deep: #1a0e11;
+  --sidebar-active: #4f3439;
   --sidebar-text: #ffffff;
-  --sidebar-text-muted: #a3c2b2;
+  --sidebar-text-muted: #a39598;
   --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
 
   /* Surface & Background Tones — Soft Warm Cream */
-  --cream: #f8f6f0;
-  --cream-dark: #eee8db;
-  --cream-table-header: #f1ece1;
-  --cream-table-zebra: #faf8f5;
-  --cream-table-hover: #f1ede4;
-  --border: #e2ddd3;
-  --border-light: #ece7de;
+  --cream: #f4efe5;
+  --cream-dark: #e8e3d9;
+  --cream-table-header: #f8f4ec;
+  --cream-table-zebra: #fcf9f2;
+  --cream-table-hover: #f1ece4;
+  --border: #e8e3d9;
+  --border-light: #f4efe5;
 
   /* Typography Colors */
   --text-main: #2b2b2b;
   --text-muted: #666666;
-  --text-dark-green: #1c3f2d;
+  --text-dark-green: #2d6a4f;
 }
 
 /* ---------------------------------------------------------
@@ -444,7 +444,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--forest-700);
+  background-color: var(--forest-500);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -482,8 +482,8 @@ body {
    7. Buttons & Form Controls
    --------------------------------------------------------- */
 .btn-primary {
-  background-color: var(--forest-600) !important;
-  border-color: var(--forest-600) !important;
+  background-color: var(--forest-500) !important;
+  border-color: var(--forest-500) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
@@ -492,11 +492,11 @@ body {
   transition: all 0.2s ease !important;
 }
 
-.btn-primary:hover, 
-.btn-primary:focus, 
+.btn-primary:hover,
+.btn-primary:focus,
 .btn-primary:active {
-  background-color: var(--forest-700) !important;
-  border-color: var(--forest-700) !important;
+  background-color: var(--forest-400) !important;
+  border-color: var(--forest-400) !important;
   color: #ffffff !important;
 }
 
@@ -509,8 +509,8 @@ body {
 }
 
 .btn-success:hover {
-  background-color: var(--forest-600) !important;
-  border-color: var(--forest-600) !important;
+  background-color: var(--forest-400) !important;
+  border-color: var(--forest-400) !important;
 }
 
 .form-control {
