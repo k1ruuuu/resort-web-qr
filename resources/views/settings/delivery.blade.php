@@ -233,6 +233,7 @@
                             <span class="badge bg-secondary font-monospace me-1">{guest_name}</span>
                             <span class="badge bg-secondary font-monospace me-1">{room_name}</span>
                             <span class="badge bg-secondary font-monospace me-1">{total_pax}</span>
+                            <span class="badge bg-secondary font-monospace me-1">{facility_access}</span>
                             <span class="badge bg-warning font-monospace me-1" id="voucherLinkBadge">{voucher_link}</span>
                             <small class="d-block mt-1 text-info" id="voucherLinkNote">
                                 <i class="fas fa-lightbulb"></i> Use {voucher_link} when "Public Guest Card Link" method is selected

@@ -285,9 +285,14 @@ class VoucherDeliveryService
         $totalPax = ($voucher->pax_limit ?? 1) + ($voucher->addition ?? 0);
         $voucherLink = route('vouchers.public', ['token' => $voucher->secure_token]);
 
+        $facilities = $voucher->getFacilityStatuses(Carbon::today($voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC'))
+            ->filter()
+            ->map(fn($f) => "- {$f->name} ({$f->quota_remaining} pax)")
+            ->implode("\n");
+
         return str_replace(
-            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}'],
-            [$guestName, $voucher->booking?->room?->code ?? 'TEMP', $roomName, $totalPax, $voucherLink],
+            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}', '{facility_access}'],
+            [$guestName, $voucher->booking?->room?->code ?? 'TEMP', $roomName, $totalPax, $voucherLink, $facilities],
             $template
         );
     }
@@ -371,9 +376,17 @@ class VoucherDeliveryService
         $voucher = $booking->guestVoucher;
         $voucherLink = $voucher ? route('vouchers.public', ['token' => $voucher->secure_token]) : '';
 
+        $facilities = '';
+        if ($voucher) {
+            $facilities = $voucher->getFacilityStatuses(Carbon::today($voucher->property?->timezone ?? $booking->property?->timezone ?? 'UTC'))
+                ->filter()
+                ->map(fn($f) => "- {$f->name} ({$f->quota_remaining} pax)")
+                ->implode("\n");
+        }
+
         return str_replace(
-            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}'],
-            [$guestName, $roomCode, $roomName, $totalPax, $voucherLink],
+            ['{guest_name}', '{room_code}', '{room_name}', '{total_pax}', '{voucher_link}', '{facility_access}'],
+            [$guestName, $roomCode, $roomName, $totalPax, $voucherLink, $facilities],
             $template
         );
     }
