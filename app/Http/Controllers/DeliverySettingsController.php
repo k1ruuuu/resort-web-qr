@@ -38,7 +38,6 @@ class DeliverySettingsController extends Controller
         abort_unless(auth()->user()?->can('delivery_settings.manage'), 403);
 
         $validated = $request->validate([
-            'whatsapp_enabled' => ['nullable', 'in:1'],
             'delivery_method' => ['required', 'in:qr_image,public_link'],
             'automatic_enabled' => ['required', 'in:0,1'],
             'scheduled_enabled' => ['required', 'in:0,1'],
@@ -51,9 +50,10 @@ class DeliverySettingsController extends Controller
             'message_template' => ['required', 'string'],
         ]);
 
-        // WhatsApp enabled/disabled toggle
-        Setting::set('delivery.whatsapp_enabled', $request->has('whatsapp_enabled') ? '1' : '0');
-        
+        // WhatsApp enabled/disabled toggle - handle checkbox absence
+        $whatsappEnabled = $request->has('whatsapp_enabled') ? '1' : '0';
+        Setting::set('delivery.whatsapp_enabled', $whatsappEnabled);
+
         Setting::set('delivery.delivery_method', $validated['delivery_method']);
         Setting::set('delivery.automatic_enabled', $validated['automatic_enabled']);
         Setting::set('delivery.scheduled_enabled', $validated['scheduled_enabled']);
@@ -77,8 +77,8 @@ class DeliverySettingsController extends Controller
             'enabled' => ['required', 'in:0,1'],
         ]);
 
-        $enabled = $validated['enabled'] === 1 || $validated['enabled'] === '1';
-        
+        $enabled = (int)$validated['enabled'] === 1;
+
         Setting::set('delivery.whatsapp_enabled', $enabled ? '1' : '0');
 
         $status = $enabled ? 'enabled' : 'disabled';

@@ -31,17 +31,17 @@
                                     <div class="d-flex align-items-center">
                                         <div class="spinner-border spinner-border-sm text-primary me-3" id="toggleSpinner" style="display: none;"></div>
                                         <div class="form-check form-switch" style="font-size: 1.5rem;">
-                                            <input 
-                                                class="form-check-input" 
-                                                type="checkbox" 
-                                                role="switch" 
-                                                id="whatsappEnabled" 
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                role="switch"
+                                                id="whatsappEnabled"
                                                 name="whatsapp_enabled"
                                                 value="1"
-                                                {{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') === '1' ? 'checked' : '' }}
+                                                {{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') == '1' ? 'checked' : '' }}
                                                 onchange="saveWhatsAppToggle(this)">
                                             <label class="form-check-label ms-2" for="whatsappEnabled" style="font-size: 1rem;">
-                                                <span id="toggleLabel">{{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') === '1' ? 'Active' : 'Inactive' }}</span>
+                                                <span id="toggleLabel">{{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') == '1' ? 'Active' : 'Inactive' }}</span>
                                             </label>
                                         </div>
                                     </div>
