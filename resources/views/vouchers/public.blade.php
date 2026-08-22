@@ -77,9 +77,11 @@
                 'TEA' => [
                     ['place' => 'Teras Hutan Bambu', 'time' => 'Check in sampai check out · 3:00 PM - 5:00 PM'],
                 ],
-                'DINNER' => [
-                    ['place' => 'Teras Hutan Bambu (Dinner BBQ)', 'time' => '6:30 PM - 8:30 PM'],
-                    ['place' => 'Soeji or Rumpun (Dinner 100K)', 'time' => '6:30 PM - 8:30 PM'],
+                'DINNER-BBQ' => [
+                    ['place' => 'Teras Hutan Bambu', 'time' => '6:30 PM - 8:30 PM'],
+                ],
+                'DINNER100K' => [
+                    ['place' => 'Soeji or Rumpun', 'time' => '6:30 PM - 8:30 PM'],
                 ],
                 'BREAKFAST' => [
                     ['place' => 'Soeji Dining', 'time' => '7:00 AM - 10:00 AM'],
