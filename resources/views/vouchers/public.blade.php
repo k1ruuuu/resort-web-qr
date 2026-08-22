@@ -23,16 +23,12 @@
     </div>
 
     {{-- Welcome Banner --}}
-    <div class="voucher-banner position-relative overflow-hidden rounded-4 text-center" style="background: linear-gradient(135deg, var(--bs-primary-dark) 0%, var(--bs-primary) 50%, var(--bs-primary-light) 100%); padding: 1.5rem 1.25rem;">
-        <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 60%);"></div>
-        <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" class="voucher-banner-logo position-absolute top-50 start-0 translate-middle-y ms-3" style="height: 64px; width: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));">
-        <div class="position-relative">
-            <h2 class="fw-bold text-white mb-1" style="font-size: clamp(1.05rem, 4.2vw, 1.45rem); letter-spacing: 0.4px; text-shadow: 0 2px 4px rgba(0,0,0,0.25); overflow-wrap: anywhere;">
-                Dear Dreamers,
-            </h2>
-            <h2 class="fw-bold text-white mb-0" style="font-size: clamp(0.95rem, 3.8vw, 1.35rem); letter-spacing: 0.3px; text-shadow: 0 2px 4px rgba(0,0,0,0.25); overflow-wrap: anywhere;">
-                Welcome to {{ $voucher->property?->name ?? 'Chanaya' }}
-            </h2>
+    <div class="voucher-banner">
+        <div class="voucher-banner__glow"></div>
+        <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" class="voucher-banner__logo">
+        <div class="voucher-banner__text">
+            <h2 class="voucher-banner__title">Dear Dreamers,</h2>
+            <h2 class="voucher-banner__subtitle">Welcome to {{ $voucher->property?->name ?? 'Chanaya' }}</h2>
         </div>
     </div>
 
@@ -220,16 +216,60 @@
                     color: #b9c4b5;
                 }
             }
+            /* — Welcome Banner — */
+            .voucher-banner {
+                position: relative;
+                overflow: hidden;
+                border-radius: 1rem;
+                text-align: center;
+                padding: 1.5rem 1.25rem;
+                background: linear-gradient(135deg, var(--forest-700) 0%, var(--forest-600) 50%, var(--forest-500) 100%);
+            }
+            .voucher-banner__glow {
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 60%);
+                pointer-events: none;
+            }
+            .voucher-banner__logo {
+                position: absolute;
+                top: 50%;
+                left: 0.75rem;
+                transform: translateY(-50%);
+                height: 64px;
+                width: auto;
+                filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+            }
+            .voucher-banner__text {
+                position: relative;
+            }
+            .voucher-banner__title,
+            .voucher-banner__subtitle {
+                font-weight: 700;
+                color: #fff;
+                margin: 0;
+                letter-spacing: 0.4px;
+                text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+                overflow-wrap: anywhere;
+            }
+            .voucher-banner__title {
+                font-size: clamp(1.05rem, 4.2vw, 1.45rem);
+                margin-bottom: 0.25rem;
+            }
+            .voucher-banner__subtitle {
+                font-size: clamp(0.95rem, 3.8vw, 1.35rem);
+                letter-spacing: 0.3px;
+            }
             @media (max-width: 575.98px) {
                 .voucher-banner {
-                    padding: 1.1rem 0.9rem !important;
+                    padding: 1.1rem 0.9rem;
                 }
-                .voucher-banner .voucher-banner-logo {
-                    position: static !important;
+                .voucher-banner__logo {
+                    position: static;
                     display: block;
-                    margin: 0 auto 10px !important;
-                    height: 48px !important;
-                    transform: none !important;
+                    margin: 0 auto 10px;
+                    height: 48px;
+                    transform: none;
                 }
             }
         </style>
