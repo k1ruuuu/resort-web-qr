@@ -22,12 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
 
         // SECURITY FIX: Only trust specific proxies, not all
-        // Configure specific proxy IPs in production (e.g., load balancer IPs)
+        // Configure specific proxy IPs in production (e.g., load balancer IPs) or * for all load balancers (AWS ELB/Cloudflare)
         $trustedProxies = env('TRUSTED_PROXIES', null);
-        if ($trustedProxies && $trustedProxies !== '*') {
+        if ($trustedProxies === '*') {
+            $middleware->trustProxies(at: '*');
+        } elseif ($trustedProxies) {
             $middleware->trustProxies(at: explode(',', $trustedProxies));
         } elseif (env('APP_ENV') === 'local') {
-            // Only trust all proxies in local development
+            // Only trust all proxies in local development by default
             $middleware->trustProxies(at: '*');
         }
 

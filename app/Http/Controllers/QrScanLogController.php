@@ -46,8 +46,14 @@ class QrScanLogController extends Controller
         $logs = $query->paginate(50)->withQueryString();
 
         $outlets = \App\Models\Outlet::orderBy('name')->get();
+        
+        $usedStatuses = QrScanLog::select('scan_result')
+            ->whereNotNull('scan_result')
+            ->distinct()
+            ->pluck('scan_result')
+            ->toArray();
 
-        return view('reports.scan-history', compact('logs', 'outlets'));
+        return view('reports.scan-history', compact('logs', 'outlets', 'usedStatuses'));
     }
 
     public function export(Request $request)
@@ -100,4 +106,55 @@ class QrScanLogController extends Controller
         );
     }
 
+    public function latestScans(Request $request)
+    {
+        $afterId = (int) $request->input('after_id', 0);
+
+        if ($afterId === 0) {
+            $latestId = QrScanLog::max('id') ?? 0;
+            return response()->json([
+                'latest_id' => $latestId,
+                'scans' => [],
+            ]);
+        }
+
+        $logs = QrScanLog::query()
+            ->with([
+                'guestVoucher.guest',
+                'guestVoucher.booking.room',
+                'guestVoucher.property',
+                'outlet.property',
+                'user',
+                'facilityTemplate'
+            ])
+            ->where('id', '>', $afterId)
+            ->orderBy('id', 'asc')
+            ->limit(5)
+            ->get();
+
+        $latestId = $logs->isNotEmpty() ? $logs->last()->id : $afterId;
+
+        $scans = $logs->map(function ($log) {
+            $booking = $log->guestVoucher?->booking;
+            $room = $booking?->room;
+            $roomLabel = $room?->label ?? $room?->number;
+
+            return [
+                'id' => $log->id,
+                'staff_name' => $log->user?->name ?? 'Staff',
+                'outlet_name' => $log->outlet?->name ?? '-',
+                'facility_name' => $log->facilityTemplate?->name ?? '-',
+                'guest_name' => $log->guestVoucher?->guest?->full_name ?? '-',
+                'room_label' => $roomLabel,
+                'scan_result' => $log->scan_result,
+                'scan_result_label' => \Illuminate\Support\Str::headline($log->scan_result ?? 'Scan'),
+                'time' => $log->scanned_at_local ? $log->scanned_at_local->format('H:i:s') : now()->format('H:i:s'),
+            ];
+        });
+
+        return response()->json([
+            'latest_id' => $latestId,
+            'scans' => $scans,
+        ]);
+    }
 }

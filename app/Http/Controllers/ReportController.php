@@ -45,7 +45,7 @@ class ReportController extends Controller
                 ->get(),
             'outlets' => Outlet::query()
                 ->when($propertyId, fn ($q) => $q->where('property_id', $propertyId))
-                ->when($facilityId, fn ($q) => $q->where('facility_template_id', $facilityId))
+                ->when($facilityId, fn ($q) => $q->whereHas('facilityTemplates', fn($q2) => $q2->where('facility_templates.id', $facilityId)))
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),

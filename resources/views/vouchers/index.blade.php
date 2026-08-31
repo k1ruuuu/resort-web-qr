@@ -143,7 +143,7 @@
             <div class="row g-3">
                 <!-- Property Selection -->
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Property <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Property</label>
                     <select name="property_id" id="propertySelect" class="form-select" required>
                         <option value="">-- Select Property --</option>
                         @foreach($properties as $property)
@@ -155,7 +155,7 @@
 
                 <!-- Guest Name -->
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Guest Name <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Guest Name</label>
                     <input type="text" name="guest_name" class="form-control" placeholder="Enter guest name" required>
                     <small class="form-text text-muted">Full name of the temporary guest</small>
                 </div>
@@ -169,14 +169,14 @@
 
                 <!-- Pax Limit -->
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Pax Limit <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Pax Limit</label>
                     <input type="number" name="pax_limit" class="form-control" value="1" min="1" required>
                     <small class="form-text text-muted">Maximum number of people per redemption</small>
                 </div>
 
                 <!-- Expiration Type and Value -->
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">Expiration Type <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Expiration Type</label>
                     <select name="expiration_type" id="expirationType" class="form-select" required>
                         <option value="hour">Hours from now</option>
                         <option value="date">Specific date</option>
@@ -185,7 +185,7 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">Expiration Value <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold">Expiration Value</label>
                     <input type="text" name="expiration_value" id="expirationValue" class="form-control" placeholder="e.g., 6" required>
                     <small class="form-text text-muted" id="expirationHelp">Number of hours (e.g., 6 for 6 hours)</small>
                 </div>

@@ -59,7 +59,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Full Name <span class="text-danger">*</span>
+                                    Full Name
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
@@ -79,7 +79,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Email Address <span class="text-danger">*</span>
+                                    Email Address
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
@@ -266,7 +266,21 @@ function togglePassword(fieldId) {
 }
 
 function confirmDelete() {
-    if (confirm('Are you sure you want to delete user "{{ $user->name }}"?\n\nThis action cannot be undone.')) {
+    if (window.showConfirmDialog) {
+        window.showConfirmDialog({
+            type: 'delete',
+            title: 'Konfirmasi Hapus User',
+            message: 'Apakah Anda yakin ingin menghapus user "{{ $user->name }}"? Tindakan ini tidak dapat dibatalkan.',
+            confirmText: 'Ya, Hapus',
+            onConfirm: function() {
+                const form = document.getElementById('delete-form');
+                if (form) {
+                    form.dataset.confirmed = 'true';
+                    form.submit();
+                }
+            }
+        });
+    } else {
         document.getElementById('delete-form').submit();
     }
 }

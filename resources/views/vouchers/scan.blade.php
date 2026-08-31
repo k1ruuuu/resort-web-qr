@@ -412,7 +412,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         data.facilities.forEach(facility => {
             const card = document.createElement('div');
-            const isDisabled = !facility.is_available || facility.quota_remaining <= 0;
+            const isClosed = facility.is_open_now === false;
+            const isDisabled = !facility.is_available || facility.quota_remaining <= 0 || isClosed;
             
             card.className = `card mb-2 facility-card ${isDisabled ? 'disabled' : ''}`;
             card.dataset.id = facility.facility_template_id;
@@ -426,12 +427,25 @@ document.addEventListener('DOMContentLoaded', function() {
             nameEl.className = 'mb-0 font-weight-bold text-dark';
             nameEl.textContent = facility.name;
             const quotaEl = document.createElement('small');
-            quotaEl.className = 'text-muted';
+            quotaEl.className = 'text-muted d-block';
             quotaEl.textContent = `Quota: ${facility.quota_total} | Used: ${facility.quota_used}`;
             leftDiv.appendChild(nameEl);
             leftDiv.appendChild(quotaEl);
 
+            if (facility.operating_hours) {
+                const hoursEl = document.createElement('small');
+                hoursEl.className = isClosed ? 'text-danger font-weight-bold d-block mt-1' : 'text-muted d-block mt-1';
+                hoursEl.innerHTML = `<i class="far fa-clock"></i> ${facility.operating_hours}` + (isClosed ? ' <span class="badge bg-danger text-white ms-1">Tutup</span>' : '');
+                leftDiv.appendChild(hoursEl);
+            }
+
             const rightDiv = document.createElement('div');
+            if (isClosed) {
+                const closedBadge = document.createElement('span');
+                closedBadge.className = 'badge bg-warning text-dark px-2 py-1 me-1';
+                closedBadge.textContent = 'Diluar Jam';
+                rightDiv.appendChild(closedBadge);
+            }
             const badge = document.createElement('span');
             badge.className = `badge bg-${facility.quota_remaining > 0 ? 'success' : 'danger'} px-3 py-2`;
             badge.textContent = `${facility.quota_remaining} Remaining`;

@@ -13,19 +13,25 @@ use App\Models\Property;
 use App\Models\QrScanLog;
 use App\Models\RedemptionLog;
 use App\Models\User;
+use App\Services\FacilityScheduleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class VoucherService
 {
+    private readonly FacilityScheduleService $schedules;
+
     public function __construct(
         private readonly AuditService $audit,
         private readonly BookingService $bookings,
         private readonly StayQuotaService $quota,
         private readonly RedisLockService $locks,
         private readonly RedisCacheService $cache,
-    ) {}
+        ?FacilityScheduleService $schedules = null,
+    ) {
+        $this->schedules = $schedules ?? app(FacilityScheduleService::class);
+    }
 
     public function generateForBooking(Booking $booking): GuestVoucher
     {
@@ -332,14 +338,16 @@ class VoucherService
                         throw new VoucherException('Facility is not linked to this voucher.', 422);
                     }
 
+                    // Time window checking has been disabled per user request;
+                    
                     $today = Carbon::today($timezone);
                     $todayString = $today->toDateString();
                     
                     // CRITICAL: Calculate quota from database WITH row-level locking to prevent race conditions
-                    $totalUsedToday = DB::table('redemption_logs')
+                    $totalUsedUpToToday = DB::table('redemption_logs')
                         ->where('guest_voucher_id', $voucher->id)
                         ->where('facility_template_id', $facilityTemplateId)
-                        ->where('date', $todayString)
+                        ->where('date', '<=', $todayString)
                         ->lockForUpdate()
                         ->sum('pax_used');
                     
@@ -354,7 +362,7 @@ class VoucherService
                         $add = 0;
                     }
                     $paxLimit = $basePax + $add;
-                    $quotaRemaining = max(0, $paxLimit - $totalUsedToday);
+                    $quotaRemaining = max(0, $paxLimit - $totalUsedUpToToday);
                     
                     if ($quotaRemaining <= 0) {
                         throw VoucherException::quotaExhausted();
@@ -394,8 +402,8 @@ class VoucherService
 
                 $timezone = $voucher->booking->property->timezone ?? 'UTC';
                 $currentDateTime = Carbon::now($timezone);
-                $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
-                $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
+                $checkInDate = Carbon::parse($voucher->booking->check_in->toDateString(), $timezone)->startOfDay();
+                $checkOutDate = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)->startOfDay();
                 
                 // Voucher expires at 9 PM (21:00) WIB on checkout date
                 $expirationDateTime = $checkOutDate->copy()->setTime(21, 0, 0);
@@ -425,10 +433,10 @@ class VoucherService
                 
                 // CRITICAL: Calculate quota from database WITH row-level locking to prevent race conditions
                 // This ensures that concurrent redemptions cannot bypass quota limits
-                $totalUsedToday = DB::table('redemption_logs')
+                $totalUsedUpToToday = DB::table('redemption_logs')
                     ->where('guest_voucher_id', $voucher->id)
                     ->where('facility_template_id', $facilityTemplateId)
-                    ->where('date', $todayString)
+                    ->where('date', '<=', $todayString)
                     ->lockForUpdate()
                     ->sum('pax_used');
                 
@@ -460,47 +468,47 @@ class VoucherService
                 $start = $bookingFacility->start_date->setTimezone($tz)->toDateString();
                 $end = $bookingFacility->end_date->setTimezone($tz)->toDateString();
                 $facilityCode = $bookingFacility->facilityTemplate->code;
+
+                // Time window checking has been disabled per user request;
+                
                 $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
                 // Item 3: DB flag overrides the code heuristic; null keeps legacy behavior
                 $isOneTimeFacility = $bookingFacility->facilityTemplate->is_one_time
                     ?? in_array($facilityCode, $oneTimeFacilityCodes);
                 
-                if ($isOneTimeFacility) {
-                    // One-time facilities: usable any day within the stay period, once per stay
-                    if ($todayString < $start || $todayString > $end) {
-                        throw new VoucherException('This facility is not valid today.', 422);
-                    }
+                // Both one-time and daily facilities must be within their valid date range
+                if ($todayString < $start || $todayString > $end) {
+                    throw new VoucherException('This facility is not valid today.', 422);
+                }
 
+                // Checkout limit has been disabled
+
+                $everUsed = 0;
+                if ($isOneTimeFacility) {
                     $everUsed = DB::table('redemption_logs')
                         ->where('guest_voucher_id', $voucher->id)
                         ->where('facility_template_id', $facilityTemplateId)
                         ->lockForUpdate()
                         ->sum('pax_used');
-
-                    if ($everUsed > 0) {
-                        throw VoucherException::alreadyUsedForStay();
-                    }
-                } else {
-                    // Daily facilities: available within date range, quota resets daily
-                    if ($todayString < $start || $todayString > $end) {
-                        throw new VoucherException('This facility is not valid today.', 422);
-                    }
                 }
 
                 $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
-                // Addition boosts quota once per stay for one-time facilities; for daily
-                // facilities it only applies on the day it was granted (extra beds are
-                // already part of the base pax and apply every day)
-                if (!$isOneTimeFacility && $todayString !== ($voucher->addition_date?->toDateString())) {
-                    $add = 0;
+                
+                $baseDailyQuota = $bookingFacility->quota_total ?? (int) ($voucher->booking->total_pax + $voucher->booking->extra_beds);
+                
+                if ($isOneTimeFacility) {
+                    $accumulatedQuota = $baseDailyQuota;
+                } else {
+                    $daysElapsed = max(0, Carbon::parse($start)->diffInDays(Carbon::parse($todayString))) + 1;
+                    $accumulatedQuota = $baseDailyQuota * $daysElapsed;
                 }
-                $totalQuota = (int) ($booking->total_pax + $booking->extra_beds + $add);
-
-                $facilityQuota = $bookingFacility->quota_total ?? $totalQuota;
-                if ($bookingFacility->quota_total !== null) {
-                    $facilityQuota += $add;
-                }
-                $usageSum = $isOneTimeFacility ? $everUsed : $totalUsedToday;
+                
+                // Addition applies once if one-time, or if it was granted on/before today
+                $additionApplies = $isOneTimeFacility || ($voucher->addition_date && $voucher->addition_date->toDateString() <= $todayString);
+                
+                $facilityQuota = $accumulatedQuota + ($additionApplies ? $add : 0);
+                
+                $usageSum = $isOneTimeFacility ? $everUsed : $totalUsedUpToToday;
                 $quotaRemaining = max(0, $facilityQuota - $usageSum);
                 
                 if ($quotaRemaining <= 0) {
@@ -570,6 +578,7 @@ class VoucherService
         }
 
         return match (true) {
+            str_contains($message, 'diluar jam yang telah ditentukan') => 'outside_redemption_hours',
             str_contains($message, 'not found') => 'not_found',
             str_contains($message, 'no longer active') => 'voucher_not_active',
             str_contains($message, 'not currently checked in') => 'booking_not_checked_in',
@@ -633,8 +642,7 @@ class VoucherService
 
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $checkOutDate = Carbon::parse($voucher->booking->check_out)
-            ->setTimezone($timezone)
+        $checkOutDate = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)
             ->startOfDay()
             ->setTime(21, 0, 0); // 9 PM on checkout date
 

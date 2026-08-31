@@ -12,9 +12,15 @@ return new class extends Migration
 
         // Grant to any role that already has the bookings.checkin permission
         // so existing databases (seeded before this permission existed) work.
-        foreach (Role::query()->get() as $role) {
-            if ($role->hasPermissionTo('bookings.checkin')) {
-                $role->givePermissionTo($permission);
+        // We first check if the bookings.checkin permission exists, because during a fresh migration
+        // before seeders run, it does not exist yet.
+        $checkinPermissionExists = Permission::where('name', 'bookings.checkin')->where('guard_name', 'web')->exists();
+        
+        if ($checkinPermissionExists) {
+            foreach (Role::query()->get() as $role) {
+                if ($role->hasPermissionTo('bookings.checkin')) {
+                    $role->givePermissionTo($permission);
+                }
             }
         }
     }

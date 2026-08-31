@@ -12,6 +12,7 @@ use App\Models\GuestVoucher;
 use App\Models\Outlet;
 use App\Models\Property;
 use App\Models\RedemptionLog;
+use App\Services\FacilityScheduleService;
 use App\Services\QrCodeService;
 use App\Services\VoucherService;
 use App\Services\VoucherDeliveryService;
@@ -24,11 +25,16 @@ use Illuminate\View\View;
 
 class VoucherController extends Controller
 {
+    private readonly FacilityScheduleService $schedules;
+
     public function __construct(
         private readonly VoucherService $vouchers,
         private readonly QrCodeService $qr,
         private readonly VoucherDeliveryService $delivery,
-    ) {}
+        ?FacilityScheduleService $schedules = null,
+    ) {
+        $this->schedules = $schedules ?? app(FacilityScheduleService::class);
+    }
 
     public function index(Request $request): View
     {
@@ -351,6 +357,35 @@ class VoucherController extends Controller
                         'message' => 'This voucher has no remaining quota for the selected outlet\'s facility.',
                     ], 422);
                 }
+
+                $facilityTemplates = $outlet->facilityTemplates->keyBy('id');
+                $now = Carbon::now($timezone);
+                $allClosed = true;
+                $closedHoursLabel = '';
+
+                foreach ($facilityStatuses as $status) {
+                    $template = $facilityTemplates->get($status->facility_template_id);
+                    $code = $template?->code ?? '';
+                    $isOpen = $this->schedules->isWithinOperatingHours($code, $now, $timezone);
+                    $hours = $this->schedules->getFormattedOperatingHours($code);
+                    $status->is_open_now = $isOpen;
+                    $status->operating_hours = $hours;
+                    if ($isOpen) {
+                        $allClosed = false;
+                    } else {
+                        $closedHoursLabel = $hours;
+                    }
+                }
+
+                if ($allClosed && $facilityStatuses->isNotEmpty()) {
+                    if ($user) {
+                        $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_redemption_hours', $facilityStatuses->first()->facility_template_id);
+                    }
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Penukaran voucher diluar jam yang telah ditentukan. (Jam operasional: {$closedHoursLabel})",
+                    ], 422);
+                }
             }
 
             $history = RedemptionLog::query()
@@ -442,6 +477,35 @@ class VoucherController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'This voucher has no remaining quota for the selected outlet\'s facility.',
+                ], 422);
+            }
+
+            $facilityTemplates = $outlet->facilityTemplates->keyBy('id');
+            $now = Carbon::now($timezone);
+            $allClosed = true;
+            $closedHoursLabel = '';
+
+            foreach ($facilityStatuses as $status) {
+                $template = $facilityTemplates->get($status->facility_template_id);
+                $code = $template?->code ?? '';
+                $isOpen = $this->schedules->isWithinOperatingHours($code, $now, $timezone);
+                $hours = $this->schedules->getFormattedOperatingHours($code);
+                $status->is_open_now = $isOpen;
+                $status->operating_hours = $hours;
+                if ($isOpen) {
+                    $allClosed = false;
+                } else {
+                    $closedHoursLabel = $hours;
+                }
+            }
+
+            if ($allClosed && $facilityStatuses->isNotEmpty()) {
+                if ($user) {
+                    $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_redemption_hours', $facilityStatuses->first()->facility_template_id);
+                }
+                return response()->json([
+                    'success' => false,
+                    'message' => "Penukaran voucher diluar jam yang telah ditentukan. (Jam operasional: {$closedHoursLabel})",
                 ], 422);
             }
         }

@@ -232,7 +232,21 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 });
 
 function confirmDelete(userId, userName) {
-    if (confirm(`Are you sure you want to delete user "${userName}"?\n\nThis action cannot be undone.`)) {
+    if (window.showConfirmDialog) {
+        window.showConfirmDialog({
+            type: 'delete',
+            title: 'Konfirmasi Hapus User',
+            message: `Apakah Anda yakin ingin menghapus user "${userName}"? Tindakan ini tidak dapat dibatalkan.`,
+            confirmText: 'Ya, Hapus',
+            onConfirm: function() {
+                const form = document.getElementById('delete-form-' + userId);
+                if (form) {
+                    form.dataset.confirmed = 'true';
+                    form.submit();
+                }
+            }
+        });
+    } else {
         document.getElementById('delete-form-' + userId).submit();
     }
 }

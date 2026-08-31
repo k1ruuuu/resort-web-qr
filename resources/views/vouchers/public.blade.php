@@ -4,7 +4,7 @@
 <div class="voucher-public">
 
     {{-- Guest Info Card --}}
-    <div class="card border-0 shadow-sm mb-0 rounded-4 overflow-hidden" style="background: var(--cream);">
+    <div class="card border-0 shadow-sm mx-3 mb-3 rounded-4 overflow-hidden" style="background: var(--cream);">
         <div class="card-body text-center px-4 pt-4 pb-3">
             <div class="mb-3">
                 @if($voucherState === 'active')
@@ -23,7 +23,7 @@
     </div>
 
     {{-- Welcome Banner --}}
-    <div class="voucher-banner">
+    <div class="voucher-banner mx-3 mb-3 shadow-sm">
         <div class="voucher-banner__glow"></div>
         <img src="{{ asset('img/chanaya-logo.png') }}" alt="Chanaya" class="voucher-banner__logo">
         <div class="voucher-banner__text">
@@ -33,7 +33,7 @@
     </div>
 
     {{-- Stay Info --}}
-    <div class="mx-3 my-3 p-3 rounded-3 border" style="border-color: var(--border) !important; background: #fff;">
+    <div class="mx-3 mb-3 p-3 rounded-3 border" style="border-color: var(--border) !important; background: #fff;">
         <div class="row text-center">
             <div class="col-6">
                 <div class="text-muted small mb-1">Stay Dates</div>
@@ -69,28 +69,31 @@
 
         <div>
             @php
-            // tempat & jam penukaran per facility (kode template)
+            // tempat & jam penukaran per facility (kode template dalam WIB)
             $redeemInfo = [
                 'SNACK' => [
-                    ['place' => 'Soeji Dining', 'time' => 'Dari check in sampai sebelum checkout'],
+                    ['place' => 'Soeji Dining', 'time' => 'Available starting at Check-in (14:00 - 20:00 WIB)'],
                 ],
                 'TEA' => [
-                    ['place' => 'Teras Hutan Bambu', 'time' => 'Check in sampai check out · 3:00 PM - 5:00 PM'],
+                    ['place' => 'Teras Hutan Bambu', 'time' => '15:00 - 17:00 WIB'],
                 ],
                 'DINNER-BBQ' => [
-                    ['place' => 'Teras Hutan Bambu', 'time' => '6:30 PM - 8:30 PM'],
+                    ['place' => 'Teras Hutan Bambu', 'time' => '18:30 - 20:30 WIB'],
                 ],
                 'DINNER100K' => [
-                    ['place' => 'Soeji or Rumpun', 'time' => '6:30 PM - 8:30 PM'],
+                    ['place' => 'Soeji or Rumpun', 'time' => '18:30 - 20:30 WIB'],
+                ],
+                'DINNER' => [
+                    ['place' => 'Teras Hutan Bambu / Soeji / Rumpun', 'time' => '18:30 - 20:30 WIB'],
                 ],
                 'BREAKFAST' => [
-                    ['place' => 'Soeji Dining', 'time' => '7:00 AM - 10:00 AM'],
+                    ['place' => 'Soeji Dining', 'time' => '07:00 - 10:00 WIB'],
                 ],
                 'JOURNAL' => [
-                    ['place' => 'Rumah Seni', 'time' => '2:00 PM - 5:00 PM'],
+                    ['place' => 'Rumah Seni', 'time' => 'Available starting at Check-in (14:00 - 17:00 WIB)'],
                 ],
                 'FEED' => [
-                    ['place' => 'Rumpun Area', 'time' => 'Check in sampai checkout (one time) · 10:00 - 11:45 atau 13:15 - 16:45 (tergantung cuaca)'],
+                    ['place' => 'Rumpun Area', 'time' => 'Available starting at Check-in (10:00 - 11:45 WIB atau 13:15 - 16:45 WIB)'],
                 ],
             ];
             @endphp
@@ -225,7 +228,8 @@
                 border-radius: 1rem;
                 text-align: center;
                 padding: 1.5rem 1.25rem;
-                background: linear-gradient(135deg, var(--forest-700) 0%, var(--forest-600) 50%, var(--forest-500) 100%);
+                background-color: #1c3f2d;
+                background: linear-gradient(135deg, var(--forest-700, #1c3f2d) 0%, var(--forest-600, #2c5e43) 50%, var(--forest-500, #3a8b66) 100%);
             }
             .voucher-banner__glow {
                 position: absolute;

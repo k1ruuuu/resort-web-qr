@@ -85,6 +85,8 @@ Route::middleware(['auth', 'ip.whitelist'])->group(function () {
     Route::get('reports/delivery-logs/export', [DeliveryLogController::class, 'export'])->name('reports.delivery-logs.export')->middleware('throttle:20,1');
     Route::get('reports/scan-history', [\App\Http\Controllers\QrScanLogController::class, 'index'])->name('reports.scan-history');
     Route::get('reports/scan-history/export', [\App\Http\Controllers\QrScanLogController::class, 'export'])->name('reports.scan-history.export')->middleware('throttle:20,1');
+    Route::get('reports/guest-redemption', [\App\Http\Controllers\GuestRedemptionReportController::class, 'index'])->name('reports.guest-redemption');
+    Route::get('notifications/recent-scans', [\App\Http\Controllers\QrScanLogController::class, 'latestScans'])->name('notifications.recent-scans');
 
     Route::get('import-logs', [ImportLogController::class, 'index'])->name('import-logs.index');
     Route::get('import-logs/{importLog}', [ImportLogController::class, 'show'])->name('import-logs.show');

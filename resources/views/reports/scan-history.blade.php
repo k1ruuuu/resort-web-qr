@@ -29,15 +29,11 @@
                         <div class="col-md-2">
                             <select name="scan_result" class="form-control">
                                 <option value="">All Results</option>
-                                <option value="success" {{ request('scan_result') === 'success' ? 'selected' : '' }}>Success</option>
-                                <option value="not_found" {{ request('scan_result') === 'not_found' ? 'selected' : '' }}>Not Found</option>
-                                <option value="voucher_not_active" {{ request('scan_result') === 'voucher_not_active' ? 'selected' : '' }}>Voucher Not Active</option>
-                                <option value="quota_exceeded" {{ request('scan_result') === 'quota_exceeded' ? 'selected' : '' }}>Quota Exceeded</option>
-                                <option value="invalid_date" {{ request('scan_result') === 'invalid_date' ? 'selected' : '' }}>Invalid Date</option>
-                                <option value="booking_not_checked_in" {{ request('scan_result') === 'booking_not_checked_in' ? 'selected' : '' }}>Not Checked In</option>
-                                <option value="outside_stay_period" {{ request('scan_result') === 'outside_stay_period' ? 'selected' : '' }}>Outside Stay Period</option>
-                                <option value="invalid_outlet" {{ request('scan_result') === 'invalid_outlet' ? 'selected' : '' }}>Invalid Outlet</option>
-                                <option value="facility_not_linked" {{ request('scan_result') === 'facility_not_linked' ? 'selected' : '' }}>Facility Not Linked</option>
+                                @foreach($usedStatuses as $status)
+                                    <option value="{{ $status }}" {{ request('scan_result') === $status ? 'selected' : '' }}>
+                                        {{ \Illuminate\Support\Str::title(str_replace('_', ' ', $status)) }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -164,6 +160,7 @@
                                                 'invalid_date' => 'warning',
                                                 'booking_not_checked_in' => 'warning',
                                                 'outside_stay_period' => 'warning',
+                                                'outside_redemption_hours' => 'warning',
                                                 'invalid_outlet' => 'danger',
                                                 'facility_not_linked' => 'danger',
                                                 default => 'secondary',
@@ -176,6 +173,7 @@
                                                 'invalid_date' => 'Invalid Date',
                                                 'booking_not_checked_in' => 'Not Checked In',
                                                 'outside_stay_period' => 'Outside Stay Period',
+                                                'outside_redemption_hours' => 'Diluar Jam Penukaran',
                                                 'invalid_outlet' => 'Invalid Outlet',
                                                 'facility_not_linked' => 'Facility Not Linked',
                                                 default => ucfirst(str_replace('_', ' ', $log->scan_result)),

@@ -38,8 +38,7 @@
                                                 id="whatsappEnabled"
                                                 name="whatsapp_enabled"
                                                 value="1"
-                                                {{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') == '1' ? 'checked' : '' }}
-                                                onchange="saveWhatsAppToggle(this)">
+                                                {{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') == '1' ? 'checked' : '' }}>
                                             <label class="form-check-label ms-2" for="whatsappEnabled" style="font-size: 1rem;">
                                                 <span id="toggleLabel">{{ old('whatsapp_enabled', $settings['whatsapp_enabled'] ?? '1') == '1' ? 'Active' : 'Inactive' }}</span>
                                             </label>
@@ -360,6 +359,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize toggle state
     const whatsappToggle = document.getElementById('whatsappEnabled');
     toggleWhatsAppSettings(whatsappToggle.checked);
+    
+    // Bind change event dynamically (CSP compliance)
+    whatsappToggle.addEventListener('change', function() {
+        window.saveWhatsAppToggle(this);
+    });
     
     const deliveryMethod = document.getElementById('deliveryMethod');
     const qrImageInfo = document.getElementById('qrImageInfo');

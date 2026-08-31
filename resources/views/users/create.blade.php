@@ -35,7 +35,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Full Name <span class="text-danger">*</span>
+                                    Full Name
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
@@ -55,7 +55,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Email Address <span class="text-danger">*</span>
+                                    Email Address
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
@@ -83,7 +83,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Password <span class="text-danger">*</span>
+                                    Password
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
@@ -111,7 +111,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
-                                    Confirm Password <span class="text-danger">*</span>
+                                    Confirm Password
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
