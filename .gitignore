@@ -54,6 +54,7 @@ debug.log
 # ================================
 *.sql
 !docker/mysql/init/*.sql
+!database/seeders/*.sql
 *.sql.gz
 *.dump
 *.bak

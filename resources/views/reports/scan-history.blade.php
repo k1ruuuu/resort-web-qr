@@ -115,28 +115,16 @@
                                         <code class="text-sm">{{ Str::limit($log->qr_code, 20) }}</code>
                                     </td>
                                     <td>
-                                        @if($log->guestVoucher && $log->guestVoucher->guest)
-                                            {{ $log->guestVoucher->guest->full_name }}
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
+                                        {{ $log->guest_name }}
                                     </td>
                                     <td>
-                                        @if($log->guestVoucher && $log->guestVoucher->booking && $log->guestVoucher->booking->room)
-                                            {{ $log->guestVoucher->booking->room->label ?? $log->guestVoucher->booking->room->number }}
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
+                                        {{ $log->room_name }}
                                     </td>
                                     <td>
-                                        @php
-                                            $booking = $log->guestVoucher?->booking;
-                                            $voucher = $log->guestVoucher;
-                                        @endphp
-                                        @if($booking)
-                                            {{ $booking->total_pax + $booking->extra_beds }}<small class="text-muted"> pax</small>
-                                        @elseif($voucher)
-                                            {{ $voucher->pax_limit ?? 1 }}<small class="text-muted"> pax</small>
+                                        @if($log->pax_used !== null)
+                                            {{ $log->pax_used }}<small class="text-muted"> pax</small>
+                                        @elseif($log->scan_result === 'success')
+                                            1<small class="text-muted"> pax</small>
                                         @else
                                             <span class="text-muted">-</span>
                                         @endif

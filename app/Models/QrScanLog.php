@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QrScanLog extends Model
 {
-    protected $appends = ['scanned_at_local'];
+    protected $appends = ['scanned_at_local', 'guest_name', 'room_name'];
 
     protected $fillable = [
         'qr_code',
         'secure_token',
         'guest_voucher_id',
         'facility_template_id',
+        'pax_used',
         'outlet_id',
         'user_id',
         'scan_result',
@@ -26,6 +27,7 @@ class QrScanLog extends Model
     protected function casts(): array
     {
         return [
+            'pax_used' => 'integer',
             'scanned_at' => 'datetime',
         ];
     }
@@ -48,6 +50,28 @@ class QrScanLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getGuestNameAttribute(): string
+    {
+        return $this->guestVoucher?->guest?->full_name
+            ?? $this->guestVoucher?->booking?->guest?->full_name
+            ?? $this->guestVoucher?->guest_name
+            ?? '-';
+    }
+
+    public function getRoomNameAttribute(): string
+    {
+        $booking = $this->guestVoucher?->booking;
+        if (!$booking) {
+            return $this->guestVoucher?->category === 'temporary' ? 'Temporary' : '-';
+        }
+
+        return $booking->room_label
+            ?? $booking->room?->label
+            ?? $booking->room?->number
+            ?? $booking->room?->code
+            ?? '-';
     }
 
     /**

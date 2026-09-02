@@ -83,6 +83,11 @@ class ExpireVouchers extends Command
             ->startOfDay()
             ->setTime(21, 0, 0); // 9 PM on checkout date
 
+        // Extended 1 hour past checkout cutoff for one-time facilities
+        if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
+            return false;
+        }
+
         return $currentDateTime->gte($checkOutDate);
     }
 }

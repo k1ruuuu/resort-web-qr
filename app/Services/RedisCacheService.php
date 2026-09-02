@@ -77,6 +77,7 @@ class RedisCacheService
             Cache::forget("voucher:token:{$voucher->secure_token}");
         }
         if ($voucher->qr_code) {
+            Cache::forget("voucher:token:{$voucher->qr_code}");
             Cache::forget("voucher:qr:{$voucher->qr_code}");
         }
         
@@ -192,11 +193,11 @@ class RedisCacheService
             return false;
         }
 
-        // Per-code + IP rate limit (5 scans/min for the same code)
+        // Per-code + IP rate limit (30 scans/min for the same code to allow staff multi-facility redemptions)
         $codeKey = "scan:code:{$qrCode}:{$ipAddress}";
         $codeAttempts = Cache::add($codeKey, 1, 60) ? 1 : (int) Cache::increment($codeKey);
 
-        if ($codeAttempts > 5) {
+        if ($codeAttempts > 30) {
             return false;
         }
 

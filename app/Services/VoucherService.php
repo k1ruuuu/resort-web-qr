@@ -67,9 +67,10 @@ class VoucherService
         
         $paxLimit = isset($data['pax_limit']) ? max(1, (int) $data['pax_limit']) : 1;
         $expiresAt = $this->resolveTemporaryExpiry($data, $property);
-        $lock = $this->locks->lockVoucherGeneration((int) $property->id, 15);
+        $lockKey = "voucher:generate:temp:{$property->id}:" . (auth()->id() ?? Str::random(8));
+        $lock = Cache::lock($lockKey, 15);
 
-        if (!$lock) {
+        if (!$lock->get()) {
             throw new VoucherException('Another voucher generation is in progress. Please wait.', 409);
         }
 
@@ -161,6 +162,33 @@ class VoucherService
                         ? Carbon::today($voucher->property?->timezone ?? 'UTC')->toDateString()
                         : null,
                 ])->save();
+
+                // If this voucher belongs to a booking, sync booking_facilities so new granted facilities exist
+                if ($voucher->booking) {
+                    $booking = $voucher->booking;
+                    $quotaTotal = (int) ($booking->total_pax + $booking->extra_beds);
+
+                    // Add any missing booking_facilities that were granted
+                    foreach ($facilityTemplateIds as $templateId) {
+                        $exists = $booking->bookingFacilities()
+                            ->where('facility_template_id', $templateId)
+                            ->exists();
+
+                        if (!$exists) {
+                            $booking->bookingFacilities()->create([
+                                'facility_template_id' => $templateId,
+                                'start_date' => $booking->check_in,
+                                'end_date' => $booking->check_out,
+                                'quota_total' => $quotaTotal,
+                            ]);
+                        }
+                    }
+
+                    // Delete booking_facilities that were ungranted/revoked
+                    $booking->bookingFacilities()
+                        ->whereNotIn('facility_template_id', $facilityTemplateIds)
+                        ->delete();
+                }
 
                 // L-07: keep the cached voucher data in sync
                 $this->cache->invalidateVoucher($voucher);
@@ -292,15 +320,27 @@ class VoucherService
                     ->lockForUpdate()
                     ->first();
 
-                // Auto-expire if passed checkout time
-                $this->checkAndExpireIfNeeded($voucher);
+                // Check if one-time grace period applies (1 hour past checkout cutoff)
+                $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive();
+                $oneTimeCodes = ['SNACK', 'JOURNAL', 'FEED'];
+                $facilityTarget = FacilityTemplate::query()->find($facilityTemplateId);
+                $isTargetOneTime = $facilityTarget?->is_one_time ?? in_array($facilityTarget?->code, $oneTimeCodes, true);
+
+                // Auto-expire if passed checkout time and not in one-time grace period
+                if (!$isOneTimeGrace) {
+                    $this->checkAndExpireIfNeeded($voucher);
+                }
 
                 if ($voucher->status !== VoucherStatus::Active) {
-                    throw new VoucherException('Voucher is no longer active.', 422);
+                    if (!($isOneTimeGrace && $isTargetOneTime)) {
+                        throw new VoucherException('Voucher is no longer active.', 422);
+                    }
                 }
 
                 if ($voucher->booking && $voucher->booking->status !== BookingStatus::CheckIn) {
-                    throw new VoucherException('Booking is not currently checked in.', 422);
+                    if (!($isOneTimeGrace && $isTargetOneTime)) {
+                        throw new VoucherException('Booking is not currently checked in.', 422);
+                    }
                 }
 
                 if ($voucher->category === 'temporary') {
@@ -389,7 +429,7 @@ class VoucherService
                         'ip_address' => request()->ip(),
                     ]);
 
-                    $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId);
+                    $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId, $paxUsed);
                     $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
                     $this->cache->invalidateVoucher($voucher);
 
@@ -460,7 +500,17 @@ class VoucherService
                     ->first();
                 
                 if (!$bookingFacility) {
-                    throw new VoucherException('Facility is not linked to this booking.', 422);
+                    if ($voucher->facility_template_id && in_array($facilityTemplateId, array_map('intval', explode(',', $voucher->facility_template_id)), true)) {
+                        $bookingFacility = $booking->bookingFacilities()->create([
+                            'facility_template_id' => $facilityTemplateId,
+                            'start_date' => $booking->check_in,
+                            'end_date' => $booking->check_out,
+                            'quota_total' => (int) ($booking->total_pax + $booking->extra_beds),
+                        ]);
+                        $bookingFacility->load('facilityTemplate');
+                    } else {
+                        throw new VoucherException('Facility is not linked to this booking.', 422);
+                    }
                 }
                 
                 // Check if facility is available today (M-12: compare in the property timezone)
@@ -477,8 +527,11 @@ class VoucherService
                     ?? in_array($facilityCode, $oneTimeFacilityCodes);
                 
                 // Both one-time and daily facilities must be within their valid date range
+                // One-time facilities also remain valid during the 1-hour grace period on checkout date
                 if ($todayString < $start || $todayString > $end) {
-                    throw new VoucherException('This facility is not valid today.', 422);
+                    if (!($isOneTimeGrace && $isOneTimeFacility)) {
+                        throw new VoucherException('This facility is not valid today.', 422);
+                    }
                 }
 
                 // Checkout limit has been disabled
@@ -500,7 +553,9 @@ class VoucherService
                     $accumulatedQuota = $baseDailyQuota;
                 } else {
                     $daysElapsed = max(0, Carbon::parse($start)->diffInDays(Carbon::parse($todayString))) + 1;
-                    $accumulatedQuota = $baseDailyQuota * $daysElapsed;
+                    $maxDays = max(1, (int) ($voucher->booking?->nights ?? 1));
+                    $daysCount = min($daysElapsed, $maxDays);
+                    $accumulatedQuota = $baseDailyQuota * $daysCount;
                 }
                 
                 // Addition applies once if one-time, or if it was granted on/before today
@@ -536,7 +591,7 @@ class VoucherService
                     'ip_address' => request()->ip(),
                 ]);
 
-                $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId);
+                $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId, $paxUsed);
                 $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());
 
                 // Increment analytics counter
@@ -550,12 +605,12 @@ class VoucherService
         } catch (VoucherException $e) {
             // Log the failed scan attempt outside the transaction
             $result = $this->mapExceptionToScanResult($e, $voucher);
-            $this->logScan($qrCode, $voucher, $outlet, $user, $result, $facilityTemplateId);
+            $this->logScan($qrCode, $voucher, $outlet, $user, $result, $facilityTemplateId, $paxUsed);
 
             throw $e;
         } catch (\Exception $e) {
             // Log unexpected errors
-            $this->logScan($qrCode, $voucher, $outlet, $user, 'system_error', $facilityTemplateId);
+            $this->logScan($qrCode, $voucher, $outlet, $user, 'system_error', $facilityTemplateId, $paxUsed);
 
             throw $e;
         } finally {
@@ -698,8 +753,9 @@ class VoucherService
             return Carbon::now($timezone)->addHours($hours)->setTimezone($appTimezone);
         }
 
-        $date = Carbon::parse($value ?? now($timezone)->toDateString(), $timezone);
-        if ($date->isPast()) {
+        $nowLocal = Carbon::now($timezone);
+        $date = Carbon::parse($value ?? $nowLocal->toDateString(), $timezone);
+        if ($date->copy()->endOfDay()->lt($nowLocal)) {
             throw new VoucherException('Temporary voucher expiration date must be in the future.', 422);
         }
 
@@ -713,12 +769,14 @@ class VoucherService
         User $user,
         string $result,
         ?int $facilityTemplateId = null,
+        ?int $paxUsed = null,
     ): void {
         QrScanLog::query()->create([
             'qr_code' => $qrCode,
             'secure_token' => $voucher?->secure_token,
             'guest_voucher_id' => $voucher?->id,
             'facility_template_id' => $facilityTemplateId,
+            'pax_used' => $paxUsed,
             'outlet_id' => $outlet?->id,
             'user_id' => $user->id,
             'scan_result' => $result,

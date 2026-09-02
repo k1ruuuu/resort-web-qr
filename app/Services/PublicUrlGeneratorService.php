@@ -9,9 +9,7 @@ class PublicUrlGeneratorService
 {
     public function generate(string $filename): string
     {
-        $appUrl = config('app.url');
-        
-        $appUrl = rtrim($appUrl, '/');
+        $appUrl = rtrim(config('app.url'), '/');
         
         $url = "{$appUrl}/storage/{$filename}";
         

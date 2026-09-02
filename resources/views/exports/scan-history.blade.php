@@ -21,14 +21,16 @@
             <td>{{ $index + 1 }}</td>
             <td>{{ $log->scanned_at_local->format('Y-m-d H:i:s') }}</td>
             <td>{{ $log->qr_code }}</td>
-            <td>{{ $log->guestVoucher?->guest?->full_name ?? 'N/A' }}</td>
-            <td>{{ $log->guestVoucher?->booking?->room?->code ?? $log->guestVoucher?->booking?->room?->number ?? 'N/A' }}</td>
+            <td>{{ $log->guest_name !== '-' ? $log->guest_name : 'N/A' }}</td>
+            <td>{{ $log->room_name !== '-' ? $log->room_name : 'N/A' }}</td>
             <td>
-                @php
-                    $paxBooking = $log->guestVoucher?->booking;
-                    $paxVoucher = $log->guestVoucher;
-                @endphp
-                {{ $paxBooking ? ($paxBooking->total_pax + $paxBooking->extra_beds) : ($paxVoucher ? ($paxVoucher->pax_limit ?? 1) : 'N/A') }}
+                @if($log->pax_used !== null)
+                    {{ $log->pax_used }}
+                @elseif($log->scan_result === 'success')
+                    1
+                @else
+                    N/A
+                @endif
             </td>
             <td>{{ $log->outlet?->name ?? 'N/A' }}</td>
             <td>{{ $log->facilityTemplate?->name ?? 'N/A' }}</td>

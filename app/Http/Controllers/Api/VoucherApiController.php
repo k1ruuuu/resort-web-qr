@@ -176,7 +176,9 @@ class VoucherApiController extends ApiController
             return $this->respondError('This outlet belongs to a different property.', 403);
         }
 
-        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+        $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive();
+
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $result = $voucher->status === \App\Enums\VoucherStatus::Redeemed ? 'quota_exceeded' : 'voucher_not_active';
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, $result);
@@ -272,7 +274,7 @@ class VoucherApiController extends ApiController
             ]);
         }
 
-        if (!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
+        if ((!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
             }
@@ -292,7 +294,7 @@ class VoucherApiController extends ApiController
             return $this->respondError('This voucher is not yet valid. Valid from: ' . $checkInDate->format('Y-m-d H:i'), 422);
         }
 
-        if ($currentDateTime->gte($expirationDateTime)) {
+        if ($currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
@@ -306,11 +308,17 @@ class VoucherApiController extends ApiController
             $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
             $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
 
+            if ($isOneTimeGrace) {
+                $facilityStatuses = $facilityStatuses->filter(fn($f) => $f->is_one_time)->values();
+            }
+
             if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
                 if ($user) {
                     $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
                 }
-                return $this->respondError('This voucher has no remaining quota for the selected outlet\'s facility.', 422);
+                return $this->respondError($isOneTimeGrace
+                    ? 'This voucher has no remaining one-time facility quota during the checkout grace period.'
+                    : 'This voucher has no remaining quota for the selected outlet\'s facility.', 422);
             }
 
             $facilityTemplates = $outlet->facilityTemplates->keyBy('id');

@@ -206,6 +206,11 @@ class DailyMaintenance extends Command
             ->startOfDay()
             ->setTimeFromTimeString($cutoffTime);
 
+        // Extended 1 hour past checkout cutoff for one-time facilities
+        if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
+            return false;
+        }
+
         return $currentDateTime->gte($checkOutDate);
     }
 }

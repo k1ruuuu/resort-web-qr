@@ -26,6 +26,8 @@ class GuestVoucher extends Model
         'category',
         'generated_at',
         'expires_at',
+        'addition',
+        'addition_facility_ids',
         'addition_map',
         'addition_date',
     ];
@@ -96,6 +98,36 @@ class GuestVoucher extends Model
                 && in_array($bf->facility_template_id, $additionIds, true)
                 && ($bf->facilityTemplate->is_one_time ?? in_array($bf->facilityTemplate->code, $oneTimeCodes, true));
         }) ?? false;
+    }
+
+    /**
+     * Extend one-time facilities by 1 hour past checkout cutoff.
+     */
+    public function isOneTimeGracePeriodActive(?Carbon $now = null): bool
+    {
+        if (!$this->booking) {
+            return false;
+        }
+
+        $tz = $this->property?->timezone ?? $this->booking->property?->timezone ?? 'Asia/Jakarta';
+        $now = ($now ? $now->copy() : Carbon::now($tz))->setTimezone($tz);
+        $checkOutDate = $this->booking->check_out ? Carbon::parse($this->booking->check_out, $tz)->toDateString() : null;
+
+        // Grace period applies on the check_out date
+        if ($checkOutDate && $now->toDateString() === $checkOutDate) {
+            $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+            $cutoff = Carbon::parse($checkOutDate, $tz)->setTimeFromTimeString($cutoffTime);
+            $extendedCutoff = $cutoff->copy()->addHour(); // 1 hour past checkout cutoff
+
+            if ($this->booking->checked_out_at) {
+                $checkedOutAtLocal = Carbon::parse($this->booking->checked_out_at, $tz);
+                $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHour());
+            }
+
+            return $now->lte($extendedCutoff);
+        }
+
+        return false;
     }
 
     public function getFacilityStatuses(?Carbon $date = null): Collection
@@ -171,6 +203,29 @@ class GuestVoucher extends Model
             $bookingFacilities = $bookingFacilities->filter(fn($bf) =>
                 in_array($bf->facility_template_id, $allowedFacilityIds)
             );
+
+            // Include any allowed facility templates that were not yet saved in booking_facilities
+            $existingTemplateIds = $bookingFacilities->pluck('facility_template_id')->all();
+            $missingTemplateIds = array_diff($allowedFacilityIds, $existingTemplateIds);
+
+            if (!empty($missingTemplateIds)) {
+                $missingTemplates = FacilityTemplate::query()
+                    ->whereIn('id', $missingTemplateIds)
+                    ->where('is_active', true)
+                    ->get();
+
+                foreach ($missingTemplates as $template) {
+                    $virtualBf = new BookingFacility([
+                        'booking_id' => $booking->id,
+                        'facility_template_id' => $template->id,
+                        'start_date' => $booking->check_in,
+                        'end_date' => $booking->check_out,
+                        'quota_total' => $baseQuota,
+                    ]);
+                    $virtualBf->setRelation('facilityTemplate', $template);
+                    $bookingFacilities->push($virtualBf);
+                }
+            }
         }
 
         $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
@@ -182,7 +237,10 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('total_used', 'facility_template_id');
 
-        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $everUsedByFacility, $oneTimeFacilityCodes, $timezone) {
+        $isOneTimeGrace = $this->isOneTimeGracePeriodActive($date);
+        $booking = $this->booking;
+
+        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $everUsedByFacility, $oneTimeFacilityCodes, $timezone, $isOneTimeGrace, $booking) {
             if (!$bf->facilityTemplate) {
                 return null;
             }
@@ -199,13 +257,15 @@ class GuestVoucher extends Model
             // Base quota per day
             $baseDailyQuota = (int) ($bf->quota_total ?? $baseQuota);
             
-            // Calculate accumulated quota for daily facilities based on days elapsed
+            // Calculate accumulated quota for daily facilities based on days elapsed (rollover capped at booked nights)
             if ($isOneTimeFacility) {
                 $accumulatedQuota = $baseDailyQuota;
             } else {
                 // Days elapsed from start date up to the requested date (min 1)
                 $daysElapsed = max(0, Carbon::parse($start)->diffInDays(Carbon::parse($dateString))) + 1;
-                $accumulatedQuota = $baseDailyQuota * $daysElapsed;
+                $maxDays = max(1, (int) ($booking?->nights ?? 1));
+                $daysCount = min($daysElapsed, $maxDays);
+                $accumulatedQuota = $baseDailyQuota * $daysCount;
             }
             
             // Addition applies once if one-time, or if it was granted on/before the requested date
@@ -213,8 +273,8 @@ class GuestVoucher extends Model
             $facilityQuota = $accumulatedQuota + ($additionApplies ? $facilityAdd : 0);
 
             // Both one-time and daily facilities are available within their date range.
-            // Remaining quota is evaluated later to determine if it is 'available' or 'used'.
-            $inPeriod = $dateString >= $start && $dateString <= $end;
+            // One-time facilities also remain available during the 1-hour grace period past checkout cutoff.
+            $inPeriod = ($dateString >= $start && $dateString <= $end) || ($isOneTimeGrace && $isOneTimeFacility);
             $isAvailable = $inPeriod;
 
             $used = (int) (($isOneTimeFacility ? $everUsedByFacility : $redemptions)[$bf->facility_template_id] ?? 0);
@@ -234,6 +294,6 @@ class GuestVoucher extends Model
                 'start_date' => $bf->start_date,
                 'end_date' => $bf->end_date,
             ];
-        });
+        })->filter()->values();
     }
 }

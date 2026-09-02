@@ -46,8 +46,8 @@ class UpdateVoucherRequest extends FormRequest
                 }
             }
 
-            foreach (array_keys($additionMap) as $facilityId) {
-                if (!in_array((int) $facilityId, $grantedIds, true)) {
+            foreach ($additionMap as $facilityId => $amount) {
+                if ((int) $amount > 0 && !in_array((int) $facilityId, $grantedIds, true)) {
                     $validator->errors()->add(
                         "addition_map.{$facilityId}",
                         'Addition can only be granted to facilities linked to this voucher.'

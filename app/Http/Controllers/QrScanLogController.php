@@ -14,16 +14,33 @@ class QrScanLogController extends Controller
         abort_unless(auth()->user()?->can('reports.view'), 403);
 
         $query = QrScanLog::query()
-            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'guestVoucher.property', 'outlet.property', 'user', 'facilityTemplate'])
+            ->with([
+                'guestVoucher.guest',
+                'guestVoucher.booking.guest',
+                'guestVoucher.booking.room',
+                'guestVoucher.property',
+                'outlet.property',
+                'user',
+                'facilityTemplate'
+            ])
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {
             $search = str_replace(['%', '_'], ['\%', '\_'], $request->search);
             $query->where(function ($q) use ($search) {
-                $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
-                });
+                $q->where('qr_code', 'like', "%{$search}%")
+                    ->orWhere('secure_token', 'like', "%{$search}%")
+                    ->orWhereHas('guestVoucher', function ($gv) use ($search) {
+                        $gv->where('guest_name', 'like', "%{$search}%")
+                            ->orWhereHas('guest', function ($g) use ($search) {
+                                $g->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('booking.guest', function ($bg) use ($search) {
+                                $bg->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%");
+                            });
+                    });
             });
         }
 
@@ -64,16 +81,33 @@ class QrScanLogController extends Controller
 
         // Build the same query as index
         $query = QrScanLog::query()
-            ->with(['guestVoucher.guest', 'guestVoucher.booking.room', 'guestVoucher.property', 'outlet.property', 'user', 'facilityTemplate'])
+            ->with([
+                'guestVoucher.guest',
+                'guestVoucher.booking.guest',
+                'guestVoucher.booking.room',
+                'guestVoucher.property',
+                'outlet.property',
+                'user',
+                'facilityTemplate'
+            ])
             ->orderBy('scanned_at', 'desc');
 
         if ($request->filled('search')) {
             $search = str_replace(['%', '_'], ['\%', '\_'], $request->search);
             $query->where(function ($q) use ($search) {
-                $q->whereHas('guestVoucher.guest', function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
-                });
+                $q->where('qr_code', 'like', "%{$search}%")
+                    ->orWhere('secure_token', 'like', "%{$search}%")
+                    ->orWhereHas('guestVoucher', function ($gv) use ($search) {
+                        $gv->where('guest_name', 'like', "%{$search}%")
+                            ->orWhereHas('guest', function ($g) use ($search) {
+                                $g->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('booking.guest', function ($bg) use ($search) {
+                                $bg->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%");
+                            });
+                    });
             });
         }
 
@@ -121,6 +155,7 @@ class QrScanLogController extends Controller
         $logs = QrScanLog::query()
             ->with([
                 'guestVoucher.guest',
+                'guestVoucher.booking.guest',
                 'guestVoucher.booking.room',
                 'guestVoucher.property',
                 'outlet.property',
@@ -135,17 +170,13 @@ class QrScanLogController extends Controller
         $latestId = $logs->isNotEmpty() ? $logs->last()->id : $afterId;
 
         $scans = $logs->map(function ($log) {
-            $booking = $log->guestVoucher?->booking;
-            $room = $booking?->room;
-            $roomLabel = $room?->label ?? $room?->number;
-
             return [
                 'id' => $log->id,
                 'staff_name' => $log->user?->name ?? 'Staff',
                 'outlet_name' => $log->outlet?->name ?? '-',
                 'facility_name' => $log->facilityTemplate?->name ?? '-',
-                'guest_name' => $log->guestVoucher?->guest?->full_name ?? '-',
-                'room_label' => $roomLabel,
+                'guest_name' => $log->guest_name,
+                'room_label' => $log->room_name,
                 'scan_result' => $log->scan_result,
                 'scan_result_label' => \Illuminate\Support\Str::headline($log->scan_result ?? 'Scan'),
                 'time' => $log->scanned_at_local ? $log->scanned_at_local->format('H:i:s') : now()->format('H:i:s'),

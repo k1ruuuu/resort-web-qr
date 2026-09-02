@@ -175,7 +175,7 @@ class VoucherController extends Controller
 
         $currentFacilityIds = $voucher->facility_template_id
             ? array_map('intval', explode(',', $voucher->facility_template_id))
-            : [];
+            : ($voucher->booking ? $voucher->booking->bookingFacilities->pluck('facility_template_id')->all() : []);
 
         return view('vouchers.edit', [
             'voucher' => $voucher,
@@ -307,8 +307,10 @@ class VoucherController extends Controller
             ], 403);
         }
 
+        $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive();
+
         // Validate voucher status
-        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $result = $voucher->status === \App\Enums\VoucherStatus::Redeemed ? 'quota_exceeded' : 'voucher_not_active';
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, $result);
@@ -426,7 +428,7 @@ class VoucherController extends Controller
         }
 
         // Validate booking status
-        if (!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
+        if ((!$voucher->booking || $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'booking_not_checked_in');
             }
@@ -453,7 +455,7 @@ class VoucherController extends Controller
             ], 422);
         }
 
-        if ($currentDateTime->gte($expirationDateTime)) {
+        if ($currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
@@ -470,13 +472,19 @@ class VoucherController extends Controller
             $outletFacilityIds = $outlet->facilityTemplates->pluck('id')->toArray();
             $facilityStatuses = $facilityStatuses->filter(fn($f) => in_array($f->facility_template_id, $outletFacilityIds))->values();
 
+            if ($isOneTimeGrace) {
+                $facilityStatuses = $facilityStatuses->filter(fn($f) => $f->is_one_time)->values();
+            }
+
             if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
                 if ($user) {
                     $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
                 }
                 return response()->json([
                     'success' => false,
-                    'message' => 'This voucher has no remaining quota for the selected outlet\'s facility.',
+                    'message' => $isOneTimeGrace
+                        ? 'This voucher has no remaining one-time facility quota during the checkout grace period.'
+                        : 'This voucher has no remaining quota for the selected outlet\'s facility.',
                 ], 422);
             }
 
@@ -650,11 +658,13 @@ class VoucherController extends Controller
         $timezone = $voucher->property?->timezone ?? $voucher->booking?->property?->timezone ?? 'UTC';
         $now = Carbon::now($timezone);
 
-        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+        $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive($now);
+
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active && !$isOneTimeGrace) {
             $voucherState = 'inactive';
         } elseif ($voucher->category === 'temporary' && $voucher->expires_at && $now->gte($voucher->expires_at)) {
             $voucherState = 'expired';
-        } elseif ($voucher->booking && $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn) {
+        } elseif ($voucher->booking && $voucher->booking->status !== \App\Enums\BookingStatus::CheckIn && !$isOneTimeGrace) {
             $voucherState = 'not_checked_in';
         } else {
             $voucherState = 'active';
@@ -688,7 +698,9 @@ class VoucherController extends Controller
         $this->vouchers->checkAndExpireIfNeeded($voucher);
         $voucher->refresh();
 
-        if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
+        $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive($now);
+
+        if ($voucher->status !== \App\Enums\VoucherStatus::Active && !$isOneTimeGrace) {
             abort(410, 'Voucher is no longer active.');
         }
 
