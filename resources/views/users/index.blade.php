@@ -112,11 +112,16 @@
                                 </div>
                                 <div>
                                     <strong class="d-block">{{ $user->name }}</strong>
-                                    @if(auth()->id() === $user->id)
-                                        <small class="badge badge-sm bg-gradient-primary">
-                                            <i class="fas fa-star"></i> You
-                                        </small>
-                                    @endif
+                                    <div class="d-flex align-items-center gap-1">
+                                        @if($user->username)
+                                            <small class="text-muted"><i class="fas fa-at"></i>{{ $user->username }}</small>
+                                        @endif
+                                        @if(auth()->id() === $user->id)
+                                            <small class="badge badge-sm bg-gradient-primary">
+                                                <i class="fas fa-star"></i> You
+                                            </small>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </td>

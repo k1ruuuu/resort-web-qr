@@ -15,12 +15,15 @@ class UserService
     public function create(array $data): User
     {
         return DB::transaction(function () use ($data) {
-            $user = User::query()->create([
+            $userData = [
                 'name' => $data['name'],
+                'username' => !empty($data['username']) ? trim($data['username']) : null,
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
                 'is_active' => (bool) ($data['is_active'] ?? true),
-            ]);
+            ];
+
+            $user = User::query()->create($userData);
 
             if (!empty($data['roles'])) {
                 $user->syncRoles($data['roles']);
@@ -42,6 +45,10 @@ class UserService
                 'email' => $data['email'],
                 'is_active' => (bool) ($data['is_active'] ?? true),
             ];
+
+            if (array_key_exists('username', $data)) {
+                $updateData['username'] = !empty($data['username']) ? trim($data['username']) : null;
+            }
 
             if (!empty($data['password'])) {
                 $updateData['password'] = Hash::make($data['password']);

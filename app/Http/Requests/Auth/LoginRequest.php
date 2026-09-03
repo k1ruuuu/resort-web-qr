@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -19,21 +20,59 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['required_without_all:login,username', 'string'],
+            'login' => ['required_without_all:email,username', 'string'],
+            'username' => ['required_without_all:email,login', 'string'],
             'password' => ['required', 'string'],
         ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'email' => __('Username or Email'),
+            'login' => __('Username or Email'),
+            'username' => __('Username or Email'),
+        ];
+    }
+
+    public function loginIdentifier(): string
+    {
+        return trim((string) ($this->input('email') ?? $this->input('login') ?? $this->input('username')));
     }
 
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $identifier = $this->loginIdentifier();
+
+        // Match user by email, username, or name
+        $user = User::where('email', $identifier)
+            ->orWhere('username', $identifier)
+            ->orWhere('name', $identifier)
+            ->first();
+
+        $attemptSuccessful = false;
+        if ($user) {
+            $attemptSuccessful = Auth::attempt([
+                'id' => $user->id,
+                'password' => $this->input('password'),
+            ], $this->boolean('remember'));
+        } else {
+            // Run a dummy attempt to preserve timing characteristics and fire event
+            Auth::attempt([
+                'email' => $identifier,
+                'password' => $this->input('password'),
+            ], $this->boolean('remember'));
+        }
+
+        if (! $attemptSuccessful) {
             RateLimiter::hit($this->throttleKey());
 
             // SECURITY LOG: Failed login attempt
             \Log::warning('[SECURITY] Failed login attempt', [
-                'email' => $this->input('email'),
+                'login' => $identifier,
                 'ip' => $this->ip(),
                 'user_agent' => $this->userAgent(),
                 'timestamp' => now()->toDateTimeString(),
@@ -47,7 +86,7 @@ class LoginRequest extends FormRequest
         if (! Auth::user()->is_active) {
             // SECURITY LOG: Inactive account login attempt
             \Log::warning('[SECURITY] Inactive account login attempt', [
-                'email' => $this->input('email'),
+                'login' => $identifier,
                 'user_id' => Auth::id(),
                 'ip' => $this->ip(),
             ]);
@@ -61,6 +100,7 @@ class LoginRequest extends FormRequest
         // SECURITY LOG: Successful login
         \Log::info('[SECURITY] Successful login', [
             'user_id' => Auth::id(),
+            'username' => Auth::user()->username,
             'email' => Auth::user()->email,
             'ip' => $this->ip(),
             'user_agent' => $this->userAgent(),
@@ -79,7 +119,7 @@ class LoginRequest extends FormRequest
 
         // SECURITY LOG: Account lockout due to rate limiting
         \Log::warning('[SECURITY] Account lockout - too many login attempts', [
-            'email' => $this->input('email'),
+            'login' => $this->loginIdentifier(),
             'ip' => $this->ip(),
             'attempts' => RateLimiter::attempts($this->throttleKey()),
             'available_in' => RateLimiter::availableIn($this->throttleKey()) . ' seconds',
@@ -97,6 +137,6 @@ class LoginRequest extends FormRequest
 
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->loginIdentifier()).'|'.$this->ip());
     }
 }

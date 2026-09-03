@@ -55,6 +55,8 @@ debug.log
 *.sql
 !docker/mysql/init/*.sql
 !database/seeders/*.sql
+!/resort_voucher.sql
+!/chanayac_resort_web_qr.sql
 *.sql.gz
 *.dump
 *.bak

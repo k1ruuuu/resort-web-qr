@@ -33,7 +33,7 @@
                             <i class="fas fa-id-card text-primary"></i> Personal Information
                         </h5>
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">
                                     Full Name
                                 </label>
@@ -53,7 +53,26 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">
+                                    Username
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-at"></i>
+                                    </span>
+                                    <input type="text" 
+                                           name="username" 
+                                           class="form-control @error('username') is-invalid @enderror" 
+                                           value="{{ old('username') }}" 
+                                           placeholder="e.g. jdoe">
+                                    @error('username')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">
                                     Email Address
                                 </label>

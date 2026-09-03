@@ -17,12 +17,12 @@ use Illuminate\Console\Command;
 class DailyMaintenance extends Command
 {
     protected $signature = 'daily:maintenance
-        {--auto-checkout : Delete bookings past their expected departure date}
+        {--auto-checkout : Automatically check out bookings past their expected departure date}
         {--auto-cancel-no-show : Cancel expected arrival bookings past check_in date without check-in}
         {--expire-vouchers : Expire vouchers past their deadline}
         {--all : Run all maintenance tasks}';
 
-    protected $description = 'Daily maintenance tasks: auto-checkout (delete), auto-cancel no-show, expire vouchers';
+    protected $description = 'Daily maintenance tasks: auto-checkout, auto-cancel no-show, expire vouchers';
 
     public function __construct(
         private readonly AuditService $audit,
@@ -38,7 +38,7 @@ class DailyMaintenance extends Command
         $exitCode = Command::SUCCESS;
 
         if ($all || $this->option('auto-checkout')) {
-            if (!$this->runAutoDelete()) {
+            if (!$this->runAutoCheckout()) {
                 $exitCode = Command::FAILURE;
             }
         }
@@ -63,7 +63,7 @@ class DailyMaintenance extends Command
         return $exitCode;
     }
 
-    private function runAutoDelete(): bool
+    private function runAutoCheckout(): bool
     {
         $this->info('Checking for bookings to check out (past expected departure)...');
         $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');

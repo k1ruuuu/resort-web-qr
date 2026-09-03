@@ -17,6 +17,7 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:users,username,' . $userId],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $userId],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['boolean'],

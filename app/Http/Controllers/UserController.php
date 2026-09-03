@@ -30,6 +30,7 @@ class UserController extends Controller
             if (strlen($search) > 0) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             }

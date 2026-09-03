@@ -27,6 +27,7 @@
                     <div>
                         <h4 class="mb-1">{{ $user->name }}</h4>
                         <p class="text-muted mb-0">
+                            @if($user->username)<span class="badge bg-light text-dark border me-1"><i class="fas fa-at"></i>{{ $user->username }}</span>@endif
                             <i class="fas fa-envelope me-1"></i> {{ $user->email }}
                         </p>
                     </div>
@@ -57,7 +58,7 @@
                             <i class="fas fa-id-card text-primary"></i> Personal Information
                         </h5>
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">
                                     Full Name
                                 </label>
@@ -77,7 +78,26 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">
+                                    Username
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-at"></i>
+                                    </span>
+                                    <input type="text" 
+                                           name="username" 
+                                           class="form-control @error('username') is-invalid @enderror" 
+                                           value="{{ old('username', $user->username) }}" 
+                                           placeholder="e.g. jdoe">
+                                    @error('username')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold">
                                     Email Address
                                 </label>

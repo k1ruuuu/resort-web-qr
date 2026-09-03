@@ -76,6 +76,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['email' => 'admin@resort.local'],
             [
                 'name' => 'System Admin',
+                'username' => 'admin',
                 'password' => Hash::make('password'),
                 'is_active' => true,
             ]

@@ -6,9 +6,11 @@ use App\Enums\BookingStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Booking extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'property_id',
         'guest_id',
@@ -51,7 +53,7 @@ class Booking extends Model
 
     public function guest(): BelongsTo
     {
-        return $this->belongsTo(Guest::class);
+        return $this->belongsTo(Guest::class)->withTrashed();
     }
 
     public function room(): BelongsTo

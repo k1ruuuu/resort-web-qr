@@ -47,12 +47,12 @@ class GuestVoucher extends Model
 
     public function booking(): BelongsTo
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(Booking::class)->withTrashed();
     }
 
     public function guest(): BelongsTo
     {
-        return $this->belongsTo(Guest::class);
+        return $this->belongsTo(Guest::class)->withTrashed();
     }
 
     public function property(): BelongsTo

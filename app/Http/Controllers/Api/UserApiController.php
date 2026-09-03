@@ -37,6 +37,7 @@ class UserApiController extends ApiController
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8'],
             'is_active' => ['boolean'],
@@ -60,6 +61,7 @@ class UserApiController extends ApiController
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['nullable', 'string', 'max:255', 'alpha_dash', 'unique:users,username,' . $user->id],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'password' => ['nullable', 'string', 'min:8'],
             'is_active' => ['boolean'],
