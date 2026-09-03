@@ -10,6 +10,7 @@
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
+SET FOREIGN_KEY_CHECKS = 0;
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -27,6 +28,7 @@ SET time_zone = "+00:00";
 -- Table structure for table `areas`
 --
 
+DROP TABLE IF EXISTS `areas`;
 CREATE TABLE `areas` (
   `id` bigint UNSIGNED NOT NULL,
   `property_id` bigint UNSIGNED NOT NULL,
@@ -51,6 +53,7 @@ INSERT INTO `areas` (`id`, `property_id`, `name`, `code`, `created_at`, `updated
 -- Table structure for table `audit_logs`
 --
 
+DROP TABLE IF EXISTS `audit_logs`;
 CREATE TABLE `audit_logs` (
   `id` bigint UNSIGNED NOT NULL,
   `user_id` bigint UNSIGNED DEFAULT NULL,
@@ -744,6 +747,7 @@ INSERT INTO `audit_logs` (`id`, `user_id`, `action`, `auditable_type`, `auditabl
 -- Table structure for table `bookings`
 --
 
+DROP TABLE IF EXISTS `bookings`;
 CREATE TABLE `bookings` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -795,6 +799,7 @@ INSERT INTO `bookings` (`id`, `booking_code`, `property_id`, `guest_id`, `room_i
 -- Table structure for table `booking_facilities`
 --
 
+DROP TABLE IF EXISTS `booking_facilities`;
 CREATE TABLE `booking_facilities` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_id` bigint UNSIGNED NOT NULL,
@@ -877,6 +882,7 @@ INSERT INTO `booking_facilities` (`id`, `booking_id`, `facility_template_id`, `s
 -- Table structure for table `cache`
 --
 
+DROP TABLE IF EXISTS `cache`;
 CREATE TABLE `cache` (
   `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `value` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -889,6 +895,7 @@ CREATE TABLE `cache` (
 -- Table structure for table `cache_locks`
 --
 
+DROP TABLE IF EXISTS `cache_locks`;
 CREATE TABLE `cache_locks` (
   `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `owner` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -901,6 +908,7 @@ CREATE TABLE `cache_locks` (
 -- Table structure for table `delivery_logs`
 --
 
+DROP TABLE IF EXISTS `delivery_logs`;
 CREATE TABLE `delivery_logs` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_id` bigint UNSIGNED DEFAULT NULL,
@@ -950,6 +958,7 @@ INSERT INTO `delivery_logs` (`id`, `booking_id`, `guest_voucher_id`, `guest_id`,
 -- Table structure for table `facility_templates`
 --
 
+DROP TABLE IF EXISTS `facility_templates`;
 CREATE TABLE `facility_templates` (
   `id` bigint UNSIGNED NOT NULL,
   `property_id` bigint UNSIGNED NOT NULL,
@@ -982,6 +991,7 @@ INSERT INTO `facility_templates` (`id`, `property_id`, `name`, `code`, `descript
 -- Table structure for table `facility_template_outlet`
 --
 
+DROP TABLE IF EXISTS `facility_template_outlet`;
 CREATE TABLE `facility_template_outlet` (
   `id` bigint UNSIGNED NOT NULL,
   `facility_template_id` bigint UNSIGNED NOT NULL,
@@ -1009,6 +1019,7 @@ INSERT INTO `facility_template_outlet` (`id`, `facility_template_id`, `outlet_id
 -- Table structure for table `failed_jobs`
 --
 
+DROP TABLE IF EXISTS `failed_jobs`;
 CREATE TABLE `failed_jobs` (
   `id` bigint UNSIGNED NOT NULL,
   `uuid` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1025,6 +1036,7 @@ CREATE TABLE `failed_jobs` (
 -- Table structure for table `guests`
 --
 
+DROP TABLE IF EXISTS `guests`;
 CREATE TABLE `guests` (
   `id` bigint UNSIGNED NOT NULL,
   `first_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1166,6 +1178,7 @@ INSERT INTO `guests` (`id`, `first_name`, `last_name`, `email`, `phone`, `whatsa
 -- Table structure for table `guest_vouchers`
 --
 
+DROP TABLE IF EXISTS `guest_vouchers`;
 CREATE TABLE `guest_vouchers` (
   `id` bigint UNSIGNED NOT NULL,
   `booking_id` bigint UNSIGNED DEFAULT NULL,
@@ -1220,6 +1233,7 @@ INSERT INTO `guest_vouchers` (`id`, `booking_id`, `guest_id`, `guest_name`, `pho
 -- Table structure for table `import_logs`
 --
 
+DROP TABLE IF EXISTS `import_logs`;
 CREATE TABLE `import_logs` (
   `id` bigint UNSIGNED NOT NULL,
   `type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1280,6 +1294,7 @@ INSERT INTO `import_logs` (`id`, `type`, `filename`, `user_id`, `total_rows`, `i
 -- Table structure for table `jobs`
 --
 
+DROP TABLE IF EXISTS `jobs`;
 CREATE TABLE `jobs` (
   `id` bigint UNSIGNED NOT NULL,
   `queue` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1296,6 +1311,7 @@ CREATE TABLE `jobs` (
 -- Table structure for table `job_batches`
 --
 
+DROP TABLE IF EXISTS `job_batches`;
 CREATE TABLE `job_batches` (
   `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1315,6 +1331,7 @@ CREATE TABLE `job_batches` (
 -- Table structure for table `migrations`
 --
 
+DROP TABLE IF EXISTS `migrations`;
 CREATE TABLE `migrations` (
   `id` int UNSIGNED NOT NULL,
   `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1367,6 +1384,7 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 -- Table structure for table `model_has_permissions`
 --
 
+DROP TABLE IF EXISTS `model_has_permissions`;
 CREATE TABLE `model_has_permissions` (
   `permission_id` bigint UNSIGNED NOT NULL,
   `model_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1379,6 +1397,7 @@ CREATE TABLE `model_has_permissions` (
 -- Table structure for table `model_has_roles`
 --
 
+DROP TABLE IF EXISTS `model_has_roles`;
 CREATE TABLE `model_has_roles` (
   `role_id` bigint UNSIGNED NOT NULL,
   `model_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1402,6 +1421,7 @@ INSERT INTO `model_has_roles` (`role_id`, `model_type`, `model_id`) VALUES
 -- Table structure for table `outlets`
 --
 
+DROP TABLE IF EXISTS `outlets`;
 CREATE TABLE `outlets` (
   `id` bigint UNSIGNED NOT NULL,
   `property_id` bigint UNSIGNED NOT NULL,
@@ -1430,6 +1450,7 @@ INSERT INTO `outlets` (`id`, `property_id`, `name`, `code`, `is_active`, `create
 -- Table structure for table `password_reset_tokens`
 --
 
+DROP TABLE IF EXISTS `password_reset_tokens`;
 CREATE TABLE `password_reset_tokens` (
   `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1442,6 +1463,7 @@ CREATE TABLE `password_reset_tokens` (
 -- Table structure for table `permissions`
 --
 
+DROP TABLE IF EXISTS `permissions`;
 CREATE TABLE `permissions` (
   `id` bigint UNSIGNED NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1483,6 +1505,7 @@ INSERT INTO `permissions` (`id`, `name`, `guard_name`, `created_at`, `updated_at
 -- Table structure for table `properties`
 --
 
+DROP TABLE IF EXISTS `properties`;
 CREATE TABLE `properties` (
   `id` bigint UNSIGNED NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1507,6 +1530,7 @@ INSERT INTO `properties` (`id`, `name`, `code`, `timezone`, `address`, `is_activ
 -- Table structure for table `property_user`
 --
 
+DROP TABLE IF EXISTS `property_user`;
 CREATE TABLE `property_user` (
   `property_id` bigint UNSIGNED NOT NULL,
   `user_id` bigint UNSIGNED NOT NULL
@@ -1526,6 +1550,7 @@ INSERT INTO `property_user` (`property_id`, `user_id`) VALUES
 -- Table structure for table `qr_scan_logs`
 --
 
+DROP TABLE IF EXISTS `qr_scan_logs`;
 CREATE TABLE `qr_scan_logs` (
   `id` bigint UNSIGNED NOT NULL,
   `qr_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1870,6 +1895,7 @@ INSERT INTO `qr_scan_logs` (`id`, `qr_code`, `secure_token`, `guest_voucher_id`,
 -- Table structure for table `redemption_logs`
 --
 
+DROP TABLE IF EXISTS `redemption_logs`;
 CREATE TABLE `redemption_logs` (
   `id` bigint UNSIGNED NOT NULL,
   `guest_voucher_id` bigint UNSIGNED NOT NULL,
@@ -1935,6 +1961,7 @@ INSERT INTO `redemption_logs` (`id`, `guest_voucher_id`, `guest_id`, `booking_id
 -- Table structure for table `roles`
 --
 
+DROP TABLE IF EXISTS `roles`;
 CREATE TABLE `roles` (
   `id` bigint UNSIGNED NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1961,6 +1988,7 @@ INSERT INTO `roles` (`id`, `name`, `guard_name`, `created_at`, `updated_at`) VAL
 -- Table structure for table `role_has_permissions`
 --
 
+DROP TABLE IF EXISTS `role_has_permissions`;
 CREATE TABLE `role_has_permissions` (
   `permission_id` bigint UNSIGNED NOT NULL,
   `role_id` bigint UNSIGNED NOT NULL
@@ -2065,6 +2093,7 @@ INSERT INTO `role_has_permissions` (`permission_id`, `role_id`) VALUES
 -- Table structure for table `rooms`
 --
 
+DROP TABLE IF EXISTS `rooms`;
 CREATE TABLE `rooms` (
   `id` bigint UNSIGNED NOT NULL,
   `property_id` bigint UNSIGNED NOT NULL,
@@ -2119,6 +2148,7 @@ INSERT INTO `rooms` (`id`, `property_id`, `code`, `area_id`, `room_type_id`, `nu
 -- Table structure for table `room_types`
 --
 
+DROP TABLE IF EXISTS `room_types`;
 CREATE TABLE `room_types` (
   `id` bigint UNSIGNED NOT NULL,
   `property_id` bigint UNSIGNED NOT NULL,
@@ -2152,6 +2182,7 @@ INSERT INTO `room_types` (`id`, `property_id`, `name`, `code`, `max_occupancy`, 
 -- Table structure for table `sessions`
 --
 
+DROP TABLE IF EXISTS `sessions`;
 CREATE TABLE `sessions` (
   `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint UNSIGNED DEFAULT NULL,
@@ -2167,6 +2198,7 @@ CREATE TABLE `sessions` (
 -- Table structure for table `settings`
 --
 
+DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
   `id` bigint UNSIGNED NOT NULL,
   `key` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2200,6 +2232,7 @@ INSERT INTO `settings` (`id`, `key`, `value`, `created_at`, `updated_at`) VALUES
 -- Table structure for table `users`
 --
 
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `id` bigint UNSIGNED NOT NULL,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2750,6 +2783,7 @@ ALTER TABLE `rooms`
 --
 ALTER TABLE `room_types`
   ADD CONSTRAINT `room_types_property_id_foreign` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE;
+SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
