@@ -12,7 +12,9 @@ use App\Models\Outlet;
 use App\Models\Property;
 use App\Models\QrScanLog;
 use App\Models\RedemptionLog;
+use App\Models\Setting;
 use App\Models\User;
+use App\Models\VoucherFacilityExchange;
 use App\Services\FacilityScheduleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -202,6 +204,16 @@ class VoucherService
         }
     }
 
+    public function exchangeDinnerFacility(GuestVoucher $voucher, array $data, User $user): VoucherFacilityExchange
+    {
+        return app(VoucherExchangeService::class)->exchangeDinnerFacility($voucher, $data, $user);
+    }
+
+    public function deleteExchange(VoucherFacilityExchange $exchange, User $user): void
+    {
+        app(VoucherExchangeService::class)->deleteExchange($exchange, $user);
+    }
+
     private function createVoucherForBooking(Booking $booking): GuestVoucher
     {
         // Use distributed lock to prevent duplicate voucher generation
@@ -329,6 +341,8 @@ class VoucherService
                 // Auto-expire if passed checkout time and not in one-time grace period
                 if (!$isOneTimeGrace) {
                     $this->checkAndExpireIfNeeded($voucher);
+                } elseif (!$isTargetOneTime) {
+                    throw new VoucherException('This voucher has no remaining one-time facility quota during the checkout grace period.', 422);
                 }
 
                 if ($voucher->status !== VoucherStatus::Active) {
@@ -360,10 +374,26 @@ class VoucherService
                         throw new VoucherException('This outlet belongs to a different property.', 403);
                     }
 
-                    // CRITICAL: Only allow redemption of facilities granted to this voucher
+                    $incomingExchanges = (int) DB::table('voucher_facility_exchanges')
+                        ->where('guest_voucher_id', $voucher->id)
+                        ->where('to_facility_template_id', $facilityTemplateId)
+                        ->where('exchange_date', '<=', $todayString)
+                        ->lockForUpdate()
+                        ->sum('pax');
+
+                    $outgoingExchanges = (int) DB::table('voucher_facility_exchanges')
+                        ->where('guest_voucher_id', $voucher->id)
+                        ->where('from_facility_template_id', $facilityTemplateId)
+                        ->where('exchange_date', '<=', $todayString)
+                        ->lockForUpdate()
+                        ->sum('pax');
+
+                    $netExchangeDelta = $incomingExchanges - $outgoingExchanges;
+
+                    // CRITICAL: Only allow redemption of facilities granted to this voucher or received via exchange
                     if ($voucher->facility_template_id) {
                         $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
-                        if (!in_array($facilityTemplateId, $allowedFacilityIds, true)) {
+                        if (!in_array($facilityTemplateId, $allowedFacilityIds, true) && $incomingExchanges <= 0) {
                             throw new VoucherException('Facility is not linked to this voucher.', 422);
                         }
                     }
@@ -401,7 +431,7 @@ class VoucherService
                     if ($todayString !== ($voucher->addition_date?->toDateString())) {
                         $add = 0;
                     }
-                    $paxLimit = $basePax + $add;
+                    $paxLimit = max(0, $basePax + $add + $netExchangeDelta);
                     $quotaRemaining = max(0, $paxLimit - $totalUsedUpToToday);
                     
                     if ($quotaRemaining <= 0) {
@@ -443,10 +473,11 @@ class VoucherService
                 $timezone = $voucher->booking->property->timezone ?? 'UTC';
                 $currentDateTime = Carbon::now($timezone);
                 $checkInDate = Carbon::parse($voucher->booking->check_in->toDateString(), $timezone)->startOfDay();
-                $checkOutDate = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)->startOfDay();
                 
-                // Voucher expires at 9 PM (21:00) WIB on checkout date
-                $expirationDateTime = $checkOutDate->copy()->setTime(21, 0, 0);
+                // Voucher expires at checkout cutoff (12:35 WIB) on checkout date
+                $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
+                $expirationDateTime = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)
+                    ->setTimeFromTimeString($cutoffTime);
 
                 // Check if before check-in
                 if ($currentDateTime->lt($checkInDate)) {
@@ -456,8 +487,8 @@ class VoucherService
                     );
                 }
 
-                // Check if after expiration (9 PM on checkout date)
-                if ($currentDateTime->gte($expirationDateTime)) {
+                // Check if after expiration (checkout cutoff 12:35 WIB or grace period until 13:35 WIB)
+                if ($currentDateTime->gte($expirationDateTime) && !($isOneTimeGrace && $isTargetOneTime)) {
                     throw new VoucherException(
                         'QR code has expired. It was valid until ' . $expirationDateTime->format('Y-m-d H:i') . ' (' . $timezone . ')',
                         422
@@ -487,9 +518,26 @@ class VoucherService
                     ? array_map('intval', explode(',', $voucher->addition_facility_ids))
                     : [];
                 
+                // Check facility exchange delta up to today
+                $incomingExchanges = (int) DB::table('voucher_facility_exchanges')
+                    ->where('guest_voucher_id', $voucher->id)
+                    ->where('to_facility_template_id', $facilityTemplateId)
+                    ->where('exchange_date', '<=', $todayString)
+                    ->lockForUpdate()
+                    ->sum('pax');
+
+                $outgoingExchanges = (int) DB::table('voucher_facility_exchanges')
+                    ->where('guest_voucher_id', $voucher->id)
+                    ->where('from_facility_template_id', $facilityTemplateId)
+                    ->where('exchange_date', '<=', $todayString)
+                    ->lockForUpdate()
+                    ->sum('pax');
+
+                $netExchangeDelta = $incomingExchanges - $outgoingExchanges;
+
                 if ($voucher->facility_template_id) {
                     $allowedFacilityIds = array_map('intval', explode(',', $voucher->facility_template_id));
-                    if (!in_array($facilityTemplateId, $allowedFacilityIds, true)) {
+                    if (!in_array($facilityTemplateId, $allowedFacilityIds, true) && $incomingExchanges <= 0) {
                         throw new VoucherException('Facility is not linked to this voucher.', 422);
                     }
                 }
@@ -500,12 +548,16 @@ class VoucherService
                     ->first();
                 
                 if (!$bookingFacility) {
-                    if ($voucher->facility_template_id && in_array($facilityTemplateId, array_map('intval', explode(',', $voucher->facility_template_id)), true)) {
+                    $isAllowed = ($voucher->facility_template_id && in_array($facilityTemplateId, array_map('intval', explode(',', $voucher->facility_template_id)), true))
+                        || $incomingExchanges > 0;
+
+                    if ($isAllowed) {
+                        $isExchangeOnly = !in_array($facilityTemplateId, array_map('intval', explode(',', (string) $voucher->facility_template_id)), true);
                         $bookingFacility = $booking->bookingFacilities()->create([
                             'facility_template_id' => $facilityTemplateId,
                             'start_date' => $booking->check_in,
                             'end_date' => $booking->check_out,
-                            'quota_total' => (int) ($booking->total_pax + $booking->extra_beds),
+                            'quota_total' => $isExchangeOnly ? 0 : (int) ($booking->total_pax + $booking->extra_beds),
                         ]);
                         $bookingFacility->load('facilityTemplate');
                     } else {
@@ -550,16 +602,16 @@ class VoucherService
                 $baseDailyQuota = $bookingFacility->quota_total ?? (int) ($voucher->booking->total_pax + $voucher->booking->extra_beds);
                 
                 if ($isOneTimeFacility) {
-                    $accumulatedQuota = $baseDailyQuota;
+                    $accumulatedQuota = max(0, $baseDailyQuota + $netExchangeDelta);
                 } else {
                     $daysElapsed = max(0, Carbon::parse($start)->diffInDays(Carbon::parse($todayString))) + 1;
                     $maxDays = max(1, (int) ($voucher->booking?->nights ?? 1));
                     $daysCount = min($daysElapsed, $maxDays);
-                    $accumulatedQuota = $baseDailyQuota * $daysCount;
+                    $accumulatedQuota = max(0, ($baseDailyQuota * $daysCount) + $netExchangeDelta);
                 }
                 
-                // Addition applies once if one-time, or if it was granted on/before today
-                $additionApplies = $isOneTimeFacility || ($voucher->addition_date && $voucher->addition_date->toDateString() <= $todayString);
+                // Addition applies once if one-time, or if today matches addition_date
+                $additionApplies = $isOneTimeFacility || ($voucher->addition_date && $voucher->addition_date->toDateString() === $todayString);
                 
                 $facilityQuota = $accumulatedQuota + ($additionApplies ? $add : 0);
                 
@@ -697,9 +749,14 @@ class VoucherService
 
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
         $checkOutDate = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)
-            ->startOfDay()
-            ->setTime(21, 0, 0); // 9 PM on checkout date
+            ->setTimeFromTimeString($cutoffTime); // 12:35 WIB on checkout date
+
+        // Extended 1 hour past checkout cutoff for one-time facilities (until 13:35 WIB)
+        if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
+            return false;
+        }
 
         if ($currentDateTime->gte($checkOutDate)) {
             $voucher->update(['status' => VoucherStatus::Expired]);
@@ -720,7 +777,6 @@ class VoucherService
     {
         $guestNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $guestName);
         $roomCodeClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomCode);
-        $roomNameClean = preg_replace('/[^a-zA-Z0-9]/', '', $roomName);
 
         // Random entropy to prevent QR code enumeration
         $randomPart = Str::random(16);
