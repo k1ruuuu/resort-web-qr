@@ -14,20 +14,49 @@ class GuestRedemptionReportController extends Controller
     {
         abort_unless(auth()->user()?->can('reports.view'), 403);
 
+        $request->validate([
+            'date' => 'nullable|date',
+            'status' => 'nullable|in:all,redeemed,not_redeemed',
+        ]);
+
         $dateString = $request->input('date', Carbon::today()->toDateString());
         $date = Carbon::parse($dateString)->startOfDay();
         $propertyId = $request->integer('property_id') ?: null;
         $statusFilter = $request->input('status', 'all');
 
+        $user = auth()->user();
+        if (!$user->hasRole('super-admin')) {
+            $allowed = $user->properties()->pluck('property_id');
+            abort_unless($propertyId === null || $allowed->contains($propertyId), 403);
+        }
+
+        $dateStr = $date->toDateString();
+
         $vouchers = GuestVoucher::query()
+            ->where('status', \App\Enums\VoucherStatus::Active)
+            ->where(function ($q) use ($dateStr) {
+                // Temporary vouchers not expired before selected date
+                $q->where(function ($temp) use ($dateStr) {
+                    $temp->where('category', 'temporary')
+                        ->where(function ($exp) use ($dateStr) {
+                            $exp->whereNull('expires_at')
+                                ->orWhereDate('expires_at', '>=', $dateStr);
+                        });
+                })
+                // Standard booking vouchers where date is between check_in and check_out
+                ->orWhereHas('booking', function ($b) use ($dateStr) {
+                    $b->whereDate('check_in', '<=', $dateStr)
+                      ->whereDate('check_out', '>=', $dateStr);
+                });
+            })
             ->with([
                 'booking.guest',
                 'booking.room',
                 'booking.property',
                 'property',
                 'guest',
-                'redemptionLogs' => function ($q) use ($date) {
-                    $q->where('date', $date->toDateString());
+                'redemptionLogs' => function ($q) use ($dateStr) {
+                    $q->where('date', $dateStr);
                 }
             ])
             ->when($propertyId, function ($q) use ($propertyId) {
@@ -36,27 +65,7 @@ class GuestRedemptionReportController extends Controller
                         ->orWhereHas('booking', fn($b) => $b->where('property_id', $propertyId));
                 });
             })
-            ->get()
-            ->filter(function ($voucher) use ($date) {
-                if ($voucher->status !== \App\Enums\VoucherStatus::Active) {
-                    return false;
-                }
-
-                if ($voucher->category === 'temporary') {
-                    if ($voucher->expires_at && Carbon::parse($voucher->expires_at)->lt($date->copy()->startOfDay())) {
-                        return false;
-                    }
-                    return true;
-                }
-
-                if ($voucher->booking) {
-                    $checkIn = Carbon::parse($voucher->booking->check_in->toDateString())->startOfDay();
-                    $checkOut = Carbon::parse($voucher->booking->check_out->toDateString())->startOfDay();
-                    return $date->between($checkIn, $checkOut);
-                }
-
-                return false;
-            });
+            ->get();
 
         $reportData = $vouchers->map(function ($voucher) use ($date) {
             $redeemedPax = $voucher->redemptionLogs->sum('pax_used');
