@@ -31,6 +31,8 @@ class Booking extends Model
         'status',
         'arrangement_code',
         'pms_voucher_ref',
+        'checked_in_at',
+        'checked_out_at',
     ];
 
     protected function casts(): array

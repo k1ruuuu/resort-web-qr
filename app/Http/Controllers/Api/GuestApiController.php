@@ -16,7 +16,7 @@ class GuestApiController extends ApiController
         $guests = Guest::query()
             ->withCount('bookings')
             ->orderBy('last_name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($guests);
     }

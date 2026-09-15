@@ -74,12 +74,12 @@ class GuestsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnEr
         $this->imported++;
 
         return new Guest([
-            'first_name' => $row['first_name'] ?? '',
-            'last_name' => $row['last_name'] ?? '',
-            'email' => !empty($row['email']) ? $row['email'] : null,
-            'phone' => !empty($row['phone']) ? $row['phone'] : null,
-            'whatsapp' => !empty($row['whatsapp']) ? $row['whatsapp'] : null,
-            'document_id' => !empty($row['document_id']) ? $row['document_id'] : null,
+            'first_name' => self::sanitizeCell($row['first_name'] ?? ''),
+            'last_name' => self::sanitizeCell($row['last_name'] ?? ''),
+            'email' => !empty($row['email']) ? self::sanitizeCell($row['email']) : null,
+            'phone' => !empty($row['phone']) ? self::sanitizeCell($row['phone']) : null,
+            'whatsapp' => !empty($row['whatsapp']) ? self::sanitizeCell($row['whatsapp']) : null,
+            'document_id' => !empty($row['document_id']) ? self::sanitizeCell($row['document_id']) : null,
         ]);
     }
 
@@ -93,6 +93,16 @@ class GuestsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnEr
             'whatsapp' => ['nullable', 'string', 'max:32'],
             'document_id' => ['nullable', 'string', 'max:64'],
         ];
+    }
+
+    /** Prefix spreadsheet formula triggers (=,+,-,@) so exports can't execute on open. */
+    protected static function sanitizeCell(mixed $value): mixed
+    {
+        if (!is_string($value) || $value === '' || !in_array($value[0], ['=', '+', '-', '@'], true)) {
+            return $value;
+        }
+
+        return "'" . $value;
     }
 
     public function onError(Throwable $e)

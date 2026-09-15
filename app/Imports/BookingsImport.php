@@ -7,15 +7,11 @@ use App\Models\Guest;
 use App\Models\Property;
 use App\Models\Room;
 use App\Enums\BookingStatus;
-use App\Services\VoucherService;
-use App\Services\BookingService;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
-use Maatwebsite\Excel\Concerns\WithBatchInserts;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Validators\Failure;
 use Carbon\Carbon;
 use Throwable;
@@ -27,12 +23,14 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
     protected $imported = 0;
     protected $skipped = 0;
     protected int $headingRow = 1;
+    protected int $currentRowNumber = 1;
     protected array $processedReferences = [];
     protected array $checkedInBookings = [];
 
     public function __construct(int $headingRow = 1)
     {
         $this->headingRow = $headingRow;
+        $this->currentRowNumber = $headingRow;
     }
 
     public function headingRow(): int
@@ -42,40 +40,80 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
 
     public function model(array $row)
     {
-        // Check if booking with same reference already exists (database or current batch)
-        if (!empty($row['reference'])) {
-            if (in_array($row['reference'], $this->processedReferences)) {
-                $this->skipped++;
-                return null;
-            }
-            
-            $existing = Booking::where('reference', $row['reference'])->first();
+        $this->currentRowNumber++;
+        $rowNum = $this->currentRowNumber;
+
+        // Check if booking with same reference or booking_code already exists (database including trashed or current batch)
+        $ref = !empty($row['reference']) ? trim((string) $row['reference']) : null;
+        $code = !empty($row['booking_code']) ? trim((string) $row['booking_code']) : null;
+
+        if ($ref && in_array($ref, $this->processedReferences, true)) {
+            $this->skipped++;
+            return null;
+        }
+
+        if ($ref || $code) {
+            $existing = Booking::withTrashed()
+                ->where(function ($q) use ($ref, $code) {
+                    if ($ref) {
+                        $q->where('reference', $ref);
+                    }
+                    if ($code) {
+                        $ref ? $q->orWhere('booking_code', $code) : $q->where('booking_code', $code);
+                    }
+                })
+                ->first();
+
             if ($existing) {
                 $this->skipped++;
                 return null;
             }
-            
-            $this->processedReferences[] = $row['reference'];
         }
 
-        // Find guest by email or create new
+        if ($ref) {
+            $this->processedReferences[] = $ref;
+        }
+
+        // Find guest by email, phone, or name before creating new to prevent duplicate guest profiles
         $guest = null;
         if (!empty($row['guest_email'])) {
             $guest = Guest::where('email', $row['guest_email'])->first();
         }
 
+        if (!$guest && !empty($row['guest_phone'])) {
+            $rawPhone = trim((string) $row['guest_phone']);
+            $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
+            $guest = Guest::where('phone', $rawPhone)
+                ->orWhere('whatsapp', $rawPhone)
+                ->when(!empty($cleanPhone), function ($q) use ($cleanPhone) {
+                    $q->orWhere('phone', 'like', "%{$cleanPhone}%")
+                      ->orWhere('whatsapp', 'like', "%{$cleanPhone}%");
+                })
+                ->first();
+        }
+
+        if (!$guest && (!empty($row['guest_first_name']) || !empty($row['guest_last_name']))) {
+            $firstName = trim((string) ($row['guest_first_name'] ?? ''));
+            $lastName = trim((string) ($row['guest_last_name'] ?? ''));
+            if ($firstName !== '' && $lastName !== '') {
+                $guest = Guest::where('first_name', $firstName)
+                    ->where('last_name', $lastName)
+                    ->first();
+            }
+        }
+
         if (!$guest && (!empty($row['guest_first_name']) || !empty($row['guest_last_name']))) {
             $guest = Guest::create([
-                'first_name' => $row['guest_first_name'] ?? '',
-                'last_name' => $row['guest_last_name'] ?? '',
-                'email' => !empty($row['guest_email']) ? $row['guest_email'] : null,
-                'phone' => !empty($row['guest_phone']) ? $row['guest_phone'] : null,
+                'first_name' => $this->sanitizeCell($row['guest_first_name'] ?? ''),
+                'last_name' => $this->sanitizeCell($row['guest_last_name'] ?? ''),
+                'email' => !empty($row['guest_email']) ? $this->sanitizeCell($row['guest_email']) : null,
+                'phone' => !empty($row['guest_phone']) ? $this->sanitizeCell($row['guest_phone']) : null,
             ]);
         }
 
         if (!$guest) {
             $this->failures[] = [
-                'row' => 'N/A',
+                'row' => $rowNum,
                 'attribute' => 'guest',
                 'errors' => ['Guest information is required'],
                 'values' => $row,
@@ -93,7 +131,7 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
 
         if (!$property) {
             $this->failures[] = [
-                'row' => 'N/A',
+                'row' => $rowNum,
                 'attribute' => 'property',
                 'errors' => ['Property not found'],
                 'values' => $row,
@@ -117,7 +155,7 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             $checkOut = $this->parseDate($row['check_out'] ?? null);
         } catch (\Exception $e) {
             $this->failures[] = [
-                'row' => 'N/A',
+                'row' => $rowNum,
                 'attribute' => 'dates',
                 'errors' => ['Invalid date format'],
                 'values' => $row,
@@ -127,7 +165,7 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
 
         if (!$checkIn || !$checkOut) {
             $this->failures[] = [
-                'row' => 'N/A',
+                'row' => $rowNum,
                 'attribute' => 'dates',
                 'errors' => ['Check-in and check-out dates are required'],
                 'values' => $row,
@@ -139,11 +177,8 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         $nights = $checkIn->copy()->startOfDay()->diffInDays($checkOut->copy()->startOfDay());
 
         // Parse status
-        $status = BookingStatus::ExpectedArrival;
-        if (!empty($row['status'])) {
-            $statusValue = strtolower(str_replace(' ', '_', $row['status']));
-            $status = BookingStatus::tryFrom($statusValue) ?? BookingStatus::ExpectedArrival;
-        }
+        $rawStatus = $row['status'] ?? $row['reservation_status'] ?? null;
+        $status = $this->mapStatus($rawStatus instanceof BookingStatus ? $rawStatus->value : (string) $rawStatus);
 
         $this->imported++;
 
@@ -236,16 +271,27 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         }
 
         // 6. Status mapping
-        if (empty($data['status']) && !empty($data['reservation_status'])) {
-            $resStatus = trim($data['reservation_status']);
-            if ($resStatus === '1' || strtolower($resStatus) === 'confirmed' || strtolower($resStatus) === 'checked in' || strtolower($resStatus) === 'checked_in') {
-                $data['status'] = 'check_in';
-            } else {
-                $data['status'] = 'expected_arrival';
-            }
-        }
+        $rawStatus = $data['status'] ?? $data['reservation_status'] ?? $data['res_status'] ?? $data['booking_status'] ?? null;
+        $data['status'] = $this->mapStatus($rawStatus ? (string) $rawStatus : null)->value;
 
         return $data;
+    }
+
+    protected function mapStatus(?string $rawStatus): BookingStatus
+    {
+        if (empty($rawStatus)) {
+            return BookingStatus::ExpectedArrival;
+        }
+
+        $cleaned = strtolower(trim($rawStatus));
+        $normalized = str_replace([' ', '-'], '_', $cleaned);
+
+        return match ($normalized) {
+            'check_in', 'checked_in', 'in_house', 'inhouse' => BookingStatus::CheckIn,
+            'check_out', 'checked_out', 'expected_departure', 'departed' => BookingStatus::ExpectedDeparture,
+            'cancelled', 'canceled' => BookingStatus::Cancelled,
+            default => BookingStatus::ExpectedArrival,
+        };
     }
 
     public function rules(): array
@@ -345,5 +391,15 @@ class BookingsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
     public function getCheckedInBookings(): array
     {
         return $this->checkedInBookings;
+    }
+
+    /** Prefix spreadsheet formula triggers (=,+,-,@) so exports can't execute on open. */
+    protected function sanitizeCell(mixed $value): mixed
+    {
+        if (!is_string($value) || $value === '' || !in_array($value[0], ['=', '+', '-', '@'], true)) {
+            return $value;
+        }
+
+        return "'" . $value;
     }
 }

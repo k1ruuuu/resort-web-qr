@@ -16,7 +16,7 @@ class OutletApiController extends ApiController
         $outlets = $this->applyPropertyScope(Outlet::query())
             ->with(['property', 'facilityTemplates'])
             ->orderBy('name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($outlets);
     }
@@ -24,6 +24,7 @@ class OutletApiController extends ApiController
     public function show(Outlet $outlet): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
 
         $outlet->load(['property', 'facilityTemplates']);
 
@@ -43,9 +44,7 @@ class OutletApiController extends ApiController
             'is_active' => ['boolean'],
         ]));
 
-        if (!empty($request->facility_template_ids)) {
-            $outlet->facilityTemplates()->sync($request->facility_template_ids);
-        }
+        $outlet->facilityTemplates()->sync($request->validated('facility_template_ids', []));
 
         $outlet->load('facilityTemplates');
 
@@ -55,6 +54,7 @@ class OutletApiController extends ApiController
     public function update(Request $request, Outlet $outlet): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
 
         $outlet->update($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
@@ -65,9 +65,7 @@ class OutletApiController extends ApiController
             'is_active' => ['boolean'],
         ]));
 
-        if ($request->has('facility_template_ids')) {
-            $outlet->facilityTemplates()->sync($request->facility_template_ids);
-        }
+        $outlet->facilityTemplates()->sync($request->validated('facility_template_ids', []));
 
         return $this->respond($outlet->load('facilityTemplates'));
     }
@@ -75,6 +73,7 @@ class OutletApiController extends ApiController
     public function destroy(Outlet $outlet): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($outlet);
 
         $outlet->facilityTemplates()->detach();
         $outlet->delete();

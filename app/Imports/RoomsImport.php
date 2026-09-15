@@ -99,9 +99,9 @@ class RoomsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnErr
             'property_id' => $property->id,
             'area_id' => $area?->id,
             'room_type_id' => $roomType->id,
-            'number' => $number,
-            'code' => !empty($row['code']) ? trim((string) $row['code']) : null,
-            'label' => !empty($row['label']) ? trim((string) $row['label']) : null,
+            'number' => $this->sanitizeCell($number),
+            'code' => !empty($row['code']) ? $this->sanitizeCell(trim((string) $row['code'])) : null,
+            'label' => !empty($row['label']) ? $this->sanitizeCell(trim((string) $row['label'])) : null,
             'capacity' => !empty($row['capacity']) ? (int) $row['capacity'] : 2,
             'status' => $status,
         ]);
@@ -238,5 +238,15 @@ class RoomsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnErr
     public function getSkipped(): int
     {
         return $this->skipped;
+    }
+
+    /** Prefix spreadsheet formula triggers (=,+,-,@) so exports can't execute on open. */
+    protected function sanitizeCell(mixed $value): mixed
+    {
+        if (!is_string($value) || $value === '' || !in_array($value[0], ['=', '+', '-', '@'], true)) {
+            return $value;
+        }
+
+        return "'" . $value;
     }
 }

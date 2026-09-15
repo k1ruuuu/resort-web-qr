@@ -84,7 +84,7 @@ class FacilityTemplate extends Model
                 ->exists()
             // guest_vouchers.addition_map is a JSON object keyed by facility id
             || GuestVoucher::query()
-                ->whereRaw('JSON_EXTRACT(addition_map, ?) IS NOT NULL', ['$."' . $id . '"'])
+                ->whereRaw('JSON_EXTRACT(addition_map, ?) IS NOT NULL', ['$."' . ((int) $id) . '"'])
                 ->exists();
     }
 }

@@ -18,6 +18,7 @@ class DashboardApiController extends ApiController
 
     public function index(): JsonResponse
     {
+        abort_unless(auth()->user()?->can('reports.view'), 403);
         // Landing page for all authenticated roles (route group already enforces auth).
         $today = Carbon::today();
         $timezone = 'UTC';

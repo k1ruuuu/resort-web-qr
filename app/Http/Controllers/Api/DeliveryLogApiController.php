@@ -29,6 +29,6 @@ class DeliveryLogApiController extends ApiController
             $query->whereDate('created_at', '<=', $request->string('date_to'));
         }
 
-        return $this->respondPaginated($query->paginate($request->integer('per_page', 20)));
+        return $this->respondPaginated($query->paginate(min($request->integer('per_page', 20), 100)));
     }
 }

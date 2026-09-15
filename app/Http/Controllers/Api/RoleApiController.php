@@ -16,7 +16,7 @@ class RoleApiController extends ApiController
         $roles = Role::query()
             ->with('permissions')
             ->orderBy('name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($roles);
     }
@@ -59,7 +59,7 @@ class RoleApiController extends ApiController
             'permissions.*' => ['exists:permissions,id'],
         ]);
 
-        $role->update($data);
+        $role->update(['name' => $data['name']]);
 
         if (isset($data['permissions'])) {
             $role->syncPermissions($data['permissions']);

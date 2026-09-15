@@ -17,7 +17,7 @@ class UserApiController extends ApiController
         $users = User::query()
             ->with('roles')
             ->orderBy('name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($users);
     }

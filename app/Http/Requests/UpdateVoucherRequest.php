@@ -24,6 +24,17 @@ class UpdateVoucherRequest extends FormRequest
     public function withValidator(\Illuminate\Validation\Validator $validator): void
     {
         $validator->after(function ($validator) {
+            foreach (['facility_status', 'addition_map'] as $field) {
+                $value = $this->input($field);
+                if (is_array($value)) {
+                    foreach (array_keys($value) as $key) {
+                        if (!ctype_digit((string) $key)) {
+                            $validator->errors()->add("{$field}.{$key}", 'Invalid facility identifier.');
+                        }
+                    }
+                }
+            }
+
             $additionMap = $this->input('addition_map');
             if (empty($additionMap) || !is_array($additionMap)) {
                 return;

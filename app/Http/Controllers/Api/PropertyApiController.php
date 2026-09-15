@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 
 class PropertyApiController extends ApiController
 {
+    // ponytail: properties.manage treated as global; scope per-property when needed.
     public function index(): JsonResponse
     {
         $this->authorizePermission('properties.manage');
@@ -16,7 +17,7 @@ class PropertyApiController extends ApiController
         $properties = Property::query()
             ->withCount(['rooms', 'bookings'])
             ->orderBy('name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($properties);
     }

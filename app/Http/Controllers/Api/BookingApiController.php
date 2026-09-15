@@ -59,12 +59,13 @@ class BookingApiController extends ApiController
             $query->whereDate('check_out', '<=', $request->string('date_to'));
         }
 
-        return $this->respondPaginated($query->paginate($request->integer('per_page', 20)));
+        return $this->respondPaginated($query->paginate(min($request->integer('per_page', 20), 100)));
     }
 
     public function show(Booking $booking): JsonResponse
     {
         $this->authorizePermission('bookings.view');
+        $this->authorizePropertyAccess($booking);
 
         $booking->load(['guest', 'property', 'room', 'bookingFacilities.facilityTemplate', 'guestVoucher']);
 
@@ -86,6 +87,7 @@ class BookingApiController extends ApiController
     public function update(StoreBookingRequest $request, Booking $booking): JsonResponse
     {
         $this->authorizePermission('bookings.create');
+        $this->authorizePropertyAccess($booking);
 
         $booking = $this->bookings->updateBooking(
             $booking,
@@ -99,6 +101,7 @@ class BookingApiController extends ApiController
     public function destroy(Booking $booking): JsonResponse
     {
         $this->authorizePermission('bookings.create');
+        $this->authorizePropertyAccess($booking);
 
         $booking->delete();
 
@@ -108,6 +111,7 @@ class BookingApiController extends ApiController
     public function checkIn(Request $request, Booking $booking): JsonResponse
     {
         $this->authorizePermission('bookings.checkin');
+        $this->authorizePropertyAccess($booking);
 
         $facilityTemplateIds = collect($request->input('facility_template_ids', []))
             ->filter(fn($id) => filled($id))
@@ -128,6 +132,7 @@ class BookingApiController extends ApiController
     public function checkOut(Booking $booking): JsonResponse
     {
         $this->authorizePermission('bookings.checkout');
+        $this->authorizePropertyAccess($booking);
 
         $this->bookings->checkOut($booking);
 
@@ -136,6 +141,8 @@ class BookingApiController extends ApiController
 
     public function formData(): JsonResponse
     {
+        $this->authorizePermission('bookings.view');
+
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
 
         return $this->respond([

@@ -17,7 +17,7 @@ class FacilityApiController extends ApiController
             ->with('property')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($facilities);
     }
@@ -25,6 +25,7 @@ class FacilityApiController extends ApiController
     public function show(FacilityTemplate $facility): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
 
         $facility->load('property');
 
@@ -50,6 +51,7 @@ class FacilityApiController extends ApiController
     public function update(Request $request, FacilityTemplate $facility): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
 
         try {
             $facility->update($request->validate([
@@ -70,6 +72,7 @@ class FacilityApiController extends ApiController
     public function destroy(FacilityTemplate $facility): JsonResponse
     {
         $this->authorizePermission('facilities.manage');
+        $this->authorizePropertyAccess($facility);
 
         try {
             $facility->delete();

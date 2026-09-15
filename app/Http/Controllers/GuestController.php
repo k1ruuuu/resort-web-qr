@@ -87,7 +87,7 @@ class GuestController extends Controller
         abort_unless(auth()->user()?->can('guests.manage'), 403);
 
         $request->validate([
-            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,cvs,txt', 'max:10240'],
+            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,txt', 'mimes:csv,txt,xls,xlsx', 'max:10240'],
         ]);
 
         try {

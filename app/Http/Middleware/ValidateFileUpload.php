@@ -92,7 +92,7 @@ class ValidateFileUpload
                 return back()->withErrors(['file' => 'Invalid file type. Only CSV and Excel files are allowed.'])->withInput();
             }
 
-            $fileContent = file_get_contents($realPath, false, null, 0, 1024);
+            $fileContent = file_get_contents($realPath);
             
             // Check for PHP tags (code injection attempt)
             if (stripos($fileContent, '<?php') !== false || stripos($fileContent, '<?=') !== false) {

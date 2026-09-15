@@ -11,9 +11,10 @@ class StoreBookingRequest extends FormRequest
     {
         return $this->user()?->can('bookings.create') ?? false;
     }
-
     public function rules(): array
     {
+        $bookingId = $this->route('booking')?->id ?? $this->route('booking');
+
         return [
             'property_id' => ['required', 'exists:properties,id'],
             'guest_id' => ['required', 'exists:guests,id'],
@@ -23,8 +24,18 @@ class StoreBookingRequest extends FormRequest
                     $query->where('property_id', $this->input('property_id'));
                 }),
             ],
-            'booking_code' => ['nullable', 'string', 'max:32'],
-            'reference' => ['nullable', 'string', 'max:32'],
+            'booking_code' => [
+                'nullable',
+                'string',
+                'max:32',
+                Rule::unique('bookings', 'booking_code')->ignore($bookingId),
+            ],
+            'reference' => [
+                'nullable',
+                'string',
+                'max:32',
+                Rule::unique('bookings', 'reference')->ignore($bookingId),
+            ],
             'source' => ['nullable', 'string', 'max:64'],
             'room_label' => ['nullable', 'string', 'max:255'],
             'check_in' => ['required', 'date'],

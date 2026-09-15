@@ -26,8 +26,14 @@ class ReportService
             $to = Carbon::create($year, 12, 31)->endOfDay();
         } else {
             $filterType = 'date_range';
-            $from = Carbon::parse($request->input('from', now()->subDays(7)->toDateString()))->startOfDay();
-            $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+            $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date']);
+            try {
+                $from = Carbon::parse($request->input('from', now()->subDays(7)->toDateString()))->startOfDay();
+                $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+            } catch (\Exception) {
+                $from = now()->subDays(7)->startOfDay();
+                $to = now()->endOfDay();
+            }
         }
 
         if ($from->gt($to)) {

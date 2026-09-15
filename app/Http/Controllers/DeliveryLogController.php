@@ -25,6 +25,7 @@ class DeliveryLogController extends Controller
     {
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
+        $request->validate(['format' => 'nullable|in:xlsx,xls,csv']);
         $format = $request->input('format', 'xlsx');
 
         $logs = DeliveryLog::query()

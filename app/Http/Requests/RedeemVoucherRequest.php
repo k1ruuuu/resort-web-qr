@@ -21,7 +21,7 @@ class RedeemVoucherRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'qr_code' => ['required', 'string', 'max:255'],
+            'qr_code' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9+\-_]+$/'],
             'outlet_id' => ['required', 'exists:outlets,id'],
             'facility_template_id' => ['nullable', 'exists:facility_templates,id'], // Optional - will use outlet's facility if not provided
             'pax_used' => ['nullable', 'integer', 'min:1', 'max:50'],
