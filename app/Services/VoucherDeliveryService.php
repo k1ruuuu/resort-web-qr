@@ -311,53 +311,66 @@ class VoucherDeliveryService
             ->get();
 
         foreach ($pendingLogs as $log) {
-            DB::transaction(function () use ($log) {
+            // 1. Claim log atomically in a fast micro-transaction
+            $claimed = DB::transaction(function () use ($log) {
                 $lockedLog = DeliveryLog::query()->lockForUpdate()->find($log->id);
-                
-                if ($lockedLog->delivery_status !== 'pending') {
-                    return;
+                if (!$lockedLog || $lockedLog->delivery_status !== 'pending') {
+                    return null;
                 }
+                $lockedLog->update(['delivery_status' => 'processing']);
+                return $lockedLog;
+            });
 
-                try {
-                    $qrLocalPath = null;
+            if (!$claimed) {
+                continue;
+            }
 
-                    if (!empty($lockedLog->qr_path)) {
-                        $parsedUrl = parse_url($lockedLog->qr_path);
-                        $path = $parsedUrl['path'] ?? '';
-                        $filename = '';
-                        if (preg_match('/storage\/(qrcodes\/qr-[a-zA-Z0-9_-]+\.png)/', $path, $matches)) {
-                            $filename = $matches[1];
-                        } else {
-                            $filename = 'qrcodes/' . basename($path);
-                        }
+            // 2. Validate QR & prepare file OUTSIDE database transaction
+            try {
+                $qrLocalPath = null;
 
-                        if (!$this->qrStorage->exists($filename)) {
-                            throw new \RuntimeException("QR image file '{$filename}' not found on disk.");
-                        }
-
-                        $qrLocalPath = $this->qrStorage->getAbsolutePath($filename);
+                if (!empty($claimed->qr_path)) {
+                    $parsedUrl = parse_url($claimed->qr_path);
+                    $path = $parsedUrl['path'] ?? '';
+                    $filename = '';
+                    if (preg_match('/storage\/(qrcodes\/qr-[a-zA-Z0-9_-]+\.png)/', $path, $matches)) {
+                        $filename = $matches[1];
+                    } else {
+                        $filename = 'qrcodes/' . basename($path);
                     }
-                } catch (\Throwable $e) {
-                    Log::error("Validation failed for pending log ID {$lockedLog->id}: " . $e->getMessage());
-                    $this->logs->markFailed($lockedLog->id, "Validation Error: " . $e->getMessage());
-                    return;
-                }
 
-                $guestName = $lockedLog->booking?->guest?->full_name;
+                    if (!$this->qrStorage->exists($filename)) {
+                        throw new \RuntimeException("QR image file '{$filename}' not found on disk.");
+                    }
+
+                    $qrLocalPath = $this->qrStorage->getAbsolutePath($filename);
+                }
+            } catch (\Throwable $e) {
+                Log::error("Validation failed for pending log ID {$claimed->id}: " . $e->getMessage());
+                $this->logs->markFailed($claimed->id, "Validation Error: " . $e->getMessage());
+                continue;
+            }
+
+            // 3. Send external HTTP request OUTSIDE database transaction
+            $guestName = $claimed->booking?->guest?->full_name;
+            try {
                 $result = $this->sender()->send(
-                    $lockedLog->phone_number,
-                    $lockedLog->message_content,
-                    $lockedLog->qr_path,
+                    $claimed->phone_number,
+                    $claimed->message_content,
+                    $claimed->qr_path,
                     $guestName,
                     $qrLocalPath
                 );
 
                 if ($result['success']) {
-                    $this->logs->markSent($lockedLog->id, $result['response']);
+                    $this->logs->markSent($claimed->id, $result['response']);
                 } else {
-                    $this->logs->markFailed($lockedLog->id, $result['message']);
+                    $this->logs->markFailed($claimed->id, $result['message']);
                 }
-            });
+            } catch (\Throwable $e) {
+                Log::error("WhatsApp send exception for log ID {$claimed->id}: " . $e->getMessage());
+                $this->logs->markFailed($claimed->id, "Exception: " . $e->getMessage());
+            }
         }
     }
 

@@ -78,7 +78,7 @@ class VoucherApiController extends ApiController
             $query->whereDate('generated_at', '<=', $request->string('date_to'));
         }
 
-        $vouchers = $query->paginate($request->integer('per_page', 20));
+        $vouchers = $query->paginate(min($request->integer('per_page', 20), 100));
 
         // Lazy expiry: keep API list statuses fresh even without cron/scheduler
         foreach ($vouchers as $voucher) {
@@ -107,9 +107,10 @@ class VoucherApiController extends ApiController
 
         try {
             if ($request->filled('booking_id')) {
-                $booking = Booking::query()
-                    ->with(['property', 'room.roomType', 'bookingFacilities'])
-                    ->findOrFail($request->validated('booking_id'));
+                $booking = $this->applyPropertyScope(
+                    Booking::query()->with(['property', 'room.roomType', 'bookingFacilities']),
+                    'property_id'
+                )->findOrFail($request->validated('booking_id'));
                 $created = $this->vouchers->generateForBooking($booking);
             } else {
                 $created = $this->vouchers->generateTemporaryVoucher($request->validated());
@@ -285,7 +286,8 @@ class VoucherApiController extends ApiController
         $currentDateTime = Carbon::now($timezone);
         $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
         $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
-        $expirationDateTime = $checkOutDate->copy()->setTime(21, 0, 0);
+        $cutoffTime = \App\Models\Setting::get('maintenance.checkout_cutoff', '12:35');
+        $expirationDateTime = $checkOutDate->copy()->setTimeFromTimeString($cutoffTime);
 
         if ($currentDateTime->lt($checkInDate)) {
             if ($outlet && $user) {
@@ -442,6 +444,8 @@ class VoucherApiController extends ApiController
 
     public function formData(): JsonResponse
     {
+        $this->authorizePermission('vouchers.view');
+
         $properties = Property::query()->orderBy('name')->get();
         $facilityTemplates = FacilityTemplate::query()
             ->where('is_active', true)

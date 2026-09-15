@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Enums\BookingStatus;
 use App\Enums\VoucherStatus;
 use App\Models\Booking;
-use App\Models\DeliveryLog;
 use App\Models\GuestVoucher;
 use App\Models\Setting;
 use App\Services\AuditService;
@@ -66,7 +65,7 @@ class DailyMaintenance extends Command
     private function runAutoCheckout(): bool
     {
         $this->info('Checking for bookings to check out (past expected departure)...');
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
         $count = 0;
 
         Booking::query()
@@ -199,7 +198,7 @@ class DailyMaintenance extends Command
 
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
 
         $checkOutDate = Carbon::parse($voucher->booking->check_out)
             ->setTimezone($timezone)
