@@ -77,6 +77,7 @@ class QrScanLogController extends Controller
     {
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
+        $request->validate(['format' => 'nullable|in:xlsx,xls,csv']);
         $format = $request->input('format', 'xlsx'); // xlsx, xls, csv
 
         // Build the same query as index
@@ -142,6 +143,8 @@ class QrScanLogController extends Controller
 
     public function latestScans(Request $request)
     {
+        abort_unless(auth()->user()?->can('reports.view'), 403);
+
         $afterId = (int) $request->input('after_id', 0);
 
         if ($afterId === 0) {

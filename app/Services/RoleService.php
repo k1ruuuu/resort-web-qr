@@ -34,6 +34,10 @@ class RoleService
         return DB::transaction(function () use ($role, $data) {
             $oldValues = $role->toArray();
 
+            if (in_array($role->name, ['admin', 'super-admin']) && isset($data['name']) && $data['name'] !== $role->name) {
+                throw new \InvalidArgumentException("The '{$role->name}' role name cannot be changed.");
+            }
+
             $role->update([
                 'name' => $data['name'],
             ]);
@@ -52,6 +56,10 @@ class RoleService
 
     public function delete(Role $role): void
     {
+        if (in_array($role->name, ['admin', 'super-admin'])) {
+            throw new \InvalidArgumentException("The '{$role->name}' role cannot be deleted.");
+        }
+
         DB::transaction(function () use ($role) {
             $oldValues = $role->toArray();
             $role->delete();

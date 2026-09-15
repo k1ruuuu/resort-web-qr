@@ -27,6 +27,12 @@ class ReportController extends Controller
         $facilityId = $request->integer('facility_id') ?: null;
         $outletId = $request->integer('outlet_id') ?: null;
 
+        $user = auth()->user();
+        if (!$user->hasRole('super-admin')) {
+            $allowed = $user->properties()->pluck('property_id');
+            abort_unless($propertyId === null || $allowed->contains($propertyId), 403);
+        }
+
         return view('reports.index', [
             'from' => $from,
             'to' => $to,
@@ -62,7 +68,6 @@ class ReportController extends Controller
     {
         abort_unless(auth()->user()?->can('reports.export'), 403);
 
-        $format = $request->input('format', 'xlsx');
         $period = $reports->resolvePeriod($request);
         $from = $period['from'];
         $to = $period['to'];
@@ -70,6 +75,15 @@ class ReportController extends Controller
         $propertyId = $request->integer('property_id') ?: null;
         $facilityId = $request->integer('facility_id') ?: null;
         $outletId = $request->integer('outlet_id') ?: null;
+
+        $request->validate(['format' => 'nullable|in:xlsx,xls,csv']);
+        $format = $request->input('format', 'xlsx');
+
+        $user = auth()->user();
+        if (!$user->hasRole('super-admin')) {
+            $allowed = $user->properties()->pluck('property_id');
+            abort_unless($propertyId === null || $allowed->contains($propertyId), 403);
+        }
 
         $filters = $request->only(['filter_type', 'from', 'to', 'month', 'year', 'property_id', 'facility_id', 'outlet_id']);
 

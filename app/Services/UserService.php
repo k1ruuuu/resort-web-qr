@@ -50,8 +50,11 @@ class UserService
                 $updateData['username'] = !empty($data['username']) ? trim($data['username']) : null;
             }
 
-            if (!empty($data['password'])) {
+            $passwordChanged = !empty($data['password']);
+            if ($passwordChanged) {
                 $updateData['password'] = Hash::make($data['password']);
+                // Invalidate remember tokens so stolen cookies die on password change.
+                $updateData['remember_token'] = null;
             }
 
             $user->update($updateData);

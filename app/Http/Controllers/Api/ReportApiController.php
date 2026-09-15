@@ -20,6 +20,13 @@ class ReportApiController extends ApiController
     {
         $this->authorizePermission('reports.view');
 
+        $user = auth()->user();
+        if (!$user->hasRole('super-admin')) {
+            $allowed = $user->properties()->pluck('property_id');
+            $propertyId = $request->integer('property_id') ?: null;
+            abort_unless($propertyId === null || $allowed->contains($propertyId), 403);
+        }
+
         $data = $this->reports->generate(
             $request->input('filter_type', 'date_range'),
             $request->input('from'),

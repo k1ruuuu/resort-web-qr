@@ -17,7 +17,7 @@ class RoomApiController extends ApiController
         $rooms = $this->applyPropertyScope(Room::query())
             ->with(['property', 'area', 'roomType'])
             ->orderBy('number')
-            ->paginate(request()->integer('per_page', 20));
+            ->paginate(min(request()->integer('per_page', 20), 100));
 
         return $this->respondPaginated($rooms);
     }
@@ -25,6 +25,7 @@ class RoomApiController extends ApiController
     public function show(Room $room): JsonResponse
     {
         $this->authorizePermission('rooms.manage');
+        $this->authorizePropertyAccess($room);
 
         $room->load(['property', 'area', 'roomType']);
 
@@ -55,6 +56,7 @@ class RoomApiController extends ApiController
     public function update(Request $request, Room $room): JsonResponse
     {
         $this->authorizePermission('rooms.manage');
+        $this->authorizePropertyAccess($room);
 
         $room->update($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
@@ -76,6 +78,7 @@ class RoomApiController extends ApiController
     public function destroy(Room $room): JsonResponse
     {
         $this->authorizePermission('rooms.manage');
+        $this->authorizePropertyAccess($room);
 
         $room->delete();
 

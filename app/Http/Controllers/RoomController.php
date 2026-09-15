@@ -61,6 +61,7 @@ class RoomController extends Controller
     public function show(Room $room): View
     {
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
+        $this->authorizePropertyAccess($room);
 
         $room->load(['property', 'area', 'roomType']);
 
@@ -70,6 +71,7 @@ class RoomController extends Controller
     public function edit(Room $room): View
     {
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
+        $this->authorizePropertyAccess($room);
 
         $room->load(['property', 'area', 'roomType']);
         $properties = Property::query()->where('is_active', true)->orderBy('name')->get();
@@ -82,6 +84,7 @@ class RoomController extends Controller
     public function update(Request $request, Room $room): RedirectResponse
     {
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
+        $this->authorizePropertyAccess($room);
 
         $room->update($request->validate([
             'property_id' => ['required', 'exists:properties,id'],
@@ -103,6 +106,7 @@ class RoomController extends Controller
     public function destroy(Room $room): RedirectResponse
     {
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
+        $this->authorizePropertyAccess($room);
 
         $room->delete();
 
@@ -121,7 +125,7 @@ class RoomController extends Controller
         abort_unless(auth()->user()?->can('rooms.manage'), 403);
 
         $request->validate([
-            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,cvs,txt', 'max:10240'],
+            'file' => ['required', 'file', 'extensions:csv,xls,xlsx,txt', 'mimes:csv,txt,xls,xlsx', 'max:10240'],
         ]);
 
         try {

@@ -9,6 +9,7 @@ use Illuminate\View\View;
 
 class PropertyController extends Controller
 {
+    // ponytail: properties.manage treated as global; scope per-property when needed.
     public function index(): View
     {
         abort_unless(auth()->user()?->can('properties.manage'), 403);
