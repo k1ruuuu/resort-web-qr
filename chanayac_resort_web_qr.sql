@@ -1571,7 +1571,8 @@ INSERT INTO `migrations` VALUES
 (31,'2026_08_31_042602_add_performance_indexes_for_scalability',8),
 (32,'2026_09_02_000001_add_pax_used_to_qr_scan_logs_table',9),
 (33,'2026_09_03_000001_add_username_to_users_table',10),
-(34,'2026_09_04_000001_add_soft_deletes_to_guests_and_bookings_tables',11);
+(34,'2026_09_04_000001_add_soft_deletes_to_guests_and_bookings_tables',11),
+(35,'2026_09_08_000001_create_voucher_facility_exchanges_table',12);
 /*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -2609,14 +2610,14 @@ INSERT INTO `settings` VALUES
 (3,'delivery.default_time','08:00','2026-07-23 23:25:40','2026-07-23 23:25:40'),
 (4,'delivery.timezone','Asia/Jakarta','2026-07-23 23:25:40','2026-07-23 23:25:40'),
 (5,'delivery.whatsapp_provider','Whacenter','2026-07-23 23:25:40','2026-07-31 21:16:33'),
-(6,'delivery.convia_api_key','sk_live_FNop1hrtGbs1b52B7ZKjuS2I77nr0i0VZtBKH_dgRLQ','2026-07-23 23:25:40','2026-07-23 23:50:25'),
+(6,'delivery.convia_api_key','REDACTED_ROTATE_ME','2026-07-23 23:25:40','2026-07-23 23:50:25'),
 (7,'delivery.message_template','Dear Mr/Mrs {guest_name}\r\n\r\n{room_name}\r\n\r\nYour voucher is now active and includes:\r\n{facility_access}\r\n\r\nPlease access your voucher through the link below:\r\n{voucher_link}\r\n\r\nTotal Guests: {total_pax}\r\n\r\nNeed Assistance During Your Stay?\r\n\r\nWhether you need to call a buggy, order in-room dining, or have any other requests, please feel free to contact us directly at this number.\r\n\r\nThank you, and we wish you a wonderful and relaxing stay with us at Chanaya Resort\r\n\r\nWarm regards,\r\nChanaya Resort Team.','2026-07-23 23:25:40','2026-08-21 21:35:50'),
 (8,'delivery.whatsapp_enabled','1','2026-07-23 23:50:25','2026-08-21 03:10:17'),
 (9,'delivery.delivery_method','public_link','2026-07-23 23:50:25','2026-07-31 21:16:33'),
 (10,'delivery.phone_filter_mode','global','2026-07-23 23:50:25','2026-08-29 01:39:58'),
 (11,'delivery.convia_template_name','','2026-07-28 11:48:40','2026-07-28 11:48:40'),
-(12,'delivery.whacenter_device_id','99954474-825a-4fde-839b-0343e2563eb2','2026-07-28 11:48:40','2026-08-26 20:16:55'),
-(13,'delivery.fonnte_api_key','93UUZ9CB8xpj23HsM34v','2026-07-28 22:24:53','2026-07-31 21:13:55');
+(12,'delivery.whacenter_device_id','REDACTED_ROTATE_ME','2026-07-28 11:48:40','2026-08-26 20:16:55'),
+(13,'delivery.fonnte_api_key','REDACTED_ROTATE_ME','2026-07-28 22:24:53','2026-07-31 21:13:55');
 /*!40000 ALTER TABLE `settings` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
@@ -2654,15 +2655,54 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES
-(1,'System Admin','admin','admin@resort.local',NULL,'$2y$12$XgL20f2VKqwSrwvslyPsd.9C4KTi.wML9pHIEQCbeRwfacDfHpeEq',1,'JUQqcGVjyrz9wmJ0CBeZr3NMm2tSxDX2bpOnItpuK9NriJoFGrzJZVbnncEx','2026-07-23 23:25:40','2026-07-23 23:25:40'),
-(2,'Staff Redeem','staff-redeem','staff-redeem@e-voucher.chanaya.co.id',NULL,'$2y$12$8sj.xL7AIKsIuJQOKIK2ouGN6ChQ2cFAZ8lyH0/mmDRzwFcbDnhCe',1,'yg9EM0PE14s9ik2n8xhN7DAzhy7PRAyvgxL8LrJZ0DtuSf45an8us0pau3Jn','2026-07-31 09:05:30','2026-07-31 09:05:30'),
-(3,'Staff Front Office','staff-fo','staff-fo@e-voucher.chanaya.co.id',NULL,'$2y$12$YtdBFvexc5RYByIJhywMcetwBZgiWkFS267EvjSBcRJK5Yv6SHVB6',1,NULL,'2026-07-31 09:05:57','2026-07-31 09:05:57'),
-(4,'Staff Accounting','staff-acc','staff-acc@e-voucher.chanaya.co.id',NULL,'$2y$12$i3gEOwRuwmQ2LHDqI0sYSexBpZp37gqR71NAx14NwyEXSzeiztXu.',1,NULL,'2026-08-25 18:43:06','2026-08-25 18:43:06'),
-(5,'demo e-voucher','demoevoucher','demoevoucher@e-voucher.chanaya.co.id',NULL,'$2y$12$9GkYRoVTI5XT/ZKa35gaIeftiSgjs6m.aovQG6lHzP6cAjlYLz9tm',1,NULL,'2026-08-25 18:47:22','2026-08-25 18:47:22');
+(1,'System Admin','admin','admin@resort.local',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-23 23:25:40','2026-07-23 23:25:40'),
+(2,'Staff Redeem','staff-redeem','staff-redeem@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-31 09:05:30','2026-07-31 09:05:30'),
+(3,'Staff Front Office','staff-fo','staff-fo@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-31 09:05:57','2026-07-31 09:05:57'),
+(4,'Staff Accounting','staff-acc','staff-acc@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-08-25 18:43:06','2026-08-25 18:43:06'),
+(5,'demo e-voucher','demoevoucher','demoevoucher@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-08-25 18:47:22','2026-08-25 18:47:22');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
 SET AUTOCOMMIT=@OLD_AUTOCOMMIT;
+
+--
+-- Table structure for table `voucher_facility_exchanges`
+--
+
+DROP TABLE IF EXISTS `voucher_facility_exchanges`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `voucher_facility_exchanges` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `guest_voucher_id` bigint(20) unsigned NOT NULL,
+  `exchange_date` date NOT NULL,
+  `from_facility_template_id` bigint(20) unsigned NOT NULL,
+  `to_facility_template_id` bigint(20) unsigned NOT NULL,
+  `pax` int(10) unsigned NOT NULL,
+  `notes` varchar(255) DEFAULT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `voucher_facility_exchanges_user_id_foreign` (`user_id`),
+  KEY `voucher_facility_exchanges_guest_voucher_id_exchange_date_index` (`guest_voucher_id`,`exchange_date`),
+  KEY `voucher_facility_exchanges_from_facility_template_id_index` (`from_facility_template_id`),
+  KEY `voucher_facility_exchanges_to_facility_template_id_index` (`to_facility_template_id`),
+  CONSTRAINT `voucher_facility_exchanges_from_facility_template_id_foreign` FOREIGN KEY (`from_facility_template_id`) REFERENCES `facility_templates` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `voucher_facility_exchanges_guest_voucher_id_foreign` FOREIGN KEY (`guest_voucher_id`) REFERENCES `guest_vouchers` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `voucher_facility_exchanges_to_facility_template_id_foreign` FOREIGN KEY (`to_facility_template_id`) REFERENCES `facility_templates` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `voucher_facility_exchanges_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `voucher_facility_exchanges`
+--
+
+LOCK TABLES `voucher_facility_exchanges` WRITE;
+/*!40000 ALTER TABLE `voucher_facility_exchanges` DISABLE KEYS */;
+/*!40000 ALTER TABLE `voucher_facility_exchanges` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Dumping routines for database 'resort_voucher'

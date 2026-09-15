@@ -110,24 +110,51 @@ class GuestVoucher extends Model
         }
 
         $tz = $this->property?->timezone ?? $this->booking->property?->timezone ?? 'Asia/Jakarta';
-        $now = ($now ? $now->copy() : Carbon::now($tz))->setTimezone($tz);
+
+        // If $now is not provided or is passed as date-only (00:00:00 today), resolve to current time in property timezone
+        if (!$now || ($now->isToday() && $now->format('H:i:s') === '00:00:00')) {
+            $now = Carbon::now($tz);
+        } else {
+            $now = $now->copy()->setTimezone($tz);
+        }
+
         $checkOutDate = $this->booking->check_out ? Carbon::parse($this->booking->check_out, $tz)->toDateString() : null;
+        if (!$checkOutDate) {
+            return false;
+        }
 
-        // Grace period applies on the check_out date
-        if ($checkOutDate && $now->toDateString() === $checkOutDate) {
-            $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
-            $cutoff = Carbon::parse($checkOutDate, $tz)->setTimeFromTimeString($cutoffTime);
-            $extendedCutoff = $cutoff->copy()->addHour(); // 1 hour past checkout cutoff
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
+        $cutoff = Carbon::parse($checkOutDate, $tz)->setTimeFromTimeString($cutoffTime);
+        $extendedCutoff = $cutoff->copy()->addHour(); // 13:35 WIB (1 hour past 12:35 checkout cutoff)
 
-            if ($this->booking->checked_out_at) {
-                $checkedOutAtLocal = Carbon::parse($this->booking->checked_out_at, $tz);
-                $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHour());
-            }
+        if ($this->booking->checked_out_at) {
+            $checkedOutAtLocal = Carbon::parse($this->booking->checked_out_at)->setTimezone($tz);
+            $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHour());
+        }
 
-            return $now->lte($extendedCutoff);
+        // Case 1: Booking is checked out
+        $isCheckedOut = ($this->booking->status === \App\Enums\BookingStatus::ExpectedDeparture) || !empty($this->booking->checked_out_at);
+
+        if ($isCheckedOut) {
+            $startOfGrace = $this->booking->checked_out_at
+                ? Carbon::parse($this->booking->checked_out_at)->setTimezone($tz)
+                : Carbon::parse($checkOutDate, $tz)->startOfDay();
+
+            return $now->gte($startOfGrace) && $now->lte($extendedCutoff);
+        }
+
+        // Case 2: Booking is still checked in (normal stay before checkout cutoff)
+        // Grace period ONLY starts when checkout cutoff is reached on checkout date
+        if ($now->toDateString() === $checkOutDate) {
+            return $now->gte($cutoff) && $now->lte($extendedCutoff);
         }
 
         return false;
+    }
+
+    public function facilityExchanges(): HasMany
+    {
+        return $this->hasMany(VoucherFacilityExchange::class);
     }
 
     public function getFacilityStatuses(?Carbon $date = null): Collection
@@ -152,6 +179,11 @@ class GuestVoucher extends Model
             ->groupBy('facility_template_id')
             ->pluck('total_used', 'facility_template_id');
 
+        // Load exchanges on or before requested date
+        $exchanges = $this->facilityExchanges()
+            ->where('exchange_date', '<=', $dateString)
+            ->get();
+
         // Handle temporary vouchers
         if ($this->category === 'temporary' && $allowedFacilityIds) {
             $facilities = \App\Models\FacilityTemplate::query()
@@ -163,9 +195,13 @@ class GuestVoucher extends Model
             $nowInPropertyTz = Carbon::now($this->property?->timezone ?? 'UTC');
             $isExpired = $this->expires_at !== null && $nowInPropertyTz->gte($this->expires_at);
 
-            return $facilities->map(function ($facility) use ($redemptions, $basePax, $addition, $additionFacilityIds, $additionMap, $isExpired) {
+            return $facilities->map(function ($facility) use ($redemptions, $basePax, $addition, $additionFacilityIds, $additionMap, $isExpired, $exchanges) {
                 $add = $additionMap[$facility->id] ?? (in_array($facility->id, $additionFacilityIds) ? $addition : 0);
-                $quota = $basePax + $add;
+                $incomingExchanges = $exchanges->where('to_facility_template_id', $facility->id)->sum('pax');
+                $outgoingExchanges = $exchanges->where('from_facility_template_id', $facility->id)->sum('pax');
+                $netExchangeDelta = $incomingExchanges - $outgoingExchanges;
+
+                $quota = max(0, $basePax + $add + $netExchangeDelta);
                 $used = (int) ($redemptions[$facility->id] ?? 0);
                 $remaining = max(0, $quota - $used);
                 $status = $isExpired ? 'unavailable' : ($remaining > 0 ? 'available' : 'used');
@@ -198,15 +234,21 @@ class GuestVoucher extends Model
 
         $bookingFacilities = $booking->bookingFacilities;
 
+        // Include any facilities that received incoming exchanges, even if not in original allowedFacilityIds
+        $exchangedTargetIds = $exchanges->pluck('to_facility_template_id')->unique()->all();
+        $effectiveAllowedIds = !empty($allowedFacilityIds)
+            ? array_unique(array_merge($allowedFacilityIds, $exchangedTargetIds))
+            : [];
+
         // Filter by voucher's granted facility IDs so removed facilities don't show
-        if ($allowedFacilityIds) {
+        if (!empty($effectiveAllowedIds)) {
             $bookingFacilities = $bookingFacilities->filter(fn($bf) =>
-                in_array($bf->facility_template_id, $allowedFacilityIds)
+                in_array($bf->facility_template_id, $effectiveAllowedIds)
             );
 
             // Include any allowed facility templates that were not yet saved in booking_facilities
             $existingTemplateIds = $bookingFacilities->pluck('facility_template_id')->all();
-            $missingTemplateIds = array_diff($allowedFacilityIds, $existingTemplateIds);
+            $missingTemplateIds = array_diff($effectiveAllowedIds, $existingTemplateIds);
 
             if (!empty($missingTemplateIds)) {
                 $missingTemplates = FacilityTemplate::query()
@@ -215,12 +257,14 @@ class GuestVoucher extends Model
                     ->get();
 
                 foreach ($missingTemplates as $template) {
+                    // If this facility was added solely via exchange (not in allowedFacilityIds), its base daily quota is 0
+                    $isExchangeOnly = !in_array($template->id, $allowedFacilityIds, true);
                     $virtualBf = new BookingFacility([
                         'booking_id' => $booking->id,
                         'facility_template_id' => $template->id,
                         'start_date' => $booking->check_in,
                         'end_date' => $booking->check_out,
-                        'quota_total' => $baseQuota,
+                        'quota_total' => $isExchangeOnly ? 0 : $baseQuota,
                     ]);
                     $virtualBf->setRelation('facilityTemplate', $template);
                     $bookingFacilities->push($virtualBf);
@@ -240,7 +284,7 @@ class GuestVoucher extends Model
         $isOneTimeGrace = $this->isOneTimeGracePeriodActive($date);
         $booking = $this->booking;
 
-        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $everUsedByFacility, $oneTimeFacilityCodes, $timezone, $isOneTimeGrace, $booking) {
+        return $bookingFacilities->map(function ($bf) use ($dateString, $baseQuota, $addition, $additionFacilityIds, $additionMap, $redemptions, $everUsedByFacility, $oneTimeFacilityCodes, $timezone, $isOneTimeGrace, $booking, $exchanges) {
             if (!$bf->facilityTemplate) {
                 return null;
             }
@@ -256,30 +300,42 @@ class GuestVoucher extends Model
 
             // Base quota per day
             $baseDailyQuota = (int) ($bf->quota_total ?? $baseQuota);
+
+            // Calculate exchange delta up to requested date
+            $incomingExchanges = $exchanges->where('to_facility_template_id', $bf->facility_template_id)->sum('pax');
+            $outgoingExchanges = $exchanges->where('from_facility_template_id', $bf->facility_template_id)->sum('pax');
+            $netExchangeDelta = $incomingExchanges - $outgoingExchanges;
             
             // Calculate accumulated quota for daily facilities based on days elapsed (rollover capped at booked nights)
             if ($isOneTimeFacility) {
-                $accumulatedQuota = $baseDailyQuota;
+                $accumulatedQuota = max(0, $baseDailyQuota + $netExchangeDelta);
             } else {
                 // Days elapsed from start date up to the requested date (min 1)
                 $daysElapsed = max(0, Carbon::parse($start)->diffInDays(Carbon::parse($dateString))) + 1;
                 $maxDays = max(1, (int) ($booking?->nights ?? 1));
                 $daysCount = min($daysElapsed, $maxDays);
-                $accumulatedQuota = $baseDailyQuota * $daysCount;
+                $accumulatedQuota = max(0, ($baseDailyQuota * $daysCount) + $netExchangeDelta);
             }
             
-            // Addition applies once if one-time, or if it was granted on/before the requested date
-            $additionApplies = $isOneTimeFacility || ($this->addition_date && $this->addition_date->toDateString() <= $dateString);
+            // Addition applies once if one-time, or if the requested date matches addition_date
+            $additionApplies = $isOneTimeFacility || ($this->addition_date && $this->addition_date->toDateString() === $dateString);
             $facilityQuota = $accumulatedQuota + ($additionApplies ? $facilityAdd : 0);
 
-            // Both one-time and daily facilities are available within their date range.
-            // One-time facilities also remain available during the 1-hour grace period past checkout cutoff.
-            $inPeriod = ($dateString >= $start && $dateString <= $end) || ($isOneTimeGrace && $isOneTimeFacility);
+            // During grace period, only one-time facilities remain in period;
+            // During normal stay, facilities are in period if within their date range.
+            $inPeriod = $isOneTimeGrace
+                ? $isOneTimeFacility
+                : ($dateString >= $start && $dateString <= $end);
             $isAvailable = $inPeriod;
 
             $used = (int) (($isOneTimeFacility ? $everUsedByFacility : $redemptions)[$bf->facility_template_id] ?? 0);
             $remaining = max(0, $facilityQuota - $used);
             $status = !$inPeriod ? 'unavailable' : ($isAvailable && $remaining > 0 ? 'available' : 'used');
+
+            // Hide facility if it has 0 quota, 0 remaining, and 0 used (e.g. non-granted facility with no active exchange today)
+            if ($facilityQuota === 0 && $used === 0) {
+                return null;
+            }
 
             return (object) [
                 'facility_template_id' => $bf->facility_template_id,

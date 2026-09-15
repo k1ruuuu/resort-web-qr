@@ -282,10 +282,13 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-primary" title="View">
+                            <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-primary" title="View Details">
                                 <i class="fas fa-qrcode"></i>
                             </a>
                             @can('vouchers.edit')
+                                <a href="{{ route('vouchers.show', $voucher) }}" class="btn btn-sm btn-outline-info" title="Tukar Fasilitas Dinner">
+                                    <i class="fas fa-exchange-alt"></i>
+                                </a>
                                 <a href="{{ route('vouchers.edit', $voucher) }}" class="btn btn-sm btn-outline-warning" title="Edit Facilities">
                                     <i class="fas fa-edit"></i>
                                 </a>
