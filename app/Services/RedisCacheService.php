@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\GuestVoucher;
 use App\Models\Booking;
 use App\Models\Outlet;
-use App\Models\FacilityTemplate;
 use Illuminate\Support\Facades\Cache;
 
 class RedisCacheService
@@ -85,22 +84,7 @@ class RedisCacheService
         Cache::forget("voucher:facilities:{$voucher->id}");
     }
 
-    /**
-     * Cache facility statuses for today
-     */
-    public function cacheFacilityStatuses(int $voucherId, string $date, $statuses): void
-    {
-        $key = "voucher:facilities:{$voucherId}:{$date}";
-        Cache::put($key, $statuses, self::TTL_SHORT);
-    }
 
-    /**
-     * Get cached facility statuses
-     */
-    public function getFacilityStatuses(int $voucherId, string $date)
-    {
-        return Cache::get("voucher:facilities:{$voucherId}:{$date}");
-    }
 
     /**
      * Cache booking data
@@ -125,15 +109,6 @@ class RedisCacheService
     }
 
     /**
-     * Cache outlet data
-     */
-    public function cacheOutlet(Outlet $outlet): void
-    {
-        $key = "outlet:data:{$outlet->id}";
-        Cache::put($key, $outlet->load('facilityTemplates'), self::TTL_LONG);
-    }
-
-    /**
      * Get outlet from cache
      */
     public function getOutlet(int $outletId): ?Outlet
@@ -145,20 +120,6 @@ class RedisCacheService
                 return Outlet::query()->with('facilityTemplates')->find($outletId);
             }
         );
-    }
-
-    /**
-     * Cache active outlets list
-     */
-    public function cacheActiveOutlets(): void
-    {
-        $outlets = Outlet::query()
-            ->where('is_active', true)
-            ->with('facilityTemplates')
-            ->orderBy('name')
-            ->get();
-        
-        Cache::put('outlets:active', $outlets, self::TTL_LONG);
     }
 
     /**
@@ -221,13 +182,5 @@ class RedisCacheService
     public function getRedemptionCount(int $facilityId, string $date): int
     {
         return (int) Cache::get("analytics:redemptions:{$facilityId}:{$date}", 0);
-    }
-
-    /**
-     * Clear all caches (use with caution)
-     */
-    public function clearAllCaches(): void
-    {
-        Cache::flush();
     }
 }

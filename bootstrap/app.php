@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\AuditRequest;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -10,7 +9,6 @@ use Illuminate\Session\TokenMismatchException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
-use Illuminate\Http\Middleware\TrustProxies;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -28,9 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: '*');
         } elseif ($trustedProxies) {
             $middleware->trustProxies(at: explode(',', $trustedProxies));
-        } elseif (env('APP_ENV') === 'local') {
-            // Only trust all proxies in local development by default
-            $middleware->trustProxies(at: '*');
         }
 
         // Security middleware
@@ -46,7 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'audit' => AuditRequest::class,
             'ip.whitelist' => \App\Http\Middleware\IpWhitelistMiddleware::class,
             'validate.upload' => \App\Http\Middleware\ValidateFileUpload::class,
             'attack.detection' => \App\Http\Middleware\AttackDetectionMiddleware::class,
