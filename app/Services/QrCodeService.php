@@ -45,26 +45,9 @@ class QrCodeService
 
     public function templateResponse(string $payload): Response
     {
-        $options = new QROptions([
-            'outputType'   => QRCode::OUTPUT_IMAGE_PNG,
-            'outputBase64' => false,
-            'eccLevel'     => QRCode::ECC_L,
-            'scale'        => 12,
-            'margin'       => 2,
-        ]);
+        $merged = $this->renderMergedTemplate($payload);
 
-        $qrRawData = (new QRCode($options))->render($payload);
-        $qrImage = imagecreatefromstring($qrRawData);
-
-        if ($qrImage === false) {
-            abort(500, 'Failed to generate QR code image.');
-        }
-
-        $templateImage = $this->loadTemplateImage();
-
-        if ($templateImage === null) {
-            imagedestroy($qrImage);
-
+        if ($merged === null) {
             $options = new QROptions([
                 'outputType' => QRCode::OUTPUT_IMAGE_PNG,
                 'outputBase64' => true,
@@ -84,28 +67,10 @@ class QrCodeService
             );
         }
 
-        $templateWidth = imagesx($templateImage);
-        $templateHeight = imagesy($templateImage);
-        $qrWidth = imagesx($qrImage);
-        $qrHeight = imagesy($qrImage);
-
-        $posX = (int) (($templateWidth - $qrWidth) / 2);
-        $posY = (int) ($templateHeight * 0.48);
-
-        if ($posX < 0 || $posY < 0) {
-            imagedestroy($templateImage);
-            imagedestroy($qrImage);
-            abort(500, 'QR code is too large for the template.');
-        }
-
-        imagecopy($templateImage, $qrImage, $posX, $posY, 0, 0, $qrWidth, $qrHeight);
-
         ob_start();
-        imagejpeg($templateImage, null, 90);
+        imagejpeg($merged, null, 90);
         $finalImage = ob_get_clean();
-
-        imagedestroy($templateImage);
-        imagedestroy($qrImage);
+        imagedestroy($merged);
 
         return response($finalImage, 200, [
             'Content-Type'  => 'image/jpeg',
@@ -115,6 +80,29 @@ class QrCodeService
     }
 
     public function templateImageBytes(string $payload): string
+    {
+        $merged = $this->renderMergedTemplate($payload);
+
+        if ($merged === null) {
+            $options = new QROptions([
+                'outputType'   => QRCode::OUTPUT_IMAGE_PNG,
+                'outputBase64' => false,
+                'eccLevel'     => QRCode::ECC_L,
+                'scale'        => 12,
+                'margin'       => 2,
+            ]);
+            return (new QRCode($options))->render($payload);
+        }
+
+        ob_start();
+        imagepng($merged, null, 9);
+        $pngData = ob_get_clean();
+        imagedestroy($merged);
+
+        return $pngData;
+    }
+
+    private function renderMergedTemplate(string $payload): ?\GdImage
     {
         $options = new QROptions([
             'outputType'   => QRCode::OUTPUT_IMAGE_PNG,
@@ -128,15 +116,13 @@ class QrCodeService
         $qrImage = imagecreatefromstring($qrRawData);
 
         if ($qrImage === false) {
-            throw new \RuntimeException('Failed to generate QR code image.');
+            return null;
         }
 
         $templateImage = $this->loadTemplateImage();
-
         if ($templateImage === null) {
             imagedestroy($qrImage);
-
-            return $qrRawData;
+            return null;
         }
 
         $templateWidth = imagesx($templateImage);
@@ -150,19 +136,13 @@ class QrCodeService
         if ($posX < 0 || $posY < 0) {
             imagedestroy($templateImage);
             imagedestroy($qrImage);
-            throw new \RuntimeException('QR code is too large for the template.');
+            return null;
         }
 
         imagecopy($templateImage, $qrImage, $posX, $posY, 0, 0, $qrWidth, $qrHeight);
-
-        ob_start();
-        imagepng($templateImage, null, 9);
-        $pngData = ob_get_clean();
-
-        imagedestroy($templateImage);
         imagedestroy($qrImage);
 
-        return $pngData;
+        return $templateImage;
     }
 
     private function loadTemplateImage(): \GdImage|null
@@ -195,11 +175,6 @@ class QrCodeService
     public function payloadForVoucher(GuestVoucher $voucher): string
     {
         return $voucher->secure_token;
-    }
-
-    public function publicPageUrl(GuestVoucher $voucher): string
-    {
-        return route('vouchers.public', ['token' => $voucher->secure_token]);
     }
 
     public function imageUrl(GuestVoucher $voucher): string

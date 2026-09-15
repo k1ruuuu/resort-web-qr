@@ -57,7 +57,15 @@ class RoleController extends Controller
 
     public function update(UpdateRoleRequest $request, Role $role): RedirectResponse
     {
-        $this->roleService->update($role, $request->validated());
+        $data = $request->validated();
+
+        if (in_array($role->name, ['admin', 'super-admin']) && isset($data['name']) && $data['name'] !== $role->name) {
+            return redirect()
+                ->route('roles.index')
+                ->with('error', "The '{$role->name}' role name cannot be changed.");
+        }
+
+        $this->roleService->update($role, $data);
 
         return redirect()
             ->route('roles.index')
@@ -68,10 +76,10 @@ class RoleController extends Controller
     {
         $this->authorizePermission('roles.manage');
 
-        if ($role->name === 'admin') {
+        if (in_array($role->name, ['admin', 'super-admin'])) {
             return redirect()
                 ->route('roles.index')
-                ->with('error', 'The admin role cannot be deleted.');
+                ->with('error', "The '{$role->name}' role cannot be deleted.");
         }
 
         $this->roleService->delete($role);
@@ -79,10 +87,5 @@ class RoleController extends Controller
         return redirect()
             ->route('roles.index')
             ->with('success', "Role '{$role->name}' deleted successfully.");
-    }
-
-    private function authorizePermission(string $permission): void
-    {
-        abort_unless(auth()->user()?->can($permission), 403);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Support\PhoneNumberHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -115,48 +116,16 @@ class WhacenterService
      */
     private function maskPhone(string $phone): string
     {
-        $digits = preg_replace('/[^0-9]/', '', $phone);
-        if (strlen($digits) <= 4) {
-            return $digits === '' ? '(empty)' : '****';
-        }
-
-        return substr($digits, 0, 3) . '****' . substr($digits, -2);
+        return PhoneNumberHelper::mask($phone);
     }
 
-    /**
-     * WHACENTER expects an international format without a leading zero (e.g. 628123456789).
-     */
     private function normalizePhoneForWhacenter(string $phone): string
     {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-
-        if (str_starts_with($phone, '0')) {
-            return '62' . substr($phone, 1);
-        }
-
-        if (str_starts_with($phone, '62')) {
-            return $phone;
-        }
-
-        if (str_starts_with($phone, '8')) {
-            return '62' . $phone;
-        }
-
-        return $phone;
+        return PhoneNumberHelper::normalizeTo62($phone);
     }
 
     private function isIndonesianNumber(string $phone): bool
     {
-        $phone = preg_replace('/[^0-9+]/', '', $phone);
-
-        if (str_starts_with($phone, '+62') || str_starts_with($phone, '62') || str_starts_with($phone, '08')) {
-            return true;
-        }
-
-        if (str_starts_with($phone, '8') && strlen($phone) >= 10 && strlen($phone) <= 13) {
-            return true;
-        }
-
-        return false;
+        return PhoneNumberHelper::isIndonesian($phone);
     }
 }

@@ -83,9 +83,4 @@ class FacilityController extends Controller
             ->route('facilities.index')
             ->with('success', "Facility '{$facility->name}' deleted successfully.");
     }
-
-    private function authorizePermission(string $permission): void
-    {
-        abort_unless(auth()->user()?->can($permission), 403);
-    }
 }

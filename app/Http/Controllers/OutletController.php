@@ -83,9 +83,4 @@ class OutletController extends Controller
             ->route('outlets.index')
             ->with('success', "Outlet '{$outlet->name}' deleted successfully.");
     }
-
-    private function authorizePermission(string $permission): void
-    {
-        abort_unless(auth()->user()?->can($permission), 403);
-    }
 }

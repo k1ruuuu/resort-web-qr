@@ -128,7 +128,6 @@ class BookingController extends Controller
         $this->authorizePropertyAccess($booking);
 
         if ($request->filled('phone')) {
-            $phone = trim($request->input('phone'));
             if ($booking->guest) {
                 $validated = $request->validate([
                     'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
@@ -334,10 +333,7 @@ class BookingController extends Controller
         return redirect()->route('bookings.index')->with('success', 'Booking deleted.');
     }
 
-    private function authorizePermission(string $permission): void
-    {
-        abort_unless(auth()->user()?->can($permission), 403);
-    }
+
 
     private function detectHeadingRow(string $filePath): int
     {

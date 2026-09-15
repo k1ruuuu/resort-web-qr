@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Support\PhoneNumberHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,20 +16,23 @@ class FonnteService
         $apiKey = Setting::get('delivery.fonnte_api_key');
 
         $originalPhone = $phone;
-        $phone = preg_replace('/[^0-9+]/', '', $phone);
-        $rawPhone = $this->cleanPhoneForFonnte($phone);
+        $isIndo = $this->isIndonesianNumber($phone);
+        $phoneClean = preg_replace('/[^0-9+]/', '', $phone);
+        $rawPhone = $isIndo ? $this->cleanPhoneForFonnte($phoneClean) : preg_replace('/[^0-9]/', '', $phoneClean);
+        $countryCode = $isIndo ? '62' : null;
 
         Log::info("Fonnte phone number normalization", [
             'original_masked' => $this->maskPhone($originalPhone),
-            'normalized_masked' => $this->maskPhone($phone),
+            'normalized_masked' => $this->maskPhone($rawPhone),
+            'is_indonesian' => $isIndo,
         ]);
 
         $phoneFilterMode = Setting::get('delivery.phone_filter_mode', 'global');
         if ($phoneFilterMode === 'indonesian_only') {
-            if (!$this->isIndonesianNumber($phone)) {
+            if (!$isIndo) {
                 Log::info("Blocked non-Indonesian number", [
                     'original' => $originalPhone,
-                    'normalized' => $phone,
+                    'normalized' => $rawPhone,
                     'mode' => 'indonesian_only'
                 ]);
                 return [
@@ -44,6 +48,7 @@ class FonnteService
                 'phone' => $rawPhone,
                 'message' => $message,
                 'qr_url' => $qrUrl,
+                'country_code' => $countryCode,
             ]);
             return [
                 'success' => true,
@@ -59,22 +64,29 @@ class FonnteService
                     'target_masked' => $this->maskPhone($rawPhone),
                     'message_hash' => md5($message),
                     'file' => basename($qrLocalPath),
+                    'country_code' => $countryCode,
                 ]);
+
+                $multipart = [
+                    ['name' => 'target', 'contents' => $rawPhone],
+                    ['name' => 'message', 'contents' => $message],
+                    ['name' => 'file', 'contents' => fopen($qrLocalPath, 'r'), 'filename' => 'qr-voucher.png'],
+                ];
+                if ($countryCode !== null) {
+                    $multipart[] = ['name' => 'countryCode', 'contents' => $countryCode];
+                }
 
                 $response = Http::withHeaders([
                     'Authorization' => $apiKey,
-                ])->asMultipart()->post(self::API_URL, [
-                    ['name' => 'target', 'contents' => $rawPhone],
-                    ['name' => 'message', 'contents' => $message],
-                    ['name' => 'countryCode', 'contents' => '62'],
-                    ['name' => 'file', 'contents' => fopen($qrLocalPath, 'r'), 'filename' => 'qr-voucher.png'],
-                ]);
+                ])->asMultipart()->post(self::API_URL, $multipart);
             } else {
                 $payload = [
                     'target' => $rawPhone,
                     'message' => $message,
-                    'countryCode' => '62',
                 ];
+                if ($countryCode !== null) {
+                    $payload['countryCode'] = $countryCode;
+                }
 
                 if ($qrUrl) {
                     $payload['url'] = $qrUrl;
@@ -85,6 +97,7 @@ class FonnteService
                     'target_masked' => $this->maskPhone($rawPhone),
                     'message_hash' => md5($message),
                     'has_image' => !empty($qrUrl),
+                    'country_code' => $countryCode,
                 ]);
 
                 $response = Http::withHeaders([
@@ -136,45 +149,16 @@ class FonnteService
      */
     private function maskPhone(string $phone): string
     {
-        $digits = preg_replace('/[^0-9]/', '', $phone);
-        if (strlen($digits) <= 4) {
-            return $digits === '' ? '(empty)' : '****';
-        }
-
-        return substr($digits, 0, 3) . '****' . substr($digits, -2);
+        return PhoneNumberHelper::mask($phone);
     }
 
-    /**
-     * Fonnte accepts the national number (without leading zero) when `countryCode` is provided.
-     * `08123456789` → `8123456789`; `628123456789` → `8123456789`; `8123456789` → `8123456789`.
-     */
     private function cleanPhoneForFonnte(string $phone): string
     {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-
-        if (str_starts_with($phone, '62')) {
-            return ltrim(substr($phone, 2), '0');
-        }
-
-        if (str_starts_with($phone, '0')) {
-            return ltrim($phone, '0');
-        }
-
-        return $phone;
+        return PhoneNumberHelper::cleanForFonnte($phone);
     }
 
     private function isIndonesianNumber(string $phone): bool
     {
-        $phone = preg_replace('/[^0-9+]/', '', $phone);
-
-        if (str_starts_with($phone, '+62') || str_starts_with($phone, '62') || str_starts_with($phone, '08')) {
-            return true;
-        }
-
-        if (str_starts_with($phone, '8') && strlen($phone) >= 10 && strlen($phone) <= 13) {
-            return true;
-        }
-
-        return false;
+        return PhoneNumberHelper::isIndonesian($phone);
     }
 }

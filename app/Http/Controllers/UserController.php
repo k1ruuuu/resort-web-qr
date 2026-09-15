@@ -93,9 +93,4 @@ class UserController extends Controller
             ->route('users.index')
             ->with('success', "User '{$user->name}' deleted successfully.");
     }
-
-    private function authorizePermission(string $permission): void
-    {
-        abort_unless(auth()->user()?->can($permission), 403);
-    }
 }
