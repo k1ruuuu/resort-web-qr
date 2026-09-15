@@ -138,7 +138,7 @@
             </div>
             <div class="col-md-8">
                 <p class="mb-1"><strong>QR Code Text:</strong> <code class="text-dark">{{ $booking->guestVoucher->qr_code }}</code></p>
-                <p class="mb-1"><strong>Secure Token:</strong> <code class="text-muted">{{ $booking->guestVoucher->secure_token }}</code></p>
+                <p class="mb-1"><strong>Secure Token:</strong> <code class="text-muted">{{ substr($booking->guestVoucher->secure_token, 0, 12) }}...</code></p>
                 <p class="mb-1"><strong>Status:</strong> <span class="badge bg-{{ $voucherBadge }} text-white">{{ ucfirst($booking->guestVoucher->status->value) }}</span></p>
                 <p class="mb-1"><strong>Generated At:</strong> {{ $booking->guestVoucher->generated_at?->format('Y-m-d H:i:s') }}</p>
                 @if($booking->guestVoucher->status->value !== 'active')

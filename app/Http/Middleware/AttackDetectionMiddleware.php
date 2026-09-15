@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -103,13 +102,6 @@ class AttackDetectionMiddleware
         '/\/etc\/passwd|\/proc\/self|%00/i',
     ];
 
-    /**
-     * Rate limiting settings
-     */
-    protected int $rateLimitWindow = 10; // seconds
-    protected int $rateLimitMax = 60; // max requests
-    protected int $ddosThreshold = 200; // DDoS threshold
-    protected int $blockTtl = 900; // 15 minutes
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -120,20 +112,12 @@ class AttackDetectionMiddleware
         $path = $request->path();
         $payload = $request->getQueryString() ?? '';
 
-        // Skip checks for trusted IPs (localhost, private networks)
-        if ($this->isTrustedIP($clientIP)) {
+        // Never skip security checks by IP class alone (X-Forwarded-For is spoofable).
+        // Local dev bypass only via explicit opt-in flag, default off.
+        if (env('APP_ENV') === 'local' && env('ALLOW_PRIVATE_IP_BYPASS', false) && $this->isTrustedIP($clientIP)) {
             return $next($request);
         }
 
-        // Check rate limiting first
-        $rateLimitResult = $this->checkRateLimit($clientIP);
-        if ($rateLimitResult['blocked']) {
-            return $this->getBlockPage(
-                $rateLimitResult['isDDoS'] ? 'DDoS' : 'RATE_LIMIT',
-                $clientIP,
-                $fullUrl
-            );
-        }
 
         // Check malicious user agent
         if ($this->detectMaliciousUserAgent($userAgent)) {
@@ -339,50 +323,6 @@ class AttackDetectionMiddleware
         return false;
     }
 
-    /**
-     * Check rate limiting
-     */
-    protected function checkRateLimit(string $ip): array
-    {
-        $key = "attack_detection:ratelimit:{$ip}";
-        $blockKey = "attack_detection:blocked:{$ip}";
-
-        // Check if IP is currently blocked
-        $blockData = Cache::get($blockKey);
-        if ($blockData) {
-            return [
-                'blocked' => true,
-                'isDDoS' => $blockData['type'] === 'DDoS',
-                'requestCount' => $blockData['count'] ?? 0,
-            ];
-        }
-
-        // L-04: atomic sliding count via Cache::add + increment (no read-modify-write race)
-        $count = Cache::add($key, 1, $this->rateLimitWindow) ? 1 : (int) Cache::increment($key);
-
-        // Check for DDoS
-        if ($count > $this->ddosThreshold) {
-            Cache::put($blockKey, ['type' => 'DDoS', 'count' => $count], $this->blockTtl);
-            Log::critical('[SECURITY] DDoS Attack Detected', [
-                'ip' => $ip,
-                'requests' => $count,
-                'window' => $this->rateLimitWindow,
-            ]);
-            return ['blocked' => true, 'isDDoS' => true, 'requestCount' => $count];
-        }
-
-        // Check for rate limit
-        if ($count > $this->rateLimitMax) {
-            Cache::put($blockKey, ['type' => 'RATE_LIMIT', 'count' => $count], 30);
-            Log::warning('[SECURITY] Rate Limit Exceeded', [
-                'ip' => $ip,
-                'requests' => $count,
-            ]);
-            return ['blocked' => true, 'isDDoS' => false, 'requestCount' => $count];
-        }
-
-        return ['blocked' => false, 'isDDoS' => false, 'requestCount' => $count];
-    }
 
     /**
      * Log attack attempt
@@ -442,20 +382,6 @@ class AttackDetectionMiddleware
                 'icon' => '🔓',
                 'color' => '#f39c12',
                 'status' => 403,
-            ],
-            'DDoS' => [
-                'title' => '429 - DDoS Attack Detected',
-                'message' => 'Suspicious activity detected from your IP. Access has been temporarily blocked.',
-                'icon' => '⚡',
-                'color' => '#c0392b',
-                'status' => 429,
-            ],
-            'RATE_LIMIT' => [
-                'title' => '429 - Rate Limit Exceeded',
-                'message' => 'You have exceeded the request limit. Please try again later.',
-                'icon' => '⏱️',
-                'color' => '#e67e22',
-                'status' => 429,
             ],
             'MALICIOUS_UA' => [
                 'title' => '403 - Access Denied',

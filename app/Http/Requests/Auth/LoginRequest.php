@@ -47,10 +47,9 @@ class LoginRequest extends FormRequest
 
         $identifier = $this->loginIdentifier();
 
-        // Match user by email, username, or name
+        // Match user by unique email or username only (name is not unique)
         $user = User::where('email', $identifier)
             ->orWhere('username', $identifier)
-            ->orWhere('name', $identifier)
             ->first();
 
         $attemptSuccessful = false;
@@ -92,6 +91,8 @@ class LoginRequest extends FormRequest
             ]);
 
             Auth::logout();
+            $this->session()->invalidate();
+            $this->session()->regenerateToken();
             throw ValidationException::withMessages([
                 'email' => __('Your account is inactive.'),
             ]);

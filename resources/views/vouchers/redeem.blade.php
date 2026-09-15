@@ -392,22 +392,23 @@ document.addEventListener('DOMContentLoaded', function() {
         resultMessage.className = 'alert alert-success';
         resultMessage.innerHTML = 'Facility redeemed successfully.';
         
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
         resultDetails.innerHTML = `
             <div class="row g-2">
                 <div class="col-6 text-muted">Guest:</div>
-                <div class="col-6 font-weight-bold">${data.guest}</div>
-                
+                <div class="col-6 font-weight-bold">${esc(data.guest)}</div>
+
                 <div class="col-6 text-muted">Facility Redeemed:</div>
-                <div class="col-6 font-weight-bold">${data.facility}</div>
-                
+                <div class="col-6 font-weight-bold">${esc(data.facility)}</div>
+
                 <div class="col-6 text-muted">Pax Used:</div>
-                <div class="col-6 font-weight-bold">${data.pax_used}</div>
-                
+                <div class="col-6 font-weight-bold">${esc(data.pax_used)}</div>
+
                 <div class="col-6 text-muted">Remaining Today:</div>
-                <div class="col-6 font-weight-bold text-success">${data.remaining_quota}</div>
-                
+                <div class="col-6 font-weight-bold text-success">${esc(data.remaining_quota)}</div>
+
                 <div class="col-6 text-muted">Timestamp:</div>
-                <div class="col-6 font-weight-bold">${data.date} ${data.time}</div>
+                <div class="col-6 font-weight-bold">${esc(data.date)} ${esc(data.time)}</div>
             </div>
         `;
     }
