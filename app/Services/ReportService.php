@@ -162,9 +162,15 @@ class ReportService
     protected function baseRedemptionQuery(?int $propertyId, Carbon $from, Carbon $to)
     {
         return RedemptionLog::query()
-            ->join('guest_vouchers', 'guest_vouchers.id', '=', 'redemption_logs.guest_voucher_id')
-            ->join('bookings', 'bookings.id', '=', 'guest_vouchers.booking_id')
-            ->when($propertyId, fn ($q) => $q->where('bookings.property_id', $propertyId))
+            ->leftJoin('guest_vouchers', 'guest_vouchers.id', '=', 'redemption_logs.guest_voucher_id')
+            ->leftJoin('bookings', 'bookings.id', '=', 'guest_vouchers.booking_id')
+            ->when($propertyId, function ($q) use ($propertyId) {
+                $q->where(function ($sub) use ($propertyId) {
+                    $sub->where('redemption_logs.property_id', $propertyId)
+                        ->orWhere('bookings.property_id', $propertyId)
+                        ->orWhere('guest_vouchers.property_id', $propertyId);
+                });
+            })
             ->whereBetween('redemption_logs.created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
     }
 
@@ -173,7 +179,11 @@ class ReportService
         return RedemptionLog::query()
             ->with(['guest', 'booking.room', 'facilityTemplate', 'outlet', 'user'])
             ->when($propertyId, function ($q) use ($propertyId) {
-                $q->whereHas('booking', fn ($b) => $b->where('property_id', $propertyId));
+                $q->where(function ($sub) use ($propertyId) {
+                    $sub->where('property_id', $propertyId)
+                        ->orWhereHas('booking', fn ($b) => $b->where('property_id', $propertyId))
+                        ->orWhereHas('guestVoucher', fn ($gv) => $gv->where('property_id', $propertyId));
+                });
             })
             ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->orderBy('date', 'desc')

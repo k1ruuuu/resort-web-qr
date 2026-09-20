@@ -445,10 +445,19 @@ class VoucherService
                     $now = now();
                     $remainingQuota = $quotaRemaining - $paxUsed;
 
+                    $guestName = $voucher->guest?->full_name ?? $voucher->booking?->guest?->full_name ?? $voucher->guest_name;
+                    $roomName = $voucher->booking ? ($voucher->booking->room_label ?? $voucher->booking->room?->number ?? $voucher->booking->room?->label) : ($voucher->category === 'temporary' ? 'Temporary' : null);
+                    $bookingCode = $voucher->booking?->booking_code ?? $voucher->booking?->reference;
+                    $propertyId = $voucher->property_id ?? $voucher->booking?->property_id;
+
                     $log = RedemptionLog::query()->create([
                         'guest_voucher_id' => $voucher->id,
                         'guest_id' => $voucher->guest_id,
                         'booking_id' => $voucher->booking_id,
+                        'guest_name' => $guestName,
+                        'room_name' => $roomName,
+                        'booking_code' => $bookingCode,
+                        'property_id' => $propertyId,
                         'facility_template_id' => $facilityTemplateId,
                         'outlet_id' => $outlet->id,
                         'user_id' => $user->id,
@@ -629,10 +638,19 @@ class VoucherService
                 $now = now();
                 $remainingQuota = $quotaRemaining - $paxUsed;
 
+                $guestName = $voucher->guest?->full_name ?? $voucher->booking?->guest?->full_name ?? $voucher->guest_name;
+                $roomName = $voucher->booking ? ($voucher->booking->room_label ?? $voucher->booking->room?->number ?? $voucher->booking->room?->label) : ($voucher->category === 'temporary' ? 'Temporary' : null);
+                $bookingCode = $voucher->booking?->booking_code ?? $voucher->booking?->reference;
+                $propertyId = $voucher->property_id ?? $voucher->booking?->property_id;
+
                 $log = RedemptionLog::query()->create([
                     'guest_voucher_id' => $voucher->id,
                     'guest_id' => $voucher->guest_id,
                     'booking_id' => $voucher->booking_id,
+                    'guest_name' => $guestName,
+                    'room_name' => $roomName,
+                    'booking_code' => $bookingCode,
+                    'property_id' => $propertyId,
                     'facility_template_id' => $facilityTemplateId,
                     'outlet_id' => $outlet->id,
                     'user_id' => $user->id,
@@ -827,10 +845,17 @@ class VoucherService
         ?int $facilityTemplateId = null,
         ?int $paxUsed = null,
     ): void {
+        $guestName = $voucher?->guest?->full_name ?? $voucher?->booking?->guest?->full_name ?? $voucher?->guest_name;
+        $roomName = $voucher?->booking ? ($voucher->booking->room_label ?? $voucher->booking->room?->number ?? $voucher->booking->room?->label) : ($voucher?->category === 'temporary' ? 'Temporary' : null);
+        $bookingCode = $voucher?->booking?->booking_code ?? $voucher?->booking?->reference;
+
         QrScanLog::query()->create([
             'qr_code' => $qrCode,
             'secure_token' => $voucher?->secure_token,
             'guest_voucher_id' => $voucher?->id,
+            'guest_name' => $guestName,
+            'room_name' => $roomName,
+            'booking_code' => $bookingCode,
             'facility_template_id' => $facilityTemplateId,
             'pax_used' => $paxUsed,
             'outlet_id' => $outlet?->id,

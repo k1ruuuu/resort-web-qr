@@ -11,6 +11,10 @@ class RedemptionLog extends Model
         'guest_voucher_id',
         'guest_id',
         'booking_id',
+        'guest_name',
+        'room_name',
+        'booking_code',
+        'property_id',
         'facility_template_id',
         'outlet_id',
         'user_id',
@@ -26,6 +30,11 @@ class RedemptionLog extends Model
         return [
             'date' => 'date',
         ];
+    }
+
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
     }
 
     public function guestVoucher(): BelongsTo

@@ -18,6 +18,8 @@ class DeliveryLogRepository
         return DeliveryLog::query()->create([
             'booking_id' => $booking->id,
             'guest_id' => $booking->guest_id,
+            'guest_name' => $booking->guest?->full_name,
+            'booking_code' => $booking->booking_code ?? $booking->reference,
             'phone_number' => $booking->guest?->phone ?? '',
             'message_content' => $message,
             'qr_path' => $qrPath,
@@ -36,6 +38,8 @@ class DeliveryLogRepository
             'booking_id' => null,
             'guest_id' => null,
             'guest_voucher_id' => $voucher->id,
+            'guest_name' => $voucher->guest_name,
+            'booking_code' => null,
             'phone_number' => $voucher->phone ?? '',
             'message_content' => $message,
             'qr_path' => $qrPath,

@@ -23,8 +23,8 @@
                     Immediate
                 @endif
             </td>
-            <td>{{ $log->guest?->full_name ?? 'N/A' }}</td>
-            <td>{{ $log->booking?->booking_code ?? $log->booking?->reference ?? 'N/A' }}</td>
+            <td>{{ $log->guest_name ?? $log->guest?->full_name ?? 'N/A' }}</td>
+            <td>{{ $log->booking_code ?? $log->booking?->booking_code ?? $log->booking?->reference ?? 'N/A' }}</td>
             <td>{{ $log->phone_number }}</td>
             <td>{{ $log->message_content }}</td>
             <td>{{ $log->qr_path ?? 'None' }}</td>

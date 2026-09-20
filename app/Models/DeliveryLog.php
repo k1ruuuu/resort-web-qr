@@ -11,6 +11,8 @@ class DeliveryLog extends Model
         'booking_id',
         'guest_id',
         'guest_voucher_id',
+        'guest_name',
+        'booking_code',
         'phone_number',
         'message_content',
         'qr_path',

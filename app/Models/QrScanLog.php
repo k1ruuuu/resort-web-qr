@@ -14,6 +14,9 @@ class QrScanLog extends Model
         'qr_code',
         'secure_token',
         'guest_voucher_id',
+        'guest_name',
+        'room_name',
+        'booking_code',
         'facility_template_id',
         'pax_used',
         'outlet_id',
@@ -54,7 +57,8 @@ class QrScanLog extends Model
 
     public function getGuestNameAttribute(): string
     {
-        return $this->guestVoucher?->guest?->full_name
+        return $this->attributes['guest_name']
+            ?? $this->guestVoucher?->guest?->full_name
             ?? $this->guestVoucher?->booking?->guest?->full_name
             ?? $this->guestVoucher?->guest_name
             ?? '-';
@@ -62,15 +66,18 @@ class QrScanLog extends Model
 
     public function getRoomNameAttribute(): string
     {
+        if (!empty($this->attributes['room_name'])) {
+            return $this->attributes['room_name'];
+        }
+
         $booking = $this->guestVoucher?->booking;
         if (!$booking) {
             return $this->guestVoucher?->category === 'temporary' ? 'Temporary' : '-';
         }
 
         return $booking->room_label
-            ?? $booking->room?->label
             ?? $booking->room?->number
-            ?? $booking->room?->code
+            ?? $booking->room?->label
             ?? '-';
     }
 
