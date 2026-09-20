@@ -84,7 +84,11 @@ class BookingController extends Controller
 
         return view('bookings.create', [
             'properties' => $properties,
-            'guests' => Guest::query()->orderBy('last_name')->limit(100)->get(),
+            'guests' => Guest::query()
+                ->select(['id', 'first_name', 'last_name', 'phone', 'email', 'document_id'])
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get(),
             'rooms' => \App\Models\Room::query()->with('property')->orderBy('number')->get(),
             'facilityTemplates' => FacilityTemplate::query()
                 ->whereIn('property_id', $properties->pluck('id'))
