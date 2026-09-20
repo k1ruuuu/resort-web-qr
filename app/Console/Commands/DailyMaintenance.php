@@ -5,23 +5,28 @@ namespace App\Console\Commands;
 use App\Enums\BookingStatus;
 use App\Enums\VoucherStatus;
 use App\Models\Booking;
+use App\Models\DeliveryLog;
+use App\Models\Guest;
 use App\Models\GuestVoucher;
+use App\Models\QrScanLog;
+use App\Models\RedemptionLog;
 use App\Models\Setting;
 use App\Services\AuditService;
 use App\Services\BookingService;
 use App\Services\RedisCacheService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class DailyMaintenance extends Command
 {
     protected $signature = 'daily:maintenance
-        {--auto-checkout : Automatically check out bookings past their expected departure date}
+        {--auto-checkout : Permanently delete bookings past expected departure date and grace period}
         {--auto-cancel-no-show : Cancel expected arrival bookings past check_in date without check-in}
         {--expire-vouchers : Expire vouchers past their deadline}
         {--all : Run all maintenance tasks}';
 
-    protected $description = 'Daily maintenance tasks: auto-checkout, auto-cancel no-show, expire vouchers';
+    protected $description = 'Daily maintenance tasks: auto-checkout (hard delete), auto-cancel no-show, expire vouchers';
 
     public function __construct(
         private readonly AuditService $audit,
@@ -64,37 +69,108 @@ class DailyMaintenance extends Command
 
     private function runAutoCheckout(): bool
     {
-        $this->info('Checking for bookings to check out (past expected departure)...');
+        $this->info('Checking for bookings to permanently delete (past expected departure + grace period)...');
         $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
         $count = 0;
 
         Booking::query()
-            ->where('status', BookingStatus::CheckIn)
+            ->whereIn('status', [BookingStatus::CheckIn, BookingStatus::ExpectedDeparture])
             ->where('check_out', '<=', Carbon::now()->toDateString())
+            ->with(['guest', 'guestVoucher.facilityExchanges', 'room', 'property'])
             ->chunk(100, function ($bookings) use ($cutoffTime, &$count) {
                 foreach ($bookings as $booking) {
-                    $timezone = $booking->property?->timezone ?? 'UTC';
+                    $timezone = $booking->property?->timezone ?? 'Asia/Jakarta';
                     $localNow = Carbon::now($timezone);
-                    $cutoff = Carbon::parse($booking->check_out)
-                        ->setTimezone($timezone)
+                    $cutoff = Carbon::parse($booking->check_out, $timezone)
                         ->startOfDay()
                         ->setTimeFromTimeString($cutoffTime);
 
-                    if ($localNow->lt($cutoff)) {
+                    // Extended 1 hour past cutoff for one-time facility grace period (13:35 WIB)
+                    $extendedCutoff = $cutoff->copy()->addHour();
+
+                    if ($localNow->lt($extendedCutoff)) {
                         continue;
                     }
 
-                    $ref = $booking->reference;
-                    $this->bookings->checkOut($booking);
+                    $guestName = $booking->guest?->full_name ?? $booking->guestVoucher?->guest_name;
+                    $roomName = $booking->room_label ?? $booking->room?->number ?? $booking->room?->label;
+                    $bookingCode = $booking->booking_code ?? $booking->reference;
+                    $propertyId = $booking->property_id;
+                    $guestId = $booking->guest_id;
+                    $guestDeleted = false;
+
+                    // Ensure snapshots on historical logs are filled before deleting
+                    if ($booking->guestVoucher) {
+                        QrScanLog::query()
+                            ->where('guest_voucher_id', $booking->guestVoucher->id)
+                            ->update([
+                                'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
+                                'room_name' => DB::raw("COALESCE(room_name, " . ($roomName !== null ? DB::getPdo()->quote($roomName) : "NULL") . ")"),
+                                'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
+                            ]);
+
+                        RedemptionLog::query()
+                            ->where('guest_voucher_id', $booking->guestVoucher->id)
+                            ->update([
+                                'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
+                                'room_name' => DB::raw("COALESCE(room_name, " . ($roomName !== null ? DB::getPdo()->quote($roomName) : "NULL") . ")"),
+                                'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
+                                'property_id' => DB::raw("COALESCE(property_id, " . ($propertyId ? (int)$propertyId : "NULL") . ")"),
+                            ]);
+                    }
+
+                    DeliveryLog::query()
+                        ->where('booking_id', $booking->id)
+                        ->update([
+                            'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
+                            'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
+                        ]);
+
+                    $auditData = [
+                        'booking_id' => $booking->id,
+                        'booking_code' => $bookingCode,
+                        'guest_id' => $guestId,
+                        'guest_name' => $guestName,
+                        'property_id' => $propertyId,
+                        'check_in' => $booking->check_in?->toDateString(),
+                        'check_out' => $booking->check_out?->toDateString(),
+                    ];
+
+                    DB::transaction(function () use ($booking, $guestId, &$guestDeleted) {
+                        // Delete voucher facility exchanges and voucher
+                        if ($booking->guestVoucher) {
+                            $booking->guestVoucher->facilityExchanges()->delete();
+                            $this->cache->invalidateVoucher($booking->guestVoucher);
+                            $booking->guestVoucher->delete();
+                        }
+
+                        // Delete booking facilities
+                        $booking->bookingFacilities()->delete();
+
+                        // Invalidate booking cache
+                        $this->cache->invalidateBooking($booking);
+
+                        // Hard delete booking
+                        $booking->forceDelete();
+
+                        // Check if guest has any other bookings (including active or trashed)
+                        if ($guestId && !Booking::withTrashed()->where('guest_id', $guestId)->exists()) {
+                            Guest::withTrashed()->where('id', $guestId)->forceDelete();
+                            $guestDeleted = true;
+                        }
+                    });
+
+                    $this->audit->log('booking.auto_hard_deleted', null, $auditData, null);
+
                     $count++;
-                    $this->line("Checked out booking #{$booking->id} ({$ref})");
+                    $this->line("Permanently deleted booking #{$booking->id} ({$bookingCode})" . ($guestDeleted ? " and guest #{$guestId}" : ""));
                 }
             });
 
         if ($count > 0) {
-            $this->info("Checked out {$count} booking(s) past expected departure.");
+            $this->info("Permanently deleted {$count} booking(s) past expected departure.");
         } else {
-            $this->info('No bookings to check out.');
+            $this->info('No bookings to permanently delete.');
         }
 
         return true;
