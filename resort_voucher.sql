@@ -7018,14 +7018,14 @@ SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, @@AUTOCOMMIT=0;
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 INSERT INTO `users` VALUES
-(1,'System Admin','admin','admin@resort.local',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-23 23:25:40','2026-07-23 23:25:40'),
-(2,'Staff Soeji','staff-redeem-soeji','staff-soeji@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-31 09:05:30','2026-09-03 19:14:45'),
-(3,'Staff Front Office','staff-fo','staff-fo@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-07-31 09:05:57','2026-07-31 09:05:57'),
-(4,'Staff Accounting','staff-acc','staff-acc@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-08-25 18:43:06','2026-08-25 18:43:06'),
-(5,'demo e-voucher','demoevoucher','demoevoucher@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',0,NULL,'2026-08-25 18:47:22','2026-09-07 02:40:53'),
-(6,'Staff THB','staff-redeem-thb','staff-thb@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-09-03 19:17:39','2026-09-03 19:17:39'),
-(7,'Staff Rumah Seni','staff-redeem-rseni','staff-rseni@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-09-03 19:20:42','2026-09-03 19:20:42'),
-(8,'Staff Feed Animal','staff-redeem-feedanim','staff-fanim@e-voucher.chanaya.co.id',NULL,'$2y$12$REDACTED_ROTATE_ME.................................',1,NULL,'2026-09-03 19:24:36','2026-09-03 19:24:36');
+(1,'System Admin','admin','admin@resort.local',NULL,'$2y$12$XgL20f2VKqwSrwvslyPsd.9C4KTi.wML9pHIEQCbeRwfacDfHpeEq',1,'JUQqcGVjyrz9wmJ0CBeZr3NMm2tSxDX2bpOnItpuK9NriJoFGrzJZVbnncEx','2026-07-23 23:25:40','2026-07-23 23:25:40'),
+(2,'Staff Soeji','staff-redeem-soeji','staff-soeji@e-voucher.chanaya.co.id',NULL,'$2y$12$8sj.xL7AIKsIuJQOKIK2ouGN6ChQ2cFAZ8lyH0/mmDRzwFcbDnhCe',1,'yg9EM0PE14s9ik2n8xhN7DAzhy7PRAyvgxL8LrJZ0DtuSf45an8us0pau3Jn','2026-07-31 09:05:30','2026-09-03 19:14:45'),
+(3,'Staff Front Office','staff-fo','staff-fo@e-voucher.chanaya.co.id',NULL,'$2y$12$YtdBFvexc5RYByIJhywMcetwBZgiWkFS267EvjSBcRJK5Yv6SHVB6',1,NULL,'2026-07-31 09:05:57','2026-07-31 09:05:57'),
+(4,'Staff Accounting','staff-acc','staff-acc@e-voucher.chanaya.co.id',NULL,'$2y$12$i3gEOwRuwmQ2LHDqI0sYSexBpZp37gqR71NAx14NwyEXSzeiztXu.',1,NULL,'2026-08-25 18:43:06','2026-08-25 18:43:06'),
+(5,'demo e-voucher','demoevoucher','demoevoucher@e-voucher.chanaya.co.id',NULL,'$2y$12$9GkYRoVTI5XT/ZKa35gaIeftiSgjs6m.aovQG6lHzP6cAjlYLz9tm',0,NULL,'2026-08-25 18:47:22','2026-09-07 02:40:53'),
+(6,'Staff THB','staff-redeem-thb','staff-thb@e-voucher.chanaya.co.id',NULL,'$2y$12$EMinSjvrLDVBkf4t0Ig0y.3HBqORc14ZfV6b56sQvfNplquQ.gqIu',1,NULL,'2026-09-03 19:17:39','2026-09-03 19:17:39'),
+(7,'Staff Rumah Seni','staff-redeem-rseni','staff-rseni@e-voucher.chanaya.co.id',NULL,'$2y$12$EMinSjvrLDVBkf4t0Ig0y.3HBqORc14ZfV6b56sQvfNplquQ.gqIu',1,NULL,'2026-09-03 19:20:42','2026-09-03 19:20:42'),
+(8,'Staff Feed Animal','staff-redeem-feedanim','staff-fanim@e-voucher.chanaya.co.id',NULL,'$2y$12$EMinSjvrLDVBkf4t0Ig0y.3HBqORc14ZfV6b56sQvfNplquQ.gqIu',1,NULL,'2026-09-03 19:24:36','2026-09-03 19:24:36');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 COMMIT;
