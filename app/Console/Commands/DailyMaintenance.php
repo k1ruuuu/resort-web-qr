@@ -69,13 +69,13 @@ class DailyMaintenance extends Command
 
     private function runAutoCheckout(): bool
     {
-        $this->info('Checking for bookings to permanently delete (past expected departure + grace period)...');
+        $this->info('Checking for bookings to auto-checkout and delete (past checkout cutoff + grace period)...');
         $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
         $count = 0;
 
         Booking::query()
             ->whereIn('status', [BookingStatus::CheckIn, BookingStatus::ExpectedDeparture])
-            ->where('check_out', '<=', Carbon::now()->toDateString())
+            ->where('check_out', '<=', Carbon::now('Asia/Jakarta')->toDateString())
             ->with(['guest', 'guestVoucher.facilityExchanges', 'room', 'property'])
             ->chunk(100, function ($bookings) use ($cutoffTime, &$count) {
                 foreach ($bookings as $booking) {
@@ -92,6 +92,7 @@ class DailyMaintenance extends Command
                         continue;
                     }
 
+                    $voucherId = $booking->guestVoucher?->id;
                     $guestName = $booking->guest?->full_name ?? $booking->guestVoucher?->guest_name;
                     $roomName = $booking->room_label ?? $booking->room?->number ?? $booking->room?->label;
                     $bookingCode = $booking->booking_code ?? $booking->reference;
@@ -99,28 +100,46 @@ class DailyMaintenance extends Command
                     $guestId = $booking->guest_id;
                     $guestDeleted = false;
 
-                    // Ensure snapshots on historical logs are filled before deleting
-                    if ($booking->guestVoucher) {
+                    // 1. Ensure snapshots on QrScanLog are filled before deleting
+                    if ($voucherId) {
                         QrScanLog::query()
-                            ->where('guest_voucher_id', $booking->guestVoucher->id)
+                            ->where('guest_voucher_id', $voucherId)
                             ->update([
                                 'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
                                 'room_name' => DB::raw("COALESCE(room_name, " . ($roomName !== null ? DB::getPdo()->quote($roomName) : "NULL") . ")"),
                                 'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
-                            ]);
-
-                        RedemptionLog::query()
-                            ->where('guest_voucher_id', $booking->guestVoucher->id)
-                            ->update([
-                                'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
-                                'room_name' => DB::raw("COALESCE(room_name, " . ($roomName !== null ? DB::getPdo()->quote($roomName) : "NULL") . ")"),
-                                'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
-                                'property_id' => DB::raw("COALESCE(property_id, " . ($propertyId ? (int)$propertyId : "NULL") . ")"),
                             ]);
                     }
 
+                    // 2. Ensure snapshots on RedemptionLog are filled before deleting
+                    RedemptionLog::query()
+                        ->where(function ($q) use ($booking, $voucherId, $guestId) {
+                            $q->where('booking_id', $booking->id);
+                            if ($voucherId) {
+                                $q->orWhere('guest_voucher_id', $voucherId);
+                            }
+                            if ($guestId) {
+                                $q->orWhere('guest_id', $guestId);
+                            }
+                        })
+                        ->update([
+                            'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
+                            'room_name' => DB::raw("COALESCE(room_name, " . ($roomName !== null ? DB::getPdo()->quote($roomName) : "NULL") . ")"),
+                            'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
+                            'property_id' => DB::raw("COALESCE(property_id, " . ($propertyId ? (int)$propertyId : "NULL") . ")"),
+                        ]);
+
+                    // 3. Ensure snapshots on DeliveryLog are filled before deleting
                     DeliveryLog::query()
-                        ->where('booking_id', $booking->id)
+                        ->where(function ($q) use ($booking, $voucherId, $guestId) {
+                            $q->where('booking_id', $booking->id);
+                            if ($voucherId) {
+                                $q->orWhere('guest_voucher_id', $voucherId);
+                            }
+                            if ($guestId) {
+                                $q->orWhere('guest_id', $guestId);
+                            }
+                        })
                         ->update([
                             'guest_name' => DB::raw("COALESCE(guest_name, " . ($guestName !== null ? DB::getPdo()->quote($guestName) : "NULL") . ")"),
                             'booking_code' => DB::raw("COALESCE(booking_code, " . ($bookingCode !== null ? DB::getPdo()->quote($bookingCode) : "NULL") . ")"),
@@ -132,11 +151,13 @@ class DailyMaintenance extends Command
                         'guest_id' => $guestId,
                         'guest_name' => $guestName,
                         'property_id' => $propertyId,
+                        'status' => BookingStatus::ExpectedDeparture->value,
                         'check_in' => $booking->check_in?->toDateString(),
                         'check_out' => $booking->check_out?->toDateString(),
+                        'checked_out_at' => $localNow->toDateTimeString(),
                     ];
 
-                    DB::transaction(function () use ($booking, $guestId, &$guestDeleted) {
+                    DB::transaction(function () use ($booking, $guestId, &$guestDeleted, $localNow) {
                         // Delete voucher facility exchanges and voucher
                         if ($booking->guestVoucher) {
                             $booking->guestVoucher->facilityExchanges()->delete();
@@ -150,27 +171,32 @@ class DailyMaintenance extends Command
                         // Invalidate booking cache
                         $this->cache->invalidateBooking($booking);
 
-                        // Hard delete booking
+                        // Set status to ExpectedDeparture (Checked Out) with timestamp before deletion
+                        $booking->status = BookingStatus::ExpectedDeparture;
+                        $booking->checked_out_at = $localNow;
+                        $booking->save();
+
+                        // Permanently delete booking
                         $booking->forceDelete();
 
-                        // Check if guest has any other bookings (including active or trashed)
+                        // Delete guest if no other bookings remain
                         if ($guestId && !Booking::withTrashed()->where('guest_id', $guestId)->exists()) {
                             Guest::withTrashed()->where('id', $guestId)->forceDelete();
                             $guestDeleted = true;
                         }
                     });
 
-                    $this->audit->log('booking.auto_hard_deleted', null, $auditData, null);
+                    $this->audit->log('booking.auto_checked_out_and_deleted', null, $auditData, null);
 
                     $count++;
-                    $this->line("Permanently deleted booking #{$booking->id} ({$bookingCode})" . ($guestDeleted ? " and guest #{$guestId}" : ""));
+                    $this->line("Auto-checked out and permanently deleted booking #{$booking->id} ({$bookingCode})" . ($guestDeleted ? " and guest #{$guestId}" : ""));
                 }
             });
 
         if ($count > 0) {
-            $this->info("Permanently deleted {$count} booking(s) past expected departure.");
+            $this->info("Auto-checked out and deleted {$count} booking(s) past checkout cutoff.");
         } else {
-            $this->info('No bookings to permanently delete.');
+            $this->info('No bookings to auto-checkout.');
         }
 
         return true;
