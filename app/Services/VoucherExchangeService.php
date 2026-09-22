@@ -65,8 +65,11 @@ class VoucherExchangeService
         $exchangeDate = Carbon::parse($exchangeDateStr, $timezone)->startOfDay();
 
         if ($voucher->booking) {
-            $checkIn = Carbon::parse($voucher->booking->check_in, $timezone)->startOfDay();
-            $checkOut = Carbon::parse($voucher->booking->check_out, $timezone)->startOfDay();
+            $checkInStr = $voucher->booking->check_in instanceof Carbon ? $voucher->booking->check_in->toDateString() : (string)$voucher->booking->check_in;
+            $checkOutStr = $voucher->booking->check_out instanceof Carbon ? $voucher->booking->check_out->toDateString() : (string)$voucher->booking->check_out;
+
+            $checkIn = Carbon::parse($checkInStr, $timezone)->startOfDay();
+            $checkOut = Carbon::parse($checkOutStr, $timezone)->startOfDay();
 
             if ($exchangeDate->lt($checkIn) || $exchangeDate->gt($checkOut)) {
                 throw new VoucherException("Tanggal penukaran harus berada dalam rentang menginap ({$checkIn->format('Y-m-d')} s/d {$checkOut->format('Y-m-d')}).", 422);
