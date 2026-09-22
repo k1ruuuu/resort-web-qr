@@ -139,13 +139,13 @@
                                 <tr>
                                     <td><small>{{ $activity->created_at->format('H:i') }}</small></td>
                                     <td>
-                                        <strong class="text-truncate d-inline-block" style="max-width: 120px;" title="{{ $activity->guest?->full_name ?? 'N/A' }}">
-                                            {{ $activity->guest?->full_name ?? 'N/A' }}
+                                        <strong class="text-truncate d-inline-block" style="max-width: 120px;" title="{{ $activity->guest_name ?? $activity->guest?->full_name ?? 'N/A' }}">
+                                            {{ $activity->guest_name ?? $activity->guest?->full_name ?? 'N/A' }}
                                         </strong>
                                     </td>
                                     <td class="d-none d-md-table-cell">
                                         <span class="badge bg-light border text-dark">
-                                            {{ $activity->booking?->room_label ?? $activity->booking?->room?->number ?? 'N/A' }}
+                                            {{ $activity->room_name ?? $activity->booking?->room_label ?? $activity->booking?->room?->number ?? 'N/A' }}
                                         </span>
                                     </td>
                                     <td>

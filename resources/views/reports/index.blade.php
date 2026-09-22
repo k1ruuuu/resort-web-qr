@@ -352,8 +352,8 @@
                             <small>{{ $log->date->format('Y-m-d') }}</small><br>
                             <small class="text-muted">{{ $log->time }}</small>
                         </td>
-                        <td>{{ $log->guest?->full_name ?? '—' }}</td>
-                        <td>{{ $log->booking?->room?->number ?? '—' }}</td>
+                        <td>{{ $log->guest_name ?? $log->guest?->full_name ?? '—' }}</td>
+                        <td>{{ $log->room_name ?? $log->booking?->room?->number ?? '—' }}</td>
                         <td>{{ $log->facilityTemplate?->name ?? '—' }}</td>
                         <td>{{ $log->outlet?->name ?? '—' }}</td>
                         <td class="text-end"><span class="badge bg-info">{{ $log->pax_used }}</span></td>

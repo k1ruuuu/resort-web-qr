@@ -106,9 +106,9 @@
         <td>{{ $index + 1 }}</td>
         <td>{{ $redemption->date->format('Y-m-d') }}</td>
         <td>{{ $redemption->time }}</td>
-        <td>{{ $redemption->guest?->full_name ?? 'N/A' }}</td>
-        <td>{{ $redemption->booking?->room?->code ?? $redemption->booking?->room?->number ?? 'N/A' }}</td>
-        <td>{{ $redemption->booking?->booking_code ?? $redemption->booking?->reference ?? 'N/A' }}</td>
+        <td>{{ $redemption->guest_name ?? $redemption->guest?->full_name ?? 'N/A' }}</td>
+        <td>{{ $redemption->room_name ?? $redemption->booking?->room?->code ?? $redemption->booking?->room?->number ?? 'N/A' }}</td>
+        <td>{{ $redemption->booking_code ?? $redemption->booking?->booking_code ?? $redemption->booking?->reference ?? 'N/A' }}</td>
         <td>{{ $redemption->facilityTemplate?->name ?? 'N/A' }}</td>
         <td>{{ $redemption->outlet?->name ?? 'N/A' }}</td>
         <td>{{ $redemption->pax_used }}</td>
