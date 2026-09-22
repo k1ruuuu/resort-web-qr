@@ -64,15 +64,30 @@ class StoreBookingRequest extends FormRequest
         $validator->after(function ($validator) {
             $user = $this->user();
 
-            if (!$user || $user->hasRole('super-admin')) {
-                return;
+            if ($user && !$user->hasRole('super-admin')) {
+                $propertyIds = $user->properties()->pluck('property_id');
+
+                // M-15: property-scoped users may only book into their own properties
+                if (!in_array((int) $this->input('property_id'), $propertyIds->map(fn ($id) => (int) $id)->all(), true)) {
+                    $validator->errors()->add('property_id', 'You do not have access to this property.');
+                }
             }
 
-            $propertyIds = $user->properties()->pluck('property_id');
+            // Exclusive dinner validation
+            $facilityTemplateIds = collect($this->input('facilities', []))
+                ->pluck('facility_template_id')
+                ->filter()
+                ->values()
+                ->all();
 
-            // M-15: property-scoped users may only book into their own properties
-            if (!in_array((int) $this->input('property_id'), $propertyIds->map(fn ($id) => (int) $id)->all(), true)) {
-                $validator->errors()->add('property_id', 'You do not have access to this property.');
+            if (!empty($facilityTemplateIds)) {
+                $templates = \App\Models\FacilityTemplate::query()
+                    ->whereIn('id', $facilityTemplateIds)
+                    ->get();
+
+                if ($templates->filter->isDinner()->count() > 1) {
+                    $validator->errors()->add('facilities', 'Hanya dapat memilih salah satu fasilitas Dinner (Dinner BBQ atau Dinner 100K).');
+                }
             }
         });
     }

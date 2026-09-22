@@ -9,6 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FacilityTemplate extends Model
 {
+    public const DINNER_CODES = ['DINNER-BBQ', 'DINNER100K'];
+    public const DEFAULT_DINNER_CODE = 'DINNER-BBQ';
+
+    public function isDinner(): bool
+    {
+        return in_array($this->code, self::DINNER_CODES, true);
+    }
+
     protected $fillable = [
         'property_id',
         'name',

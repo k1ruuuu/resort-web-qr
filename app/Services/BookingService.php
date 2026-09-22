@@ -29,6 +29,8 @@ class BookingService
 
             $this->assertRoomAvailable($data, null);
 
+            $this->assertExclusiveDinner($facilities);
+
             $booking = Booking::query()->create($data);
             $quotaTotal = $this->quota->quotaForBooking($booking);
 
@@ -60,6 +62,10 @@ class BookingService
             $data = $this->enrichBookingData($data);
 
             $this->assertRoomAvailable($data, $booking->id);
+
+            if (!empty($facilities)) {
+                $this->assertExclusiveDinner($facilities);
+            }
 
             $booking->update($data);
 
@@ -124,23 +130,28 @@ class BookingService
             // if voucher generation fails, the booking must NOT stay checked in.
             DB::transaction(function () use ($booking, $facilityTemplateIds) {
                 if (!empty($facilityTemplateIds)) {
-                    $validIds = FacilityTemplate::query()
+                    $selectedTemplates = FacilityTemplate::query()
                         ->where('property_id', $booking->property_id)
                         ->where('is_active', true)
                         ->whereIn('id', $facilityTemplateIds)
-                        ->pluck('id')
-                        ->all();
+                        ->get();
 
-                    if (count($validIds) !== count(array_unique($facilityTemplateIds))) {
+                    if ($selectedTemplates->count() !== count(array_unique($facilityTemplateIds))) {
                         throw new \InvalidArgumentException('One or more selected facilities are not available for this property.');
+                    }
+
+                    // Enforce exclusive dinner selection: only 1 dinner option allowed
+                    $dinnerCount = $selectedTemplates->filter->isDinner()->count();
+                    if ($dinnerCount > 1) {
+                        throw new \InvalidArgumentException('Hanya dapat memilih salah satu fasilitas Dinner (Dinner BBQ atau Dinner 100K).');
                     }
 
                     $booking->bookingFacilities()->delete();
                     $quotaTotal = $this->quota->quotaForBooking($booking);
 
-                    foreach ($validIds as $facilityTemplateId) {
+                    foreach ($selectedTemplates as $template) {
                         $booking->bookingFacilities()->create([
-                            'facility_template_id' => $facilityTemplateId,
+                            'facility_template_id' => $template->id,
                             'start_date' => $booking->check_in,
                             'end_date' => $booking->check_out,
                             'quota_total' => $quotaTotal,
@@ -266,7 +277,14 @@ class BookingService
             ->orderBy('name')
             ->get();
 
+        $hasDefaultDinner = $templates->contains('code', FacilityTemplate::DEFAULT_DINNER_CODE);
+
         foreach ($templates as $template) {
+            // If default dinner (Dinner BBQ) exists, skip alternative dinner options (Dinner 100K)
+            if ($hasDefaultDinner && $template->isDinner() && $template->code !== FacilityTemplate::DEFAULT_DINNER_CODE) {
+                continue;
+            }
+
             BookingFacility::query()->create([
                 'booking_id' => $booking->id,
                 'facility_template_id' => $template->id,
@@ -274,6 +292,24 @@ class BookingService
                 'end_date' => $booking->check_out,
                 'quota_total' => $quotaTotal,
             ]);
+        }
+    }
+
+    private function assertExclusiveDinner(array $facilities): void
+    {
+        $facilityTemplateIds = collect($facilities)
+            ->pluck('facility_template_id')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($facilityTemplateIds)) {
+            return;
+        }
+
+        $templates = FacilityTemplate::query()->whereIn('id', $facilityTemplateIds)->get();
+        if ($templates->filter->isDinner()->count() > 1) {
+            throw new \InvalidArgumentException('Hanya dapat memilih salah satu fasilitas Dinner (Dinner BBQ atau Dinner 100K).');
         }
     }
 
