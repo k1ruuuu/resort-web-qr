@@ -21,7 +21,12 @@ class ScanHistoryApiController extends ApiController
             $search = trim($request->string('search'));
             $search = str_replace(['%', '_'], ['\%', '\_'], $search);
             if (strlen($search) > 0) {
-                $query->whereHas('guestVoucher', fn($q) => $q->where('guest_name', 'like', "%{$search}%"));
+                $query->where(function ($q) use ($search) {
+                    $q->where('guest_name', 'like', "%{$search}%")
+                        ->orWhere('qr_code', 'like', "%{$search}%")
+                        ->orWhere('secure_token', 'like', "%{$search}%")
+                        ->orWhereHas('guestVoucher', fn($gv) => $gv->where('guest_name', 'like', "%{$search}%"));
+                });
             }
         }
 

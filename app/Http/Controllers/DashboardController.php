@@ -53,7 +53,7 @@ class DashboardController extends Controller
 
         $redeemedToday = (int) RedemptionLog::query()
             ->where('date', $todayStr)
-            ->when($propertyIds, fn($q) => $q->whereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds)))
+            ->when($propertyIds, fn($q) => $q->where(fn($sub) => $sub->whereIn('property_id', $propertyIds)->orWhereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds))))
             ->sum('pax_used');
 
         $remainingToday = max(0, $totalQuotaToday - $redeemedToday);
@@ -69,7 +69,7 @@ class DashboardController extends Controller
 
         $outletActivity = RedemptionLog::query()
             ->with(['guest', 'facilityTemplate', 'outlet', 'user'])
-            ->when($propertyIds, fn($q) => $q->whereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds)))
+            ->when($propertyIds, fn($q) => $q->where(fn($sub) => $sub->whereIn('property_id', $propertyIds)->orWhereHas('guestVoucher', fn($q) => $q->whereIn('property_id', $propertyIds))))
             ->latest()
             ->limit(10)
             ->get();

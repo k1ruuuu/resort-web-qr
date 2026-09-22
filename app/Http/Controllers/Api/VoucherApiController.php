@@ -367,7 +367,7 @@ class VoucherApiController extends ApiController
 
         return $this->respond([
             'voucher_id' => $voucher->id,
-            'guest_name' => $voucher->booking->guest?->full_name ?? 'N/A',
+            'guest_name' => $voucher->guest_name ?? $voucher->booking?->guest?->full_name ?? 'N/A',
             'room_code' => $voucher->booking->room?->code ?? $voucher->booking->room?->number ?? 'N/A',
             'room_name' => $voucher->booking->room?->label ?? 'N/A',
             'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
@@ -411,7 +411,7 @@ class VoucherApiController extends ApiController
         }
 
         return $this->respond([
-            'guest' => $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
+            'guest' => $log->guest_name ?? $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
             'facility' => $log->facilityTemplate->name,
             'pax_used' => $log->pax_used,
             'remaining_quota' => $log->remaining_quota,

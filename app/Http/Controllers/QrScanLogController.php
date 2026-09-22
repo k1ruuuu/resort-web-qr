@@ -30,6 +30,9 @@ class QrScanLogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('qr_code', 'like', "%{$search}%")
                     ->orWhere('secure_token', 'like', "%{$search}%")
+                    ->orWhere('guest_name', 'like', "%{$search}%")
+                    ->orWhere('room_name', 'like', "%{$search}%")
+                    ->orWhere('booking_code', 'like', "%{$search}%")
                     ->orWhereHas('guestVoucher', function ($gv) use ($search) {
                         $gv->where('guest_name', 'like', "%{$search}%")
                             ->orWhereHas('guest', function ($g) use ($search) {
@@ -98,6 +101,9 @@ class QrScanLogController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('qr_code', 'like', "%{$search}%")
                     ->orWhere('secure_token', 'like', "%{$search}%")
+                    ->orWhere('guest_name', 'like', "%{$search}%")
+                    ->orWhere('room_name', 'like', "%{$search}%")
+                    ->orWhere('booking_code', 'like', "%{$search}%")
                     ->orWhereHas('guestVoucher', function ($gv) use ($search) {
                         $gv->where('guest_name', 'like', "%{$search}%")
                             ->orWhereHas('guest', function ($g) use ($search) {

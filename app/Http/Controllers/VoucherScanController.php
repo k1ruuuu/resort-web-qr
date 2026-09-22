@@ -374,9 +374,9 @@ class VoucherScanController extends Controller
             'success' => true,
             'data' => [
                 'voucher_id' => $voucher->id,
-                'guest_name' => $voucher->booking->guest?->full_name ?? 'N/A',
-                'room_code' => $voucher->booking->room?->code ?? $voucher->booking->room?->number ?? 'N/A',
-                'room_name' => $voucher->booking->room?->label ?? 'N/A',
+                'guest_name' => $voucher->guest_name ?? $voucher->booking?->guest?->full_name ?? 'N/A',
+                'room_code' => $voucher->booking?->room?->code ?? $voucher->booking?->room?->number ?? 'N/A',
+                'room_name' => $voucher->booking?->room?->label ?? 'N/A',
                 'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
                 'check_in' => $voucher->booking->check_in->format('Y-m-d'),
                 'check_out' => $voucher->booking->check_out->format('Y-m-d'),
