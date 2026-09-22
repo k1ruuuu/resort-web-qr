@@ -363,20 +363,26 @@
     
     // Handle "Select All" checkbox
     selectAllCheckbox.addEventListener('change', function() {
-        const individualCheckboxes = document.querySelectorAll('.facility-checkbox');
-        
+        const standardCheckboxes = document.querySelectorAll('.standard-facility-checkbox');
+        const dinnerCheckboxes = document.querySelectorAll('.dinner-facility-checkbox');
+
         if (this.checked) {
-            // Check all individual facilities
-            individualCheckboxes.forEach(cb => {
+            standardCheckboxes.forEach(cb => {
                 cb.checked = true;
-                cb.disabled = true;
+            });
+            let dinnerChecked = false;
+            dinnerCheckboxes.forEach(cb => {
+                if (!dinnerChecked && (cb.dataset.code === 'DINNER-BBQ' || cb === dinnerCheckboxes[0])) {
+                    cb.checked = true;
+                    dinnerChecked = true;
+                } else {
+                    cb.checked = false;
+                }
             });
             facilitySelectionInput.value = 'all';
         } else {
-            // Uncheck and enable all individual facilities
-            individualCheckboxes.forEach(cb => {
+            document.querySelectorAll('.facility-checkbox').forEach(cb => {
                 cb.checked = false;
-                cb.disabled = false;
             });
             facilitySelectionInput.value = 'multiple';
         }
@@ -401,18 +407,22 @@
         
         facilityCheckboxContainer.style.display = 'block';
         
+        const dinnerCodes = ['DINNER-BBQ', 'DINNER100K'];
+
         facilities.forEach(facility => {
+            const isDinner = dinnerCodes.includes(facility.code);
             const checkboxDiv = document.createElement('div');
             checkboxDiv.className = 'form-check';
             checkboxDiv.innerHTML = `
-                <input class="btn-check facility-checkbox" 
+                <input class="btn-check facility-checkbox ${isDinner ? 'dinner-facility-checkbox' : 'standard-facility-checkbox'}" 
                        type="checkbox" 
                        name="facility_template_ids[]" 
                        value="${facility.id}" 
                        id="facility_${facility.id}" 
+                       data-code="${facility.code}"
                        autocomplete="off">
-                <label class="btn btn-outline-primary btn-sm" for="facility_${facility.id}">
-                    ${facility.name}
+                <label class="btn ${isDinner ? 'btn-outline-warning text-dark' : 'btn-outline-primary'} btn-sm" for="facility_${facility.id}">
+                    ${facility.name} ${isDinner ? (facility.code === 'DINNER-BBQ' ? '(BBQ)' : '(100K)') : ''}
                 </label>
             `;
             facilityCheckboxes.appendChild(checkboxDiv);
@@ -420,20 +430,24 @@
         
         // Add event listeners to individual checkboxes
         const individualCheckboxes = document.querySelectorAll('.facility-checkbox');
-        individualCheckboxes.forEach(cb => {
+        const standardCheckboxes = document.querySelectorAll('.standard-facility-checkbox');
+        const dinnerCheckboxes = document.querySelectorAll('.dinner-facility-checkbox');
+
+        dinnerCheckboxes.forEach(cb => {
             cb.addEventListener('change', function() {
-                // If any individual checkbox is unchecked, uncheck "Select All"
-                if (!this.checked && selectAllCheckbox.checked) {
-                    selectAllCheckbox.checked = false;
+                if (this.checked) {
+                    dinnerCheckboxes.forEach(otherCb => {
+                        if (otherCb !== this) {
+                            otherCb.checked = false;
+                        }
+                    });
                 }
-                
-                // If all individual checkboxes are checked, check "Select All"
-                const allChecked = Array.from(individualCheckboxes).every(checkbox => checkbox.checked);
-                if (allChecked) {
-                    selectAllCheckbox.checked = true;
-                }
-                
-                // Update facility selection type
+                updateFacilitySelectionType();
+            });
+        });
+
+        standardCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
                 updateFacilitySelectionType();
             });
         });

@@ -182,36 +182,92 @@
                         </div>
                     </div>
                     <div id="stepFacilities" style="display:none;">
-                        <p class="text-muted small">Choose the facilities to include for this guest's QR voucher. Leave empty to use the default facilities.</p>
+                        <p class="text-muted small">Pilih fasilitas yang disertakan untuk QR voucher tamu ini. Biarkan kosong untuk menggunakan fasilitas standar.</p>
+                        
+                        @php
+                            $standardFacilities = $facilityTemplates->reject(fn($f) => $f->isDinner());
+                            $dinnerFacilities = $facilityTemplates->filter(fn($f) => $f->isDinner());
+                            $activeDinnerId = $booking->bookingFacilities->first(fn($bf) => $bf->facilityTemplate?->isDinner())?->facility_template_id;
+                            if (!$activeDinnerId && $dinnerFacilities->isNotEmpty()) {
+                                $defaultDinner = $dinnerFacilities->firstWhere('code', \App\Models\FacilityTemplate::DEFAULT_DINNER_CODE) ?? $dinnerFacilities->first();
+                                $defaultDinnerId = $defaultDinner?->id;
+                            } else {
+                                $defaultDinnerId = $activeDinnerId;
+                            }
+                        @endphp
+
                         <div class="mb-3">
-                            <label class="form-label">Facilities</label>
                             @if($facilityTemplates->isNotEmpty())
                                 <div class="form-check mb-3 p-2 bg-light border rounded">
                                     <input class="form-check-input" type="checkbox" id="selectAllFacilities">
                                     <label class="form-check-label fw-bold text-primary" for="selectAllFacilities">
-                                        <i class="fas fa-check-double me-2"></i>Select All Facilities
+                                        <i class="fas fa-check-double me-2"></i>Pilih Semua Fasilitas Standar + Dinner
                                     </label>
                                 </div>
                             @endif
-                            <div class="bg-light border rounded p-3">
-                                @if($facilityTemplates->isNotEmpty())
-                                    @foreach($facilityTemplates as $facilityTemplate)
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input facility-checkbox" type="checkbox" name="facility_template_ids[]" value="{{ $facilityTemplate->id }}" id="facility_{{ $facilityTemplate->id }}" @checked($booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
-                                            <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
-                                                {{ $facilityTemplate->name }}
-                                            </label>
-                                        </div>
-                                    @endforeach
-                                @else
-                                    <p class="text-muted small mb-0">No facility templates available for this property.</p>
-                                @endif
-                            </div>
-                            <div class="form-text">Select one or more facility options for the voucher.</div>
+
+                            @if($standardFacilities->isNotEmpty())
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Fasilitas Standar</label>
+                                    <div class="bg-light border rounded p-3">
+                                        @foreach($standardFacilities as $facilityTemplate)
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input facility-checkbox standard-facility-checkbox" type="checkbox" name="facility_template_ids[]" value="{{ $facilityTemplate->id }}" id="facility_{{ $facilityTemplate->id }}" @checked($booking->bookingFacilities->isEmpty() || $booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
+                                                <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
+                                                    {{ $facilityTemplate->name }}
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($dinnerFacilities->isNotEmpty())
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label fw-semibold small text-muted text-uppercase mb-0">Paket Dinner (Pilih Salah Satu)</label>
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-info-circle me-1"></i>Pilih Maks. 1</span>
+                                    </div>
+                                    <div class="alert alert-warning py-1 px-2 small mb-2 text-muted">
+                                        <i class="fas fa-exchange-alt me-1 text-primary"></i> Tamu hanya dapat memilih salah satu paket Dinner saat Check-In. Kuota dinner dapat ditukar antar tanggal menginap setelah check-in.
+                                    </div>
+                                    <div class="bg-light border border-warning rounded p-3">
+                                        @foreach($dinnerFacilities as $facilityTemplate)
+                                            @php
+                                                $isDefaultSelected = ($booking->bookingFacilities->isNotEmpty() && $booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))
+                                                    || ($booking->bookingFacilities->isEmpty() && $facilityTemplate->id === $defaultDinnerId);
+                                            @endphp
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input facility-checkbox dinner-facility-checkbox" 
+                                                       type="checkbox" 
+                                                       name="facility_template_ids[]" 
+                                                       value="{{ $facilityTemplate->id }}" 
+                                                       id="facility_{{ $facilityTemplate->id }}" 
+                                                       data-code="{{ $facilityTemplate->code }}"
+                                                       @checked($isDefaultSelected)>
+                                                <label class="form-check-label fw-semibold" for="facility_{{ $facilityTemplate->id }}">
+                                                    {{ $facilityTemplate->name }}
+                                                    @if($facilityTemplate->code === 'DINNER-BBQ')
+                                                        <span class="badge bg-primary text-white ms-1">Default BBQ</span>
+                                                    @elseif($facilityTemplate->code === 'DINNER100K')
+                                                        <span class="badge bg-info text-white ms-1">Voucher Resto 100K</span>
+                                                    @endif
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($facilityTemplates->isEmpty())
+                                <p class="text-muted small mb-0">No facility templates available for this property.</p>
+                            @endif
+
+                            <div class="form-text">Pastikan pilihan fasilitas sudah sesuai dengan paket menginap tamu.</div>
                         </div>
                         <div class="d-flex justify-content-between">
                             <button type="button" class="btn btn-secondary" id="btnBackToPhone">Back</button>
-                            <button type="submit" class="btn btn-success">Confirm Check In</button>
+                            <button type="submit" class="btn btn-success"><i class="fas fa-check-circle me-1"></i>Confirm Check In</button>
                         </div>
                     </div>
                 </div>
@@ -256,26 +312,63 @@
         });
 
         const selectAllFacilitiesCheckbox = document.getElementById('selectAllFacilities');
-        const facilityCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .facility-checkbox');
+        const standardCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .standard-facility-checkbox');
+        const dinnerCheckboxes = document.querySelectorAll('#checkinFacilitiesModal .dinner-facility-checkbox');
+
+        // Mutually exclusive dinner checkboxes
+        dinnerCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                if (this.checked) {
+                    dinnerCheckboxes.forEach(otherCb => {
+                        if (otherCb !== this) {
+                            otherCb.checked = false;
+                        }
+                    });
+                }
+                updateSelectAllState();
+            });
+        });
+
+        // Standard checkboxes change
+        standardCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function () {
+                updateSelectAllState();
+            });
+        });
+
+        function updateSelectAllState() {
+            if (!selectAllFacilitiesCheckbox) return;
+            const allStandardChecked = Array.from(standardCheckboxes).every(cb => cb.checked);
+            const hasOneDinnerChecked = Array.from(dinnerCheckboxes).some(cb => cb.checked);
+            selectAllFacilitiesCheckbox.checked = allStandardChecked && (dinnerCheckboxes.length === 0 || hasOneDinnerChecked);
+        }
 
         if (selectAllFacilitiesCheckbox) {
             selectAllFacilitiesCheckbox.addEventListener('change', function () {
-                facilityCheckboxes.forEach(cb => {
-                    cb.checked = this.checked;
+                const check = this.checked;
+                standardCheckboxes.forEach(cb => {
+                    cb.checked = check;
                 });
+                
+                if (check) {
+                    // Check default dinner (DINNER-BBQ) or the first dinner option, and uncheck others
+                    let dinnerChecked = false;
+                    dinnerCheckboxes.forEach(cb => {
+                        if (!dinnerChecked && (cb.dataset.code === 'DINNER-BBQ' || cb === dinnerCheckboxes[0])) {
+                            cb.checked = true;
+                            dinnerChecked = true;
+                        } else {
+                            cb.checked = false;
+                        }
+                    });
+                } else {
+                    dinnerCheckboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                }
             });
 
-            facilityCheckboxes.forEach(cb => {
-                cb.addEventListener('change', function () {
-                    if (!this.checked && selectAllFacilitiesCheckbox.checked) {
-                        selectAllFacilitiesCheckbox.checked = false;
-                    }
-
-                    if (Array.from(facilityCheckboxes).every(checkbox => checkbox.checked)) {
-                        selectAllFacilitiesCheckbox.checked = true;
-                    }
-                });
-            });
+            updateSelectAllState();
         }
     })();
 </script>
