@@ -232,7 +232,7 @@ class VoucherScanController extends Controller
                 ->get()
                 ->map(function ($log) {
                     return [
-                        'facility' => $log->facilityTemplate->name,
+                        'facility' => $log->facilityTemplate?->name ?? 'N/A',
                         'pax' => $log->pax_used,
                         'outlet' => $log->outlet?->name ?? 'N/A',
                         'staff' => $log->user?->name ?? 'System',
@@ -361,7 +361,7 @@ class VoucherScanController extends Controller
             ->get()
             ->map(function ($log) {
                 return [
-                    'facility' => $log->facilityTemplate->name,
+                    'facility' => $log->facilityTemplate?->name ?? 'N/A',
                     'pax' => $log->pax_used,
                     'outlet' => $log->outlet?->name ?? 'N/A',
                     'staff' => $log->user?->name ?? 'System',

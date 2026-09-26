@@ -375,6 +375,9 @@ class VoucherService
                         throw new VoucherException('This outlet belongs to a different property.', 403);
                     }
 
+                    $today = Carbon::today($timezone);
+                    $todayString = $today->toDateString();
+
                     $incomingExchanges = (int) DB::table('voucher_facility_exchanges')
                         ->where('guest_voucher_id', $voucher->id)
                         ->where('to_facility_template_id', $facilityTemplateId)
@@ -410,9 +413,6 @@ class VoucherService
                     }
 
                     // Time window checking has been disabled per user request;
-                    
-                    $today = Carbon::today($timezone);
-                    $todayString = $today->toDateString();
                     
                     // CRITICAL: Calculate quota from database WITH row-level locking to prevent race conditions
                     $totalUsedUpToToday = DB::table('redemption_logs')

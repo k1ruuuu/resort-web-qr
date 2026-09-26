@@ -250,7 +250,7 @@ class VoucherApiController extends ApiController
                 ->limit(10)
                 ->get()
                 ->map(fn($log) => [
-                    'facility' => $log->facilityTemplate->name,
+                    'facility' => $log->facilityTemplate?->name ?? 'N/A',
                     'pax' => $log->pax_used,
                     'outlet' => $log->outlet?->name ?? 'N/A',
                     'staff' => $log->user?->name ?? 'System',
@@ -357,7 +357,7 @@ class VoucherApiController extends ApiController
             ->limit(10)
             ->get()
             ->map(fn($log) => [
-                'facility' => $log->facilityTemplate->name,
+                'facility' => $log->facilityTemplate?->name ?? 'N/A',
                 'pax' => $log->pax_used,
                 'outlet' => $log->outlet?->name ?? 'N/A',
                 'staff' => $log->user?->name ?? 'System',
