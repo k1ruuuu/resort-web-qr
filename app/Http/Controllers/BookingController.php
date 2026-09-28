@@ -72,8 +72,13 @@ class BookingController extends Controller
 
         $bookings = $query->paginate(20)->withQueryString();
         $properties = Property::query()->orderBy('name')->get();
+        $facilityTemplates = $this->applyPropertyScope(FacilityTemplate::query())
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
-        return view('bookings.index', compact('bookings', 'properties'));
+        return view('bookings.index', compact('bookings', 'properties', 'facilityTemplates'));
     }
 
     public function create(): View
@@ -123,7 +128,27 @@ class BookingController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('bookings.show', compact('booking', 'facilityTemplates'));
+        $suggestedPhone = null;
+        if ($booking->guest && empty($booking->guest->phone)) {
+            $firstName = $booking->guest->first_name;
+            $lastName = $booking->guest->last_name;
+
+            $query = Guest::query()
+                ->where('id', '!=', $booking->guest_id)
+                ->whereNotNull('phone')
+                ->where('phone', '!=', '');
+
+            if (!empty($firstName)) {
+                $query->where('first_name', $firstName);
+            }
+            if (!empty($lastName)) {
+                $query->where('last_name', $lastName);
+            }
+
+            $suggestedPhone = $query->latest('updated_at')->value('phone');
+        }
+
+        return view('bookings.show', compact('booking', 'facilityTemplates', 'suggestedPhone'));
     }
 
     public function checkIn(Request $request, Booking $booking): RedirectResponse
@@ -154,6 +179,64 @@ class BookingController extends Controller
         }
 
         return back()->with('success', 'Guest checked in.');
+    }
+
+    public function bulkCheckIn(Request $request): RedirectResponse
+    {
+        $this->authorizePermission('bookings.checkin');
+
+        $validated = $request->validate([
+            'booking_ids' => ['required', 'array', 'min:1'],
+            'booking_ids.*' => ['integer', 'exists:bookings,id'],
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]+$/'],
+            'facility_template_ids' => ['nullable', 'array'],
+            'facility_template_ids.*' => ['integer', 'exists:facility_templates,id'],
+        ]);
+
+        $bookingIds = $validated['booking_ids'];
+        $phone = filled($validated['phone'] ?? null) ? trim($validated['phone']) : null;
+        $facilityTemplateIds = collect($validated['facility_template_ids'] ?? [])
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $bookings = Booking::query()
+            ->whereIn('id', $bookingIds)
+            ->with(['guest', 'property', 'room', 'bookingFacilities'])
+            ->get();
+
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($bookings as $booking) {
+            try {
+                $this->authorizePropertyAccess($booking);
+
+                // Update phone on guest if provided
+                if ($phone && $booking->guest) {
+                    $booking->guest->update(['phone' => $phone]);
+                }
+
+                $this->bookings->checkIn($booking, $facilityTemplateIds);
+                $successCount++;
+            } catch (\Throwable $e) {
+                $ref = $booking->room_label ?? $booking->reference ?? "#{$booking->id}";
+                $errors[] = "{$ref}: " . $e->getMessage();
+            }
+        }
+
+        if ($successCount > 0 && empty($errors)) {
+            return redirect()->route('bookings.index')
+                ->with('success', "Berhasil melakukan check-in untuk {$successCount} kamar rombongan.");
+        } elseif ($successCount > 0 && !empty($errors)) {
+            return redirect()->route('bookings.index')
+                ->with('warning', "Berhasil check-in {$successCount} kamar. Terdapat kendala pada: " . implode(', ', $errors));
+        } else {
+            return redirect()->route('bookings.index')
+                ->with('error', "Gagal melakukan check-in rombongan: " . implode(', ', $errors));
+        }
     }
 
     public function checkOut(Booking $booking): RedirectResponse

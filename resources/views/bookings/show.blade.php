@@ -176,6 +176,18 @@
                             <label class="form-label" for="guestPhone">Phone Number</label>
                             <input type="text" class="form-control" id="guestPhone" name="phone" value="{{ $booking->guest->phone ?? '' }}" placeholder="e.g. 6281234567890">
                             <div class="form-text">Include country code (e.g. 62 for Indonesia).</div>
+
+                            {{-- Quick Fill Shortcuts --}}
+                            <div id="quickPhoneShortcuts" class="mt-2">
+                                @if(!empty($suggestedPhone))
+                                    <button type="button" class="btn btn-sm btn-outline-info me-1 mb-1 btn-quick-phone" data-phone="{{ $suggestedPhone }}">
+                                        <i class="fas fa-building me-1"></i> No. dari Booking Rombongan: <strong>{{ $suggestedPhone }}</strong>
+                                    </button>
+                                @endif
+                                <button type="button" class="btn btn-sm btn-outline-primary d-none me-1 mb-1 btn-quick-phone" id="btnLastCheckinPhone" data-phone="">
+                                    <i class="fab fa-whatsapp me-1 text-success"></i> Gunakan No. Terakhir: <strong id="lblLastCheckinPhone"></strong>
+                                </button>
+                            </div>
                         </div>
                         <div class="text-end">
                             <button type="button" class="btn btn-primary" id="btnToFacilities">Next</button>
@@ -285,6 +297,34 @@
         const btnBackToPhone = document.getElementById('btnBackToPhone');
         const guestPhone = document.getElementById('guestPhone');
 
+        // Quick phone buttons click handler
+        document.querySelectorAll('.btn-quick-phone').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const phone = this.dataset.phone;
+                if (phone && guestPhone) {
+                    guestPhone.value = phone;
+                    guestPhone.classList.remove('is-invalid');
+                    guestPhone.classList.add('is-valid');
+                    setTimeout(() => guestPhone.classList.remove('is-valid'), 1200);
+                    guestPhone.focus();
+                }
+            });
+        });
+
+        // Load last check-in phone from localStorage
+        try {
+            const lastPhone = localStorage.getItem('last_checkin_phone');
+            if (lastPhone) {
+                const btnLast = document.getElementById('btnLastCheckinPhone');
+                const lblLast = document.getElementById('lblLastCheckinPhone');
+                if (btnLast && lblLast) {
+                    lblLast.textContent = lastPhone;
+                    btnLast.dataset.phone = lastPhone;
+                    btnLast.classList.remove('d-none');
+                }
+            }
+        } catch (e) {}
+
         btnToFacilities.addEventListener('click', function () {
             const phone = guestPhone.value.trim();
             if (!phone) {
@@ -297,6 +337,11 @@
                 }
                 return;
             }
+
+            try {
+                localStorage.setItem('last_checkin_phone', phone);
+            } catch (e) {}
+
             guestPhone.classList.remove('is-invalid');
             stepPhone.style.display = 'none';
             stepFacilities.style.display = 'block';

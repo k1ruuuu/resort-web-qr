@@ -55,6 +55,7 @@ Route::middleware(['auth', 'ip.whitelist'])->group(function () {
     Route::post('guests-import/process', [GuestController::class, 'processImport'])->name('guests.process-import')->middleware(['validate.upload', 'throttle:10,1']);
     Route::get('guests-import/template', [GuestController::class, 'downloadTemplate'])->name('guests.download-template');
 
+    Route::post('bookings/bulk-check-in', [BookingController::class, 'bulkCheckIn'])->name('bookings.bulk-check-in');
     Route::resource('bookings', BookingController::class);
     Route::post('bookings/{booking}/check-in', [BookingController::class, 'checkIn'])->name('bookings.check-in');
     Route::post('bookings/{booking}/check-out', [BookingController::class, 'checkOut'])->name('bookings.check-out');
