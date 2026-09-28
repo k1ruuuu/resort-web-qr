@@ -273,14 +273,14 @@ class VoucherScanController extends Controller
         }
 
         // Validate expiration time (9 PM on checkout date)
-        $timezone = $voucher->booking->property?->timezone ?? 'UTC';
+        $timezone = $voucher->booking?->property?->timezone ?? $voucher->property?->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
-        $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
-        $expirationDateTime = $checkOutDate->copy()->setTimeFromTimeString($cutoffTime);
+        $checkInDate = $voucher->booking?->check_in ? Carbon::parse($voucher->booking->check_in->toDateString(), $timezone)->startOfDay() : null;
+        $checkOutDate = $voucher->booking?->check_out ? Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)->startOfDay() : null;
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+        $expirationDateTime = $checkOutDate ? $checkOutDate->copy()->setTimeFromTimeString($cutoffTime) : null;
 
-        if ($currentDateTime->lt($checkInDate)) {
+        if ($checkInDate && $currentDateTime->lt($checkInDate)) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
@@ -290,7 +290,7 @@ class VoucherScanController extends Controller
             ], 422);
         }
 
-        if ($currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
+        if ($expirationDateTime && $currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
@@ -377,12 +377,12 @@ class VoucherScanController extends Controller
                 'guest_name' => $voucher->guest_name ?? $voucher->booking?->guest?->full_name ?? 'N/A',
                 'room_code' => $voucher->booking?->room?->code ?? $voucher->booking?->room?->number ?? 'N/A',
                 'room_name' => $voucher->booking?->room?->label ?? 'N/A',
-                'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
-                'check_in' => $voucher->booking->check_in->format('Y-m-d'),
-                'check_out' => $voucher->booking->check_out->format('Y-m-d'),
+                'booking_code' => $voucher->booking?->booking_code ?? $voucher->booking?->reference,
+                'check_in' => $voucher->booking?->check_in?->format('Y-m-d'),
+                'check_out' => $voucher->booking?->check_out?->format('Y-m-d'),
                 'total_pax' => $voucher->additionAppliesOn($today->toDateString())
-                    ? $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0)
-                    : $voucher->booking->total_pax + $voucher->booking->extra_beds,
+                    ? ($voucher->booking?->total_pax ?? 1) + ($voucher->booking?->extra_beds ?? 0) + ($voucher->addition ?? 0)
+                    : ($voucher->booking?->total_pax ?? 1) + ($voucher->booking?->extra_beds ?? 0),
                 'facilities' => $facilityStatuses,
                 'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
                 'history' => $history,
@@ -420,6 +420,15 @@ class VoucherScanController extends Controller
                 'success' => false,
                 'message' => $e->getMessage(),
             ], $e->getCode() ?: 422);
+        } catch (\Throwable $e) {
+            Log::error('Error processing voucher redemption', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat proses penukaran voucher: ' . $e->getMessage(),
+            ], 500);
         }
 
         return response()->json([
@@ -427,7 +436,7 @@ class VoucherScanController extends Controller
             'message' => 'Facility redeemed successfully!',
             'data' => [
                 'guest' => $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
-                'facility' => $log->facilityTemplate->name,
+                'facility' => $log->facilityTemplate?->name ?? 'N/A',
                 'pax_used' => $log->pax_used,
                 'remaining_quota' => $log->remaining_quota,
                 'date' => $log->date->format('Y-m-d'),
@@ -470,6 +479,16 @@ class VoucherScanController extends Controller
             }
 
             return back()->with('error', $e->getMessage())->withInput();
+        } catch (\Throwable $e) {
+            Log::error('Error in voucher scan redemption', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
+            }
+
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
         }
 
         if ($request->expectsJson()) {

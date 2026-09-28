@@ -39,7 +39,7 @@
                 <div class="text-muted small mb-1">Stay Dates</div>
                 <div class="fw-bold text-dark small">
                     @if($voucher->booking)
-                        {{ $voucher->booking->check_in->format('d M') }} – {{ $voucher->booking->check_out->format('d M Y') }}
+                        {{ $voucher->booking->check_in?->format('d M') ?? 'N/A' }} – {{ $voucher->booking->check_out?->format('d M Y') ?? 'N/A' }}
                     @else
                         {{ $voucher->expires_at_local ? $voucher->expires_at_local->format('d M Y H:i') : 'N/A' }}
                     @endif

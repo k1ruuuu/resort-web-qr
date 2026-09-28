@@ -282,21 +282,21 @@ class VoucherApiController extends ApiController
             return $this->respondError('Booking is not currently checked in.', 422);
         }
 
-        $timezone = $voucher->booking->property?->timezone ?? 'UTC';
+        $timezone = $voucher->booking?->property?->timezone ?? $voucher->property?->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $checkInDate = Carbon::parse($voucher->booking->check_in)->setTimezone($timezone)->startOfDay();
-        $checkOutDate = Carbon::parse($voucher->booking->check_out)->setTimezone($timezone)->startOfDay();
-        $cutoffTime = \App\Models\Setting::get('maintenance.checkout_cutoff', '12:35');
-        $expirationDateTime = $checkOutDate->copy()->setTimeFromTimeString($cutoffTime);
+        $checkInDate = $voucher->booking?->check_in ? Carbon::parse($voucher->booking->check_in->toDateString(), $timezone)->startOfDay() : null;
+        $checkOutDate = $voucher->booking?->check_out ? Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)->startOfDay() : null;
+        $cutoffTime = \App\Models\Setting::get('maintenance.checkout_cutoff', '12:30');
+        $expirationDateTime = $checkOutDate ? $checkOutDate->copy()->setTimeFromTimeString($cutoffTime) : null;
 
-        if ($currentDateTime->lt($checkInDate)) {
+        if ($checkInDate && $currentDateTime->lt($checkInDate)) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
             return $this->respondError('This voucher is not yet valid. Valid from: ' . $checkInDate->format('Y-m-d H:i'), 422);
         }
 
-        if ($currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
+        if ($expirationDateTime && $currentDateTime->gte($expirationDateTime) && !$isOneTimeGrace) {
             if ($outlet && $user) {
                 $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'outside_stay_period');
             }
@@ -368,14 +368,14 @@ class VoucherApiController extends ApiController
         return $this->respond([
             'voucher_id' => $voucher->id,
             'guest_name' => $voucher->guest_name ?? $voucher->booking?->guest?->full_name ?? 'N/A',
-            'room_code' => $voucher->booking->room?->code ?? $voucher->booking->room?->number ?? 'N/A',
-            'room_name' => $voucher->booking->room?->label ?? 'N/A',
-            'booking_code' => $voucher->booking->booking_code ?? $voucher->booking->reference,
-            'check_in' => $voucher->booking->check_in->format('Y-m-d'),
-            'check_out' => $voucher->booking->check_out->format('Y-m-d'),
+            'room_code' => $voucher->booking?->room?->code ?? $voucher->booking?->room?->number ?? 'N/A',
+            'room_name' => $voucher->booking?->room?->label ?? 'N/A',
+            'booking_code' => $voucher->booking?->booking_code ?? $voucher->booking?->reference,
+            'check_in' => $voucher->booking?->check_in?->format('Y-m-d'),
+            'check_out' => $voucher->booking?->check_out?->format('Y-m-d'),
             'total_pax' => $voucher->additionAppliesOn($today->toDateString())
-                ? $voucher->booking->total_pax + $voucher->booking->extra_beds + ($voucher->addition ?? 0)
-                : $voucher->booking->total_pax + $voucher->booking->extra_beds,
+                ? ($voucher->booking?->total_pax ?? 1) + ($voucher->booking?->extra_beds ?? 0) + ($voucher->addition ?? 0)
+                : ($voucher->booking?->total_pax ?? 1) + ($voucher->booking?->extra_beds ?? 0),
             'facilities' => $facilityStatuses,
             'auto_select_facility' => $facilityStatuses->count() === 1 ? $facilityStatuses->first()->facility_template_id : null,
             'history' => $history,
@@ -412,7 +412,7 @@ class VoucherApiController extends ApiController
 
         return $this->respond([
             'guest' => $log->guest_name ?? $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
-            'facility' => $log->facilityTemplate->name,
+            'facility' => $log->facilityTemplate?->name ?? 'N/A',
             'pax_used' => $log->pax_used,
             'remaining_quota' => $log->remaining_quota,
             'date' => $log->date->format('Y-m-d'),

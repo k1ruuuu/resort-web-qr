@@ -27,7 +27,7 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Stay Dates</b> 
-                        <span>{{ $voucher->booking ? $voucher->booking->check_in->format('d M Y') . ' – ' . $voucher->booking->check_out->format('d M Y') : ($voucher->expires_at_local ? $voucher->expires_at_local->format('d M Y H:i') : 'N/A') }}</span>
+                        <span>{{ $voucher->booking ? ($voucher->booking->check_in?->format('d M Y') ?? 'N/A') . ' – ' . ($voucher->booking->check_out?->format('d M Y') ?? 'N/A') : ($voucher->expires_at_local ? $voucher->expires_at_local->format('d M Y H:i') : 'N/A') }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <b>Total Pax</b> 

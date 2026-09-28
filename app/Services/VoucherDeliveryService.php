@@ -60,8 +60,9 @@ class VoucherDeliveryService
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
+        $booking->setRelation('guestVoucher', $voucher);
         
-        $message = $this->compileMessage($booking);
+        $message = $this->compileMessage($booking, $voucher);
         
         $deliveryMethod = Setting::get('delivery.delivery_method', 'qr_image');
         $filename = null;
@@ -118,8 +119,9 @@ class VoucherDeliveryService
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
+        $booking->setRelation('guestVoucher', $voucher);
         
-        $message = $this->compileMessage($booking);
+        $message = $this->compileMessage($booking, $voucher);
         
         $deliveryMethod = Setting::get('delivery.delivery_method', 'qr_image');
         $filename = null;
@@ -165,8 +167,9 @@ class VoucherDeliveryService
         $booking->loadMissing(['guest', 'room.roomType']);
         
         $voucher = $booking->guestVoucher ?: $this->vouchers->generateForBooking($booking);
+        $booking->setRelation('guestVoucher', $voucher);
         
-        $message = $this->compileMessage($booking);
+        $message = $this->compileMessage($booking, $voucher);
         
         $deliveryMethod = Setting::get('delivery.delivery_method', 'qr_image');
         $filename = null;
@@ -374,7 +377,7 @@ class VoucherDeliveryService
         }
     }
 
-    private function compileMessage(Booking $booking): string
+    private function compileMessage(Booking $booking, ?GuestVoucher $voucher = null): string
     {
         $template = Setting::get(
             'delivery.message_template',
@@ -386,7 +389,7 @@ class VoucherDeliveryService
         $roomName = $booking->room_label ?? $booking->room?->label ?? $roomCode;
         $totalPax = $booking->total_pax + $booking->extra_beds;
 
-        $voucher = $booking->guestVoucher;
+        $voucher = $voucher ?? $booking->guestVoucher;
         $voucherLink = $voucher ? route('vouchers.public', ['token' => $voucher->secure_token]) : '';
 
         $facilities = '';
