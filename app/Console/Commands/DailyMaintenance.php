@@ -70,7 +70,7 @@ class DailyMaintenance extends Command
     private function runAutoCheckout(): bool
     {
         $this->info('Checking for bookings to auto-checkout and delete (past checkout cutoff + grace period)...');
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
         $count = 0;
 
         Booking::query()
@@ -85,8 +85,13 @@ class DailyMaintenance extends Command
                         ->startOfDay()
                         ->setTimeFromTimeString($cutoffTime);
 
-                    // Extended 1 hour past cutoff for one-time facility grace period (13:35 WIB)
-                    $extendedCutoff = $cutoff->copy()->addHour();
+                    // Extended 5 hours past cutoff for one-time facility grace period (17:30 WIB)
+                    $extendedCutoff = $cutoff->copy()->addHours(5);
+
+                    if ($booking->checked_out_at) {
+                        $checkedOutAtLocal = Carbon::parse($booking->checked_out_at)->setTimezone($timezone);
+                        $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHours(5));
+                    }
 
                     if ($localNow->lt($extendedCutoff)) {
                         continue;
@@ -300,14 +305,14 @@ class DailyMaintenance extends Command
 
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
 
         $checkOutDate = Carbon::parse($voucher->booking->check_out)
             ->setTimezone($timezone)
             ->startOfDay()
             ->setTimeFromTimeString($cutoffTime);
 
-        // Extended 1 hour past checkout cutoff for one-time facilities
+        // Extended 5 hours past checkout cutoff for one-time facilities (until 17:30 WIB)
         if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
             return false;
         }

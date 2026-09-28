@@ -8,9 +8,9 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Daily maintenance: hard delete bookings past Expected Departure + 1h grace period (13:35 WIB), cancel no-show, expire vouchers
+// Daily maintenance: hard delete bookings past Expected Departure + 5h grace period (17:30 WIB), cancel no-show, expire vouchers
 Schedule::command('daily:maintenance --all')
-    ->dailyAt('13:35')
+    ->dailyAt('17:30')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->runInBackground();

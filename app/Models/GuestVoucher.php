@@ -90,18 +90,17 @@ class GuestVoucher extends Model
         }
 
         $additionIds = array_map('intval', explode(',', $this->addition_facility_ids));
-        $oneTimeCodes = ['SNACK', 'JOURNAL', 'FEED'];
 
         // Addition granted to a one-time facility stays valid for the whole stay
-        return $this->booking?->bookingFacilities->contains(function ($bf) use ($additionIds, $oneTimeCodes) {
+        return $this->booking?->bookingFacilities->contains(function ($bf) use ($additionIds) {
             return $bf->facilityTemplate
                 && in_array($bf->facility_template_id, $additionIds, true)
-                && ($bf->facilityTemplate->is_one_time ?? in_array($bf->facilityTemplate->code, $oneTimeCodes, true));
+                && $bf->facilityTemplate->isOneTime();
         }) ?? false;
     }
 
     /**
-     * Extend one-time facilities by 1 hour past checkout cutoff.
+     * Extend one-time facilities by 5 hours past checkout cutoff (until 17:30 WIB).
      */
     public function isOneTimeGracePeriodActive(?Carbon $now = null): bool
     {
@@ -123,13 +122,13 @@ class GuestVoucher extends Model
             return false;
         }
 
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
         $cutoff = Carbon::parse($checkOutDate, $tz)->setTimeFromTimeString($cutoffTime);
-        $extendedCutoff = $cutoff->copy()->addHour(); // 13:35 WIB (1 hour past 12:35 checkout cutoff)
+        $extendedCutoff = $cutoff->copy()->addHours(5); // 17:30 WIB (5 hours past 12:30 checkout cutoff)
 
         if ($this->booking->checked_out_at) {
             $checkedOutAtLocal = Carbon::parse($this->booking->checked_out_at)->setTimezone($tz);
-            $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHour());
+            $extendedCutoff = $extendedCutoff->max($checkedOutAtLocal->copy()->addHours(5));
         }
 
         // Case 1: Booking is checked out
@@ -212,7 +211,7 @@ class GuestVoucher extends Model
                     'code' => $facility->code,
                     'is_available' => !$isExpired && $remaining > 0,
                     'status' => $status,
-                    'is_one_time' => false,
+                    'is_one_time' => $facility->isOneTime(),
                     'quota_total' => $quota,
                     'quota_used' => $used,
                     'quota_remaining' => $remaining,
@@ -272,7 +271,7 @@ class GuestVoucher extends Model
             }
         }
 
-        $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
+        $oneTimeFacilityCodes = FacilityTemplate::ONE_TIME_CODES;
 
         // Total usage per facility across the whole stay (used for one-time facilities)
         $everUsedByFacility = RedemptionLog::query()
@@ -295,8 +294,7 @@ class GuestVoucher extends Model
             $facilityCode = $bf->facilityTemplate->code;
             $facilityAdd = $additionMap[$bf->facility_template_id] ?? (in_array($bf->facility_template_id, $additionFacilityIds) ? $addition : 0);
 
-            $isOneTimeFacility = $bf->facilityTemplate->is_one_time
-                ?? in_array($facilityCode, $oneTimeFacilityCodes);
+            $isOneTimeFacility = $bf->facilityTemplate->isOneTime();
 
             // Base quota per day
             $baseDailyQuota = (int) ($bf->quota_total ?? $baseQuota);

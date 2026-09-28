@@ -270,6 +270,12 @@ class VoucherService
                     ]);
 
                     $this->audit->log('voucher.generated', $voucher, null, $voucher->toArray());
+                } else {
+                    $voucher->update([
+                        'facility_template_id' => $facilityTemplateIds ? implode(',', $facilityTemplateIds) : null,
+                        'status' => VoucherStatus::Active,
+                    ]);
+                    $this->audit->log('voucher.updated', $voucher, null, $voucher->toArray());
                 }
 
                 return $voucher;
@@ -333,11 +339,11 @@ class VoucherService
                     ->lockForUpdate()
                     ->first();
 
-                // Check if one-time grace period applies (1 hour past checkout cutoff)
+                // Check if one-time grace period applies (5 hours past checkout cutoff)
                 $isOneTimeGrace = $voucher->isOneTimeGracePeriodActive();
-                $oneTimeCodes = ['SNACK', 'JOURNAL', 'FEED'];
+                $oneTimeCodes = FacilityTemplate::ONE_TIME_CODES;
                 $facilityTarget = FacilityTemplate::query()->find($facilityTemplateId);
-                $isTargetOneTime = $facilityTarget?->is_one_time ?? in_array($facilityTarget?->code, $oneTimeCodes, true);
+                $isTargetOneTime = $facilityTarget?->isOneTime() ?? in_array($facilityTarget?->code, $oneTimeCodes, true);
 
                 // Auto-expire if passed checkout time and not in one-time grace period
                 if (!$isOneTimeGrace) {
@@ -480,13 +486,13 @@ class VoucherService
                     throw new VoucherException('Voucher has no associated booking.', 422);
                 }
 
-                $timezone = $voucher->booking->property->timezone ?? 'UTC';
+                $timezone = $voucher->booking->property?->timezone ?? $voucher->property?->timezone ?? 'UTC';
                 $currentDateTime = Carbon::now($timezone);
-                $checkInDate = Carbon::parse($voucher->booking->check_in->toDateString(), $timezone)->startOfDay();
+                $checkInDate = Carbon::parse($voucher->booking->check_in?->toDateString() ?? $currentDateTime->toDateString(), $timezone)->startOfDay();
                 
-                // Voucher expires at checkout cutoff (12:35 WIB) on checkout date
-                $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
-                $expirationDateTime = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)
+                // Voucher expires at checkout cutoff (12:30 WIB) on checkout date
+                $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+                $expirationDateTime = Carbon::parse($voucher->booking->check_out?->toDateString() ?? $currentDateTime->toDateString(), $timezone)
                     ->setTimeFromTimeString($cutoffTime);
 
                 // Check if before check-in
@@ -497,7 +503,7 @@ class VoucherService
                     );
                 }
 
-                // Check if after expiration (checkout cutoff 12:35 WIB or grace period until 13:35 WIB)
+                // Check if after expiration (checkout cutoff 12:30 WIB or grace period until 17:30 WIB)
                 if ($currentDateTime->gte($expirationDateTime) && !($isOneTimeGrace && $isTargetOneTime)) {
                     throw new VoucherException(
                         'QR code has expired. It was valid until ' . $expirationDateTime->format('Y-m-d H:i') . ' (' . $timezone . ')',
@@ -509,7 +515,7 @@ class VoucherService
                     throw new VoucherException('This outlet belongs to a different property.', 403);
                 }
 
-                $today = Carbon::today($voucher->booking->property->timezone ?? 'UTC');
+                $today = Carbon::today($voucher->booking->property?->timezone ?? $voucher->property?->timezone ?? 'UTC');
                 $todayString = $today->toDateString();
                 
                 // CRITICAL: Calculate quota from database WITH row-level locking to prevent race conditions
@@ -576,20 +582,20 @@ class VoucherService
                 }
                 
                 // Check if facility is available today (M-12: compare in the property timezone)
-                $tz = $voucher->booking->property->timezone ?? 'UTC';
+                $tz = $voucher->booking->property?->timezone ?? $voucher->property?->timezone ?? 'UTC';
                 $start = $bookingFacility->start_date->setTimezone($tz)->toDateString();
                 $end = $bookingFacility->end_date->setTimezone($tz)->toDateString();
                 $facilityCode = $bookingFacility->facilityTemplate->code;
 
                 // Time window checking has been disabled per user request;
                 
-                $oneTimeFacilityCodes = ['SNACK', 'JOURNAL', 'FEED'];
+                $oneTimeFacilityCodes = FacilityTemplate::ONE_TIME_CODES;
                 // Item 3: DB flag overrides the code heuristic; null keeps legacy behavior
-                $isOneTimeFacility = $bookingFacility->facilityTemplate->is_one_time
+                $isOneTimeFacility = $bookingFacility->facilityTemplate?->isOneTime()
                     ?? in_array($facilityCode, $oneTimeFacilityCodes);
                 
                 // Both one-time and daily facilities must be within their valid date range
-                // One-time facilities also remain valid during the 1-hour grace period on checkout date
+                // One-time facilities also remain valid during the 5-hour grace period on checkout date
                 if ($todayString < $start || $todayString > $end) {
                     if (!($isOneTimeGrace && $isOneTimeFacility)) {
                         throw new VoucherException('This facility is not valid today.', 422);
@@ -766,13 +772,13 @@ class VoucherService
             return false;
         }
 
-        $timezone = $voucher->booking->property->timezone ?? 'UTC';
+        $timezone = $voucher->booking->property?->timezone ?? $voucher->property?->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
-        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:35');
-        $checkOutDate = Carbon::parse($voucher->booking->check_out->toDateString(), $timezone)
-            ->setTimeFromTimeString($cutoffTime); // 12:35 WIB on checkout date
+        $cutoffTime = Setting::get('maintenance.checkout_cutoff', '12:30');
+        $checkOutDate = Carbon::parse($voucher->booking->check_out?->toDateString() ?? $currentDateTime->toDateString(), $timezone)
+            ->setTimeFromTimeString($cutoffTime); // 12:30 WIB on checkout date
 
-        // Extended 1 hour past checkout cutoff for one-time facilities (until 13:35 WIB)
+        // Extended 5 hours past checkout cutoff for one-time facilities (until 17:30 WIB)
         if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
             return false;
         }

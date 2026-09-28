@@ -78,13 +78,13 @@ class ExpireVouchers extends Command
         $timezone = $voucher->booking->property->timezone ?? 'UTC';
         $currentDateTime = Carbon::now($timezone);
         
-        $cutoffTime = \App\Models\Setting::get('maintenance.checkout_cutoff', '12:35');
+        $cutoffTime = \App\Models\Setting::get('maintenance.checkout_cutoff', '12:30');
         $checkOutDate = Carbon::parse($voucher->booking->check_out)
             ->setTimezone($timezone)
             ->startOfDay()
-            ->setTimeFromTimeString($cutoffTime); // 12:35 WIB on checkout date
+            ->setTimeFromTimeString($cutoffTime); // 12:30 WIB on checkout date
 
-        // Extended 1 hour past checkout cutoff for one-time facilities
+        // Extended 5 hours past checkout cutoff for one-time facilities (until 17:30 WIB)
         if ($voucher->isOneTimeGracePeriodActive($currentDateTime)) {
             return false;
         }
