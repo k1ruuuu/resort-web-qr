@@ -295,7 +295,8 @@ class VoucherService
         Outlet $outlet,
         User $user,
         int $facilityTemplateId,
-        int $paxUsed = 1
+        int $paxUsed = 1,
+        bool $allowAdvance = false
     ): RedemptionLog {
         $voucher = null;
         $lock = null;
@@ -332,7 +333,7 @@ class VoucherService
                 throw new VoucherException('Another redemption is in progress. Please wait.', 409);
             }
 
-            return DB::transaction(function () use ($qrCode, $voucher, $outlet, $user, $facilityTemplateId, $paxUsed) {
+            return DB::transaction(function () use ($qrCode, $voucher, $outlet, $user, $facilityTemplateId, $paxUsed, $allowAdvance) {
                 // Reload with lock to get fresh data
                 $voucher = GuestVoucher::query()
                     ->where('id', $voucher->id)
@@ -604,14 +605,12 @@ class VoucherService
 
                 // Checkout limit has been disabled
 
-                $everUsed = 0;
-                if ($isOneTimeFacility) {
-                    $everUsed = DB::table('redemption_logs')
-                        ->where('guest_voucher_id', $voucher->id)
-                        ->where('facility_template_id', $facilityTemplateId)
-                        ->lockForUpdate()
-                        ->sum('pax_used');
-                }
+                // Total used across the whole stay
+                $everUsed = (int) DB::table('redemption_logs')
+                    ->where('guest_voucher_id', $voucher->id)
+                    ->where('facility_template_id', $facilityTemplateId)
+                    ->lockForUpdate()
+                    ->sum('pax_used');
 
                 $add = $additionMap[$facilityTemplateId] ?? (in_array($facilityTemplateId, $additionIds) ? ($voucher->addition ?? 0) : 0);
                 
@@ -633,17 +632,37 @@ class VoucherService
                 
                 $usageSum = $isOneTimeFacility ? $everUsed : $totalUsedUpToToday;
                 $quotaRemaining = max(0, $facilityQuota - $usageSum);
-                
-                if ($quotaRemaining <= 0) {
-                    throw VoucherException::quotaExhausted();
-                }
 
-                if ($paxUsed > $quotaRemaining) {
+                $totalNights = max(1, (int) ($voucher->booking?->nights ?? 1));
+                $stayQuotaTotal = $isOneTimeFacility
+                    ? $facilityQuota
+                    : (max(0, ($baseDailyQuota * $totalNights) + $netExchangeDelta) + ($voucher->addition ?? 0));
+                $stayQuotaRemaining = max(0, $stayQuotaTotal - $everUsed);
+                $canAdvance = !$isOneTimeFacility && $totalNights > 1 && $stayQuotaRemaining > $quotaRemaining;
+
+                if ($paxUsed <= $quotaRemaining) {
+                    // Standard redemption within today's quota
+                } elseif ($allowAdvance && $canAdvance && $paxUsed <= $stayQuotaRemaining) {
+                    // Valid advance redemption using future stay quota
+                } elseif ($paxUsed > $stayQuotaRemaining) {
+                    throw new VoucherException(
+                        "Jumlah pax ({$paxUsed}) melebihi sisa total kuota menginap ({$stayQuotaRemaining} pax).",
+                        422
+                    );
+                } elseif (!$allowAdvance && $canAdvance) {
+                    throw new VoucherException(
+                        "Kuota hari ini hanya tersisa {$quotaRemaining} pax. Tamu masih memiliki sisa kuota masa menginap ({$stayQuotaRemaining} pax). Centang 'Gunakan Kuota Hari Esok (Advance Quota)' untuk melanjutkan.",
+                        422
+                    );
+                } else {
+                    if ($quotaRemaining <= 0) {
+                        throw VoucherException::quotaExhausted();
+                    }
                     throw VoucherException::quotaExceeded();
                 }
 
                 $now = now();
-                $remainingQuota = $quotaRemaining - $paxUsed;
+                $remainingQuota = max(0, $quotaRemaining - $paxUsed);
 
                 $guestName = $voucher->guest?->full_name ?? $voucher->booking?->guest?->full_name ?? $voucher->guest_name;
                 $roomName = $voucher->booking ? ($voucher->booking->room_label ?? $voucher->booking->room?->number ?? $voucher->booking->room?->label) : ($voucher->category === 'temporary' ? 'Temporary' : null);
@@ -667,6 +686,9 @@ class VoucherService
                     'time' => $now->toTimeString(),
                     'ip_address' => request()->ip(),
                 ]);
+
+                $log->setAttribute('is_advance', $paxUsed > $quotaRemaining);
+                $log->setAttribute('stay_quota_remaining', max(0, $stayQuotaRemaining - $paxUsed));
 
                 $this->logScan($qrCode, $voucher, $outlet, $user, 'success', $facilityTemplateId, $paxUsed);
                 $this->audit->log('voucher.redeemed', $voucher, null, $log->toArray());

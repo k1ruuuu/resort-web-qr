@@ -311,7 +311,7 @@ class VoucherScanController extends Controller
                 $facilityStatuses = $facilityStatuses->filter(fn($f) => $f->is_one_time)->values();
             }
 
-            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0 && empty($f->can_advance))) {
                 if ($user) {
                     $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
                 }
@@ -407,6 +407,8 @@ class VoucherScanController extends Controller
             ], 422);
         }
 
+        $allowAdvance = (bool) $request->boolean('allow_advance');
+
         try {
             $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
@@ -414,6 +416,7 @@ class VoucherScanController extends Controller
                 $request->user(),
                 (int) $facilityTemplateId,
                 (int) ($request->validated('pax_used') ?? 1),
+                $allowAdvance
             );
         } catch (VoucherException $e) {
             return response()->json([
@@ -433,12 +436,16 @@ class VoucherScanController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Facility redeemed successfully!',
+            'message' => !empty($log->is_advance) 
+                ? 'Facility redeemed successfully (Advance Quota applied)!' 
+                : 'Facility redeemed successfully!',
             'data' => [
                 'guest' => $log->guest?->full_name ?? $log->guestVoucher?->guest_name ?? 'Temporary Guest',
                 'facility' => $log->facilityTemplate?->name ?? 'N/A',
                 'pax_used' => $log->pax_used,
                 'remaining_quota' => $log->remaining_quota,
+                'is_advance' => !empty($log->is_advance),
+                'stay_quota_remaining' => $log->stay_quota_remaining ?? null,
                 'date' => $log->date->format('Y-m-d'),
                 'time' => $log->time,
             ],
@@ -465,6 +472,8 @@ class VoucherScanController extends Controller
             return back()->with('error', $errorMessage)->withInput();
         }
 
+        $allowAdvance = (bool) $request->boolean('allow_advance');
+
         try {
             $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
@@ -472,6 +481,7 @@ class VoucherScanController extends Controller
                 $request->user(),
                 (int) $facilityTemplateId,
                 (int) ($request->validated('pax_used') ?? 1),
+                $allowAdvance
             );
         } catch (VoucherException $e) {
             if ($request->expectsJson()) {

@@ -147,6 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentVoucherCode = null;
     let selectedFacilityId = null;
     let selectedFacilityRemaining = 0;
+    let selectedFacilityStayRemaining = 0;
+    let selectedFacilityCanAdvance = false;
 
     startCameraBtn.addEventListener('click', startCamera);
     stopCameraBtn.addEventListener('click', stopCamera);
@@ -155,6 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
     redeemBtn.addEventListener('click', redeemFacility);
     scanAgainBtn.addEventListener('click', resetScanFlow);
     cancelVerifyBtn.addEventListener('click', resetScanFlow);
+    paxUsedInput.addEventListener('input', updateAdvanceNotice);
+    paxUsedInput.addEventListener('change', updateAdvanceNotice);
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         startCameraBtn.disabled = true;
@@ -338,11 +342,14 @@ document.addEventListener('DOMContentLoaded', function() {
         data.facilities.forEach(facility => {
             const card = document.createElement('div');
             const isClosed = facility.is_open_now === false;
-            const isDisabled = !facility.is_available || facility.quota_remaining <= 0 || isClosed;
+            const hasQuota = facility.quota_remaining > 0 || (facility.can_advance && facility.stay_quota_remaining > 0);
+            const isDisabled = !facility.is_available || !hasQuota || isClosed;
             
             card.className = `card mb-2 facility-card ${isDisabled ? 'disabled' : ''}`;
             card.dataset.id = facility.facility_template_id;
             card.dataset.remaining = facility.quota_remaining;
+            card.dataset.stayRemaining = facility.stay_quota_remaining || facility.quota_remaining;
+            card.dataset.canAdvance = facility.can_advance ? '1' : '0';
 
             const cardBody = document.createElement('div');
             cardBody.className = 'card-body p-3 d-flex justify-content-between align-items-center';
@@ -356,6 +363,13 @@ document.addEventListener('DOMContentLoaded', function() {
             quotaEl.textContent = `Quota: ${facility.quota_total} | Used: ${facility.quota_used}`;
             leftDiv.appendChild(nameEl);
             leftDiv.appendChild(quotaEl);
+
+            if (facility.can_advance) {
+                const advanceEl = document.createElement('small');
+                advanceEl.className = 'text-info font-weight-bold d-block mt-1';
+                advanceEl.innerHTML = `<i class="fas fa-calendar-check me-1"></i>Sisa kuota menginap: <strong>${facility.stay_quota_remaining} pax</strong>`;
+                leftDiv.appendChild(advanceEl);
+            }
 
             if (facility.operating_hours) {
                 const hoursEl = document.createElement('small');
@@ -382,8 +396,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 rightDiv.appendChild(closedBadge);
             }
             const badge = document.createElement('span');
-            badge.className = `badge bg-${facility.quota_remaining > 0 ? 'success' : 'danger'} px-3 py-2`;
-            badge.textContent = `${facility.quota_remaining} Remaining`;
+            if (facility.quota_remaining > 0) {
+                badge.className = 'badge bg-success px-3 py-2';
+                badge.textContent = `${facility.quota_remaining} Remaining`;
+            } else if (facility.can_advance && facility.stay_quota_remaining > 0) {
+                badge.className = 'badge bg-info text-white px-3 py-2';
+                badge.textContent = `0 Today (${facility.stay_quota_remaining} Stay)`;
+            } else {
+                badge.className = 'badge bg-danger px-3 py-2';
+                badge.textContent = `0 Remaining`;
+            }
             rightDiv.appendChild(badge);
 
             cardBody.appendChild(leftDiv);
@@ -397,9 +419,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     selectedFacilityId = facility.facility_template_id;
                     selectedFacilityRemaining = facility.quota_remaining;
-                    paxUsedInput.value = 1;
-                    paxUsedInput.max = facility.quota_remaining;
+                    selectedFacilityStayRemaining = facility.stay_quota_remaining || facility.quota_remaining;
+                    selectedFacilityCanAdvance = !!facility.can_advance;
 
+                    paxUsedInput.value = 1;
+                    paxUsedInput.max = selectedFacilityCanAdvance ? selectedFacilityStayRemaining : Math.max(1, selectedFacilityRemaining);
+
+                    updateAdvanceNotice();
                     redemptionInputBlock.classList.remove('d-none');
                 });
             }
@@ -441,9 +467,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function updateAdvanceNotice() {
+        const pax = parseInt(paxUsedInput.value) || 1;
+        const advanceContainer = document.getElementById('advance-quota-container');
+        const advanceCheckbox = document.getElementById('allow-advance-checkbox');
+        const advanceHelp = document.getElementById('advance-quota-help');
+        const paxHelp = document.getElementById('pax-input-help');
+
+        if (selectedFacilityCanAdvance) {
+            if (paxHelp) {
+                paxHelp.textContent = `Kuota hari ini: ${selectedFacilityRemaining} pax | Total kuota menginap: ${selectedFacilityStayRemaining} pax`;
+            }
+            if (pax > selectedFacilityRemaining) {
+                if (advanceContainer) advanceContainer.classList.remove('d-none');
+                const borrowed = pax - selectedFacilityRemaining;
+                if (advanceHelp) {
+                    advanceHelp.textContent = `Tamu menggunakan ${borrowed} pax dari jatah hari berikutnya. Sisa kuota esok hari akan berkurang otomatis.`;
+                }
+            } else {
+                if (advanceContainer) advanceContainer.classList.add('d-none');
+                if (advanceCheckbox) advanceCheckbox.checked = false;
+            }
+        } else {
+            if (paxHelp) {
+                paxHelp.textContent = `Maksimal kuota tersisa: ${selectedFacilityRemaining} pax`;
+            }
+            if (advanceContainer) advanceContainer.classList.add('d-none');
+            if (advanceCheckbox) advanceCheckbox.checked = false;
+        }
+    }
+
     async function redeemFacility() {
         const outletId = outletSelect.value;
         const paxUsed = parseInt(paxUsedInput.value) || 1;
+        const advanceCheckbox = document.getElementById('allow-advance-checkbox');
+        const allowAdvance = advanceCheckbox && advanceCheckbox.checked;
 
         if (!selectedFacilityId) {
             alert('Please select a facility to redeem.');
@@ -451,8 +509,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (paxUsed > selectedFacilityRemaining) {
-            alert(`Cannot redeem more than the remaining quota (${selectedFacilityRemaining}).`);
-            return;
+            if (!selectedFacilityCanAdvance) {
+                alert(`Cannot redeem more than the remaining quota (${selectedFacilityRemaining}).`);
+                return;
+            }
+            if (paxUsed > selectedFacilityStayRemaining) {
+                alert(`Jumlah pax (${paxUsed}) melebihi total kuota menginap yang tersisa (${selectedFacilityStayRemaining} pax).`);
+                return;
+            }
+            if (!allowAdvance) {
+                alert('Jumlah pax melebihi kuota hari ini. Silakan centang "Gunakan Kuota Hari Esok (Advance Quota)" untuk melanjutkan.');
+                if (advanceCheckbox) advanceCheckbox.focus();
+                return;
+            }
         }
 
         redeemBtn.disabled = true;
@@ -472,6 +541,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     qr_code: currentVoucherCode,
                     facility_template_id: selectedFacilityId,
                     pax_used: paxUsed,
+                    allow_advance: allowAdvance,
                 }),
                 credentials: 'same-origin'
             });
@@ -519,6 +589,10 @@ document.addEventListener('DOMContentLoaded', function() {
             ['Timestamp:', `${data.date} ${data.time}`],
         ];
 
+        if (data.is_advance) {
+            rows.push(['Advance Notice:', `Termasuk kuota hari esok. Sisa total menginap: ${data.stay_quota_remaining ?? 0} pax`]);
+        }
+
         resultDetails.replaceChildren();
         rows.forEach(([label, value]) => {
             const row = document.createElement('div');
@@ -556,6 +630,13 @@ document.addEventListener('DOMContentLoaded', function() {
         paxUsedInput.value = '1';
         selectedFacilityId = null;
         currentVoucherCode = null;
+        selectedFacilityStayRemaining = 0;
+        selectedFacilityCanAdvance = false;
+
+        const advanceContainer = document.getElementById('advance-quota-container');
+        const advanceCheckbox = document.getElementById('allow-advance-checkbox');
+        if (advanceContainer) advanceContainer.classList.add('d-none');
+        if (advanceCheckbox) advanceCheckbox.checked = false;
         
         detectedQrDiv.classList.add('d-none');
         verificationSection.classList.add('d-none');

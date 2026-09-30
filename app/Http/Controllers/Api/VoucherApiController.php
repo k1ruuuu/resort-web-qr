@@ -314,7 +314,7 @@ class VoucherApiController extends ApiController
                 $facilityStatuses = $facilityStatuses->filter(fn($f) => $f->is_one_time)->values();
             }
 
-            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0)) {
+            if ($facilityStatuses->isEmpty() || $facilityStatuses->every(fn($f) => $f->quota_remaining <= 0 && empty($f->can_advance))) {
                 if ($user) {
                     $this->vouchers->logScan($qrCode, $voucher, $outlet, $user, 'quota_exceeded');
                 }
@@ -398,6 +398,8 @@ class VoucherApiController extends ApiController
             return $this->respondError('Please select a facility for this outlet.', 422);
         }
 
+        $allowAdvance = (bool) $request->boolean('allow_advance');
+
         try {
             $log = $this->vouchers->redeem(
                 $request->validated('qr_code'),
@@ -405,6 +407,7 @@ class VoucherApiController extends ApiController
                 $request->user(),
                 (int) $facilityTemplateId,
                 (int) ($request->validated('pax_used') ?? 1),
+                $allowAdvance
             );
         } catch (VoucherException $e) {
             return $this->respondError($e->getMessage(), $e->getCode() ?: 422);
@@ -415,6 +418,8 @@ class VoucherApiController extends ApiController
             'facility' => $log->facilityTemplate?->name ?? 'N/A',
             'pax_used' => $log->pax_used,
             'remaining_quota' => $log->remaining_quota,
+            'is_advance' => !empty($log->is_advance),
+            'stay_quota_remaining' => $log->stay_quota_remaining ?? null,
             'date' => $log->date->format('Y-m-d'),
             'time' => $log->time,
         ]);

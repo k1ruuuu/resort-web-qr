@@ -28,7 +28,20 @@
         <div class="mb-3">
             <label class="form-label font-weight-bold">Pax to Redeem</label>
             <input type="number" id="pax-used-input" value="1" min="1" max="50" class="form-control">
-            <div class="form-text text-muted">Cannot exceed remaining facility quota.</div>
+            <div class="form-text text-muted" id="pax-input-help">Cannot exceed remaining facility quota.</div>
+        </div>
+
+        <!-- Advance Quota Notice & Checkbox -->
+        <div id="advance-quota-container" class="alert alert-warning py-2 px-3 mb-3 d-none">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="allow-advance-checkbox" value="1">
+                <label class="form-check-label fw-bold text-dark" for="allow-advance-checkbox">
+                    <i class="fas fa-calendar-plus me-1 text-warning"></i> Gunakan Kuota Hari Esok (Advance Quota)
+                </label>
+            </div>
+            <div class="small text-muted mt-1" id="advance-quota-help">
+                Tamu mengambil melebihi kuota hari ini. Kuota fasilitas ini di hari berikutnya akan berkurang otomatis.
+            </div>
         </div>
 
         <button type="button" class="btn btn-success w-100 py-2" id="redeem-btn">

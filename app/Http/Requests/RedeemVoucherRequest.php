@@ -25,6 +25,7 @@ class RedeemVoucherRequest extends FormRequest
             'outlet_id' => ['required', 'exists:outlets,id'],
             'facility_template_id' => ['nullable', 'exists:facility_templates,id'], // Optional - will use outlet's facility if not provided
             'pax_used' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'allow_advance' => ['nullable', 'boolean'],
         ];
     }
 }

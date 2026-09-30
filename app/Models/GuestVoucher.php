@@ -215,6 +215,9 @@ class GuestVoucher extends Model
                     'quota_total' => $quota,
                     'quota_used' => $used,
                     'quota_remaining' => $remaining,
+                    'stay_quota_total' => $quota,
+                    'stay_quota_remaining' => $remaining,
+                    'can_advance' => false,
                     'start_date' => Carbon::today($this->property?->timezone ?? 'UTC'),
                     'end_date' => $this->expires_at ? Carbon::parse($this->expires_at) : Carbon::today($this->property?->timezone ?? 'UTC'),
                 ];
@@ -319,19 +322,33 @@ class GuestVoucher extends Model
             $additionApplies = $isOneTimeFacility || ($this->addition_date && $this->addition_date->toDateString() === $dateString);
             $facilityQuota = $accumulatedQuota + ($additionApplies ? $facilityAdd : 0);
 
+            // Total stay quota for daily facilities
+            $totalNights = max(1, (int) ($booking?->nights ?? 1));
+            $stayQuotaTotal = $isOneTimeFacility
+                ? $facilityQuota
+                : (max(0, ($baseDailyQuota * $totalNights) + $netExchangeDelta) + ($this->addition ?? 0));
+            $stayUsed = (int) ($everUsedByFacility[$bf->facility_template_id] ?? 0);
+            $stayQuotaRemaining = max(0, $stayQuotaTotal - $stayUsed);
+
             // During grace period, only one-time facilities remain in period;
             // During normal stay, facilities are in period if within their date range.
             $inPeriod = $isOneTimeGrace
                 ? $isOneTimeFacility
                 : ($dateString >= $start && $dateString <= $end);
-            $isAvailable = $inPeriod;
 
             $used = (int) (($isOneTimeFacility ? $everUsedByFacility : $redemptions)[$bf->facility_template_id] ?? 0);
             $remaining = max(0, $facilityQuota - $used);
-            $status = !$inPeriod ? 'unavailable' : ($isAvailable && $remaining > 0 ? 'available' : 'used');
+
+            // Can advance if: daily facility, multi-night booking, and has remaining stay quota beyond today's quota
+            $canAdvance = !$isOneTimeFacility
+                && $totalNights > 1
+                && $stayQuotaRemaining > $remaining;
+
+            $isAvailable = $inPeriod && ($remaining > 0 || $canAdvance);
+            $status = !$inPeriod ? 'unavailable' : ($isAvailable ? 'available' : 'used');
 
             // Hide facility if it has 0 quota, 0 remaining, and 0 used (e.g. non-granted facility with no active exchange today)
-            if ($facilityQuota === 0 && $used === 0) {
+            if ($facilityQuota === 0 && $used === 0 && !$canAdvance) {
                 return null;
             }
 
@@ -342,9 +359,12 @@ class GuestVoucher extends Model
                 'is_available' => $isAvailable,
                 'status' => $status,
                 'is_one_time' => $isOneTimeFacility,
-                'quota_total' => $inPeriod ? $facilityQuota : 0,
+                'quota_total' => $inPeriod ? max($facilityQuota, $used) : 0,
                 'quota_used' => $used,
                 'quota_remaining' => $inPeriod ? $remaining : 0,
+                'stay_quota_total' => $stayQuotaTotal,
+                'stay_quota_remaining' => $stayQuotaRemaining,
+                'can_advance' => $canAdvance,
                 'start_date' => $bf->start_date,
                 'end_date' => $bf->end_date,
             ];
