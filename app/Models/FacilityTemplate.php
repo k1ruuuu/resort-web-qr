@@ -11,7 +11,7 @@ class FacilityTemplate extends Model
 {
     public const DINNER_CODES = ['DINNER-BBQ', 'DINNER100K'];
     public const DEFAULT_DINNER_CODE = 'DINNER-BBQ';
-    public const ONE_TIME_CODES = ['SNACK', 'JOURNAL', 'FEED'];
+    public const ONE_TIME_CODES = ['SNACK', 'JOURNAL'];
 
     public function isDinner(): bool
     {
