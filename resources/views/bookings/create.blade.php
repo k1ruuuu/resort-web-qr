@@ -143,8 +143,9 @@
                     
                     @php
                         $facilityCollection = collect($facilityTemplates ?? []);
-                        $standardFacilities = $facilityCollection->reject(fn($f) => $f->isDinner());
+                        $standardFacilities = $facilityCollection->reject(fn($f) => $f->isDinner() || $f->isOptional());
                         $dinnerFacilities = $facilityCollection->filter(fn($f) => $f->isDinner());
+                        $optionalFacilities = $facilityCollection->filter(fn($f) => $f->isOptional());
                     @endphp
 
                     @if($facilityCollection->isNotEmpty())
@@ -203,6 +204,30 @@
                                             @elseif($facility->code === 'DINNER100K')
                                                 <span class="badge bg-info text-white ms-1">Voucher Resto 100K</span>
                                             @endif
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($optionalFacilities->isNotEmpty())
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Optional Facilities</label>
+                            <div class="bg-light border rounded p-3">
+                                @foreach($optionalFacilities as $facility)
+                                    @php
+                                        $offset = $standardFacilities->count() + $dinnerFacilities->count() + $loop->index;
+                                    @endphp
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input facility-checkbox optional-facility-checkbox" 
+                                               type="checkbox" 
+                                               name="facilities[{{ $offset }}][facility_template_id]" 
+                                               value="{{ $facility->id }}" 
+                                               id="facility_{{ $facility->id }}">
+                                        <label class="form-check-label" for="facility_{{ $facility->id }}">
+                                            {{ $facility->name }}
+                                            <span class="badge bg-secondary text-white ms-1">Opsional</span>
                                         </label>
                                     </div>
                                 @endforeach

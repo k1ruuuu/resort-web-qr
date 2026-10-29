@@ -12,6 +12,7 @@ class FacilityTemplate extends Model
     public const DINNER_CODES = ['DINNER-BBQ', 'DINNER100K'];
     public const DEFAULT_DINNER_CODE = 'DINNER-BBQ';
     public const ONE_TIME_CODES = ['SNACK', 'JOURNAL'];
+    public const OPTIONAL_CODES = ['SPA'];
 
     public function isDinner(): bool
     {
@@ -21,6 +22,11 @@ class FacilityTemplate extends Model
     public function isOneTime(): bool
     {
         return (bool) ($this->is_one_time ?? in_array($this->code, self::ONE_TIME_CODES, true));
+    }
+
+    public function isOptional(): bool
+    {
+        return in_array($this->code, self::OPTIONAL_CODES, true);
     }
 
     protected $fillable = [

@@ -197,8 +197,9 @@
                         <p class="text-muted small">Pilih fasilitas yang disertakan untuk QR voucher tamu ini. Biarkan kosong untuk menggunakan fasilitas standar.</p>
                         
                         @php
-                            $standardFacilities = $facilityTemplates->reject(fn($f) => $f->isDinner());
+                            $standardFacilities = $facilityTemplates->reject(fn($f) => $f->isDinner() || $f->isOptional());
                             $dinnerFacilities = $facilityTemplates->filter(fn($f) => $f->isDinner());
+                            $optionalFacilities = $facilityTemplates->filter(fn($f) => $f->isOptional());
                             $activeDinnerId = $booking->bookingFacilities->first(fn($bf) => $bf->facilityTemplate?->isDinner())?->facility_template_id;
                             if (!$activeDinnerId && $dinnerFacilities->isNotEmpty()) {
                                 $defaultDinner = $dinnerFacilities->firstWhere('code', \App\Models\FacilityTemplate::DEFAULT_DINNER_CODE) ?? $dinnerFacilities->first();
@@ -264,6 +265,28 @@
                                                     @elseif($facilityTemplate->code === 'DINNER100K')
                                                         <span class="badge bg-info text-white ms-1">Voucher Resto 100K</span>
                                                     @endif
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($optionalFacilities->isNotEmpty())
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Fasilitas Opsional / Tambahan</label>
+                                    <div class="bg-light border rounded p-3">
+                                        @foreach($optionalFacilities as $facilityTemplate)
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input facility-checkbox optional-facility-checkbox" 
+                                                       type="checkbox" 
+                                                       name="facility_template_ids[]" 
+                                                       value="{{ $facilityTemplate->id }}" 
+                                                       id="facility_{{ $facilityTemplate->id }}" 
+                                                       @checked($booking->bookingFacilities->contains('facility_template_id', $facilityTemplate->id))>
+                                                <label class="form-check-label" for="facility_{{ $facilityTemplate->id }}">
+                                                    {{ $facilityTemplate->name }}
+                                                    <span class="badge bg-secondary text-white ms-1">Opsional</span>
                                                 </label>
                                             </div>
                                         @endforeach

@@ -274,8 +274,9 @@
                         <p class="text-muted small mb-2">Fasilitas yang dipilih di bawah ini akan diterapkan secara seragam ke seluruh kamar rombongan.</p>
 
                         @php
-                            $standardFacilities = ($facilityTemplates ?? collect())->reject(fn($f) => $f->isDinner());
+                            $standardFacilities = ($facilityTemplates ?? collect())->reject(fn($f) => $f->isDinner() || $f->isOptional());
                             $dinnerFacilities = ($facilityTemplates ?? collect())->filter(fn($f) => $f->isDinner());
+                            $optionalFacilities = ($facilityTemplates ?? collect())->filter(fn($f) => $f->isOptional());
                             $defaultDinner = $dinnerFacilities->firstWhere('code', \App\Models\FacilityTemplate::DEFAULT_DINNER_CODE) ?? $dinnerFacilities->first();
                             $defaultDinnerId = $defaultDinner?->id;
                         @endphp
@@ -339,6 +340,27 @@
                                                 @elseif($ft->code === 'DINNER100K')
                                                     <span class="badge bg-info text-white ms-1">Voucher Resto 100K</span>
                                                 @endif
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        @if($optionalFacilities->isNotEmpty())
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted text-uppercase mb-1">Fasilitas Opsional / Tambahan</label>
+                                <div class="bg-light border rounded p-3">
+                                    @foreach($optionalFacilities as $ft)
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input bulk-facility-checkbox bulk-optional-checkbox" 
+                                                   type="checkbox" 
+                                                   name="facility_template_ids[]" 
+                                                   value="{{ $ft->id }}" 
+                                                   id="bulk_facility_{{ $ft->id }}">
+                                            <label class="form-check-label" for="bulk_facility_{{ $ft->id }}">
+                                                {{ $ft->name }}
+                                                <span class="badge bg-secondary text-white ms-1">Opsional</span>
                                             </label>
                                         </div>
                                     @endforeach

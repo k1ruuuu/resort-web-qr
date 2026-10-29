@@ -280,6 +280,11 @@ class BookingService
         $hasDefaultDinner = $templates->contains('code', FacilityTemplate::DEFAULT_DINNER_CODE);
 
         foreach ($templates as $template) {
+            // Skip optional facilities (e.g. SPA)
+            if ($template->isOptional()) {
+                continue;
+            }
+
             // If default dinner (Dinner BBQ) exists, skip alternative dinner options (Dinner 100K)
             if ($hasDefaultDinner && $template->isDinner() && $template->code !== FacilityTemplate::DEFAULT_DINNER_CODE) {
                 continue;
