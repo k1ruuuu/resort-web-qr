@@ -57,6 +57,14 @@ class FacilityScheduleService
             'time_label' => '10:00 - 11:45 WIB & 13:15 - 16:45 WIB',
             'description' => '10:00 - 11:45 WIB & 13:15 - 16:45 WIB',
         ],
+        'SPA' => [
+            'place' => 'Spa',
+            'time_label' => '10:00 - 17:00 WIB',
+            'description' => '10:00 - 17:00 WIB',
+            'windows' => [
+                ['start' => '10:00', 'end' => '17:00'],
+            ],
+        ],
     ];
 
     /**
